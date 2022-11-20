@@ -15,30 +15,31 @@ from DfaustTActionDataset import DfaustTActionDataset as Dataset
 import importlib.util
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='3dmfv', help='which model to use for point cloud processing: pn1 | pn2 ')
-parser.add_argument('--frames_per_clip', type=int, default=64, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
+parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
+parser.add_argument('--batch_size', type=int, default=8, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=2048, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/debug/',
+parser.add_argument('--model_path', type=str, default='./log/pn1_1024/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000000.pt', help='path to model save dir')
+parser.add_argument('--model', type=str, default='000025.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
+parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
 args = parser.parse_args()
 
 
 # from pointnet import PointNet4D
 def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8, n_points=None, pc_model='pn1'):
 
-    pred_output_filename = os.path.join(output_path, 'pred.npy')
-    json_output_filename = os.path.join(output_path, 'action_segments.json')
+    pred_output_filename = os.path.join(output_path, args.set + '_pred.npy')
+    json_output_filename = os.path.join(output_path, args.set + '_action_segments.json')
 
     # setup dataset
     # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
     test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
-    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=n_points)
+    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=args.set, n_points=n_points, last_op='pad')
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
@@ -76,16 +77,15 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
     # Iterate over data.
     avg_acc = []
-    pred_labels_per_video = [[] for i in range(len(test_dataset.video_list))]
-    logits_per_video = [[] for i in range(len(test_dataset.video_list)) ]
+    pred_labels_per_video = [[] for i in range(len(test_dataset.vertices))]
+    logits_per_video = [[] for i in range(len(test_dataset.vertices)) ]
     # last_vid_idx = 0
     for test_batchind, data in enumerate(test_dataloader):
         model.train(False)
         # get the inputs
-        inputs, labels = data['points'], data['labels']
+        inputs, labels, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
         labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
-
 
         # inputs = inputs[:, :, 0:3, :].contiguous()
         # t = inputs.size(1)
@@ -95,7 +95,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
 
         acc = i3d_utils.accuracy_v2(torch.argmax(logits, dim=1), torch.argmax(labels, dim=1))
-        avg_acc.append(acc.item())
+        avg_acc.append(acc.detach().cpu().numpy().item())
         n_examples += batch_size
         print('batch Acc: {}, [{} / {}]'.format(acc.item(), test_batchind, len(test_dataloader)))
         logits = logits.permute(0, 2, 1)
@@ -104,15 +104,15 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         logits = torch.nn.functional.softmax(logits, dim=1).detach().cpu().numpy().tolist()
 
         pred_labels_per_video, logits_per_video = \
-            utils.accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logits_per_video, pred_labels,
-                                     logits, frames_per_clip)
+            utils.accume_per_video_predictions(seq_idx, subseq_pad, pred_labels_per_video, logits_per_video,
+                                               pred_labels, logits, frames_per_clip)
 
     pred_labels_per_video = [np.array(pred_video_labels) for pred_video_labels in pred_labels_per_video]
     logits_per_video = [np.array(pred_video_logits) for pred_video_logits in logits_per_video]
 
     np.save(pred_output_filename, {'pred_labels': pred_labels_per_video, 'logits': logits_per_video})
-    utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.video_list,
-                                               test_dataset.action_list)
+    utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.sid_per_seq,
+                                               test_dataset.actions)
 
 
 if __name__ == '__main__':

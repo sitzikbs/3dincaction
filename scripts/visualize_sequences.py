@@ -2,7 +2,8 @@ from argparse import ArgumentParser
 import h5py
 import sys
 import visualization
-import torch
+import numpy as np
+import random
 
 # Subject ids
 sids = ['50002', '50004', '50007', '50009', '50020',
@@ -12,7 +13,7 @@ sids = ['50002', '50004', '50007', '50009', '50020',
 parser = ArgumentParser(description='Save sequence registrations as obj')
 parser.add_argument('--path', type=str, default='/home/sitzikbs/Datasets/dfaust/registrations_f.hdf5',
                     help='dataset path in hdf5 format')
-parser.add_argument('--seq', type=str, default='jumping_jacks', help='sequence name')
+parser.add_argument('--seq', type=str, default='punching', help='sequence name')
 parser.add_argument('--sid', type=str, default='50004', choices=sids, help='subject id')
 
 args = parser.parse_args()
@@ -28,4 +29,7 @@ with h5py.File(args.path, 'r') as f:
 
 
 
-visualization.mesh_seq_vis(verts, faces)
+# visualization.mesh_seq_vis(verts, faces)
+idxs = np.arange(6890)
+random.shuffle(idxs)
+visualization.pc_seq_vis(verts[:, idxs[0:2048]])

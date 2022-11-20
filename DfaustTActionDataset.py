@@ -4,14 +4,16 @@ import os
 import h5py
 import visualization
 import numpy as np
+import random
 
+DATASET_N_POINTS=6890
 class DfaustTActionDataset(Dataset):
-    def __init__(self, dfaust_path, frames_per_clip=64, set='train', n_points=2048):
+    def __init__(self, dfaust_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad'):
         # self.sids = ['50002', '50004', '50007', '50009', '50020',
         # '50021', '50022', '50025', '50026', '50027']
         #TODO: add support for male set
-        #TODO: add support for selecting number of points
         #TODO: add statistics computation (number of ids, number of actions etc)
+        self.last_op = last_op
         if set == 'train':
             self.sids = ['50004', '50020', '50021', ]
         elif set =='test':
@@ -39,9 +41,12 @@ class DfaustTActionDataset(Dataset):
 
         self.vertices = []
         self.labels = []
+        self.sid_per_seq = []
         self.faces = None
         self.clip_verts = None
         self.clip_labels = None
+        self.seq_idx = None # stores the sequence index for every clip
+        self.subseq_pad = None # stores the amount of padding for every clip
 
         self.load_data()
         self.clip_data()
@@ -65,23 +70,36 @@ class DfaustTActionDataset(Dataset):
                         if self.faces is None:
                             self.faces = faces
                         self.labels.append(i)
+                        self.sid_per_seq.append(sidseq)
 
     def clip_data(self):
 
         for i, seq in enumerate(self.vertices):
             clip_vertices = list(self.chunks(seq,  self.frames_per_clip))
+            frame_pad = np.zeros([len(clip_vertices)], dtype=np.int16)
             if clip_vertices[-1].shape[0] < self.frames_per_clip:
-                clip_vertices.pop()
+                if self.last_op == 'drop':
+                    clip_vertices.pop()
+                    frame_pad = frame_pad[:-2]
+                else: #pad
+                    frame_pad[-1] = int(self.frames_per_clip - len(clip_vertices[-1]))
+                    clip_vertices[-1] = np.concatenate([clip_vertices[-2][len(clip_vertices[-1]):], clip_vertices[-1]])
+
             if self.clip_verts is None:
                 self.clip_verts = clip_vertices
             else:
                 self.clip_verts = np.concatenate([self.clip_verts, clip_vertices], axis=0)
 
             clip_labels = self.labels[i] * np.ones([len(clip_vertices), self.frames_per_clip])
+            seq_idx = i * np.ones([len(clip_vertices)], dtype=np.int16)
             if self.clip_labels is None:
                 self.clip_labels = clip_labels
+                self.seq_idx = seq_idx
+                self.subseq_pad = frame_pad
             else:
                 self.clip_labels = np.concatenate([self.clip_labels, clip_labels], axis=0 )
+                self.seq_idx = np.concatenate([self.seq_idx, seq_idx], axis=0)
+                self.subseq_pad = np.concatenate([self.subseq_pad, frame_pad], axis=0)
 
 
     def chunks(self, lst, n):
@@ -95,7 +113,10 @@ class DfaustTActionDataset(Dataset):
 
     # This returns given an index the i-th sample and label
     def __getitem__(self, idx):
-        out_dict = {'points': self.clip_verts[idx], 'labels': self.clip_labels[idx]}
+        idxs = np.arange(DATASET_N_POINTS)
+        random.shuffle(idxs)
+        out_dict = {'points': self.clip_verts[idx][:, idxs[:self.n_points]], 'labels': self.clip_labels[idx],
+                    'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx]}
         return out_dict
 
 
