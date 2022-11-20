@@ -5,6 +5,7 @@ import h5py
 import visualization
 import numpy as np
 import random
+import json
 
 DATASET_N_POINTS=6890
 class DfaustTActionDataset(Dataset):
@@ -41,7 +42,9 @@ class DfaustTActionDataset(Dataset):
 
         self.vertices = []
         self.labels = []
+        self.label_per_frame = []
         self.sid_per_seq = []
+        self.n_frames_per_seq = {}
         self.faces = None
         self.clip_verts = None
         self.clip_labels = None
@@ -70,7 +73,9 @@ class DfaustTActionDataset(Dataset):
                         if self.faces is None:
                             self.faces = faces
                         self.labels.append(i)
+                        self.label_per_frame.append(i*np.ones(len(vertices)))
                         self.sid_per_seq.append(sidseq)
+                        self.n_frames_per_seq[sidseq] = len(vertices)
 
     def clip_data(self):
 
@@ -101,6 +106,44 @@ class DfaustTActionDataset(Dataset):
                 self.seq_idx = np.concatenate([self.seq_idx, seq_idx], axis=0)
                 self.subseq_pad = np.concatenate([self.subseq_pad, frame_pad], axis=0)
 
+
+    def get_actions_labels_from_json(self, json_filename, mode='gt'):
+        """
+
+         Loads a label segment .json file (ActivityNet format
+          http://activity-net.org/challenges/2020/tasks/anet_localization.html) and converts to frame labels for evaluation
+
+        Parameters
+        ----------
+        json_filename : output .json file name (full path)
+        device: camera view to use
+        Returns
+        -------
+        frame_labels: one_hot frame labels (allows multi-label)
+        """
+        labels = []
+        with open(json_filename, 'r') as json_file:
+            json_dict = json.load(json_file)
+
+        if mode == 'gt':
+            video_results = json_dict["database"]
+        else:
+            video_results = json_dict["results"]
+
+        for seq in video_results:
+            n_frames = self.n_frames_per_seq[seq]
+            current_labels = np.zeros([n_frames, self.num_classes])
+            if mode == 'gt':
+                segments = video_results[seq]['annotation']
+            else:
+                segments = video_results[seq]
+            for segment in segments:
+                action_idx = segment["label"]
+                start = segment['segment'][0]
+                end = segment['segment'][1]
+                current_labels[start:end, action_idx] = 1
+            labels.append(current_labels)
+        return labels
 
     def chunks(self, lst, n):
         """Yield successive n-sized chunks from lst."""

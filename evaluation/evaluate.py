@@ -29,9 +29,9 @@ parser.add_argument('--set', type=str, default='test', help='test | train set to
 args = parser.parse_args()
 
 # load the gt and predicted data
-# gt_json_path = os.path.join(args.dataset_path, 'gt_segments.json')
+gt_json_path = os.path.join(args.dataset_path, 'gt_segments.json')
 dataset = Dataset(args.dataset_path, set=args.set)
-gt_labels = dataset.labels
+gt_labels = dataset.label_per_frame
 results_json = os.path.join(args.results_path, args.set + '_action_segments.json')
 results_npy = os.path.join(args.results_path, args.set + '_pred.npy')
 pred_labels = dataset.get_actions_labels_from_json(results_json, mode='pred')
@@ -67,7 +67,7 @@ acc3_per_vid = []
 
 gt_single_labels = []
 for vid_idx in range(len(logits)):
-    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx]), dim=1)
+    single_label_per_frame = torch.tensor(gt_labels[vid_idx])
     acc1, acc3 = eval_utils.accuracy(torch.tensor(logits[vid_idx]), single_label_per_frame, topk=(1, 3))
     acc1_per_vid.append(acc1.item())
     acc3_per_vid.append(acc3.item())
@@ -79,7 +79,7 @@ print(scores_str)
 balanced_acc_per_vid = []
 
 for vid_idx in range(len(logits)):
-    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx]), dim=1)
+    single_label_per_frame = torch.tensor(gt_labels[vid_idx])
     acc = sklearn.metrics.balanced_accuracy_score(single_label_per_frame, np.argmax(logits[vid_idx], 1),
                                                   sample_weight=None, adjusted=False)
     balanced_acc_per_vid.append(acc)
@@ -100,7 +100,7 @@ print('Comptuing confusion matrix...')
 
 c_matrix = confusion_matrix(np.concatenate(gt_single_labels).ravel(), np.concatenate(pred_labels).ravel(),
                             labels=range(dataset.num_classes))
-class_names = utils.squeeze_class_names(dataset.action_list)
+class_names = utils.squeeze_class_names(dataset.actions)
 
 fig, ax = utils.plot_confusion_matrix(cm=c_matrix,
                       target_names=class_names,

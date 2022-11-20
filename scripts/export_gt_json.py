@@ -15,7 +15,8 @@ for j, dataset in enumerate(datasets):
     for i, subseq_name in enumerate(dataset.sid_per_seq):
         n_frames = int(len(dataset.vertices[i]))
         vid_name = subseq_name
-        list_of_result_dicts = {"label": dataset.labels[i],  "segment": [0, n_frames], 'subset': subset_dic[j]}
+        list_of_result_dicts = {"subset": subset_dic[j],
+                                'annotation': [{"label": dataset.labels[i],  "segment": [0, n_frames]}]}
         results[vid_name] = list_of_result_dicts
 json_dict_to_write["database"] = results
 

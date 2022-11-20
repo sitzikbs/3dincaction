@@ -15,11 +15,11 @@ from DfaustTActionDataset import DfaustTActionDataset as Dataset
 import importlib.util
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn2', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=8, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=2048, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/pn1_1024/',
+parser.add_argument('--model_path', type=str, default='./log/pn2_1024/',
                     help='path to model save dir')
 parser.add_argument('--model', type=str, default='000025.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
