@@ -39,7 +39,8 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
     test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
-    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=args.set, n_points=n_points, last_op='pad')
+    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=args.set, n_points=n_points, last_op='pad',
+                           shuffle_points=False)
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)

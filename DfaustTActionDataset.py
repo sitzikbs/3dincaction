@@ -9,7 +9,8 @@ import json
 
 DATASET_N_POINTS=6890
 class DfaustTActionDataset(Dataset):
-    def __init__(self, dfaust_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad'):
+    def __init__(self, dfaust_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
+                 shuffle_points=True):
         # self.sids = ['50002', '50004', '50007', '50009', '50020',
         # '50021', '50022', '50025', '50026', '50027']
         #TODO: add support for male set
@@ -39,6 +40,7 @@ class DfaustTActionDataset(Dataset):
         self.num_classes = len(self.actions)
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
+        self.shuffle_points = shuffle_points
 
         self.vertices = []
         self.labels = []
@@ -50,6 +52,7 @@ class DfaustTActionDataset(Dataset):
         self.clip_labels = None
         self.seq_idx = None # stores the sequence index for every clip
         self.subseq_pad = None # stores the amount of padding for every clip
+
 
         self.load_data()
         self.clip_data()
@@ -157,7 +160,8 @@ class DfaustTActionDataset(Dataset):
     # This returns given an index the i-th sample and label
     def __getitem__(self, idx):
         idxs = np.arange(DATASET_N_POINTS)
-        random.shuffle(idxs)
+        if self.shuffle_points:
+            random.shuffle(idxs)
         out_dict = {'points': self.clip_verts[idx][:, idxs[:self.n_points]], 'labels': self.clip_labels[idx],
                     'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx]}
         return out_dict

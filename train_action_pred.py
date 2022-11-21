@@ -15,19 +15,19 @@ from tensorboardX import SummaryWriter
 
 
 from models.pointnet import PointNet4D, feature_transform_regularizer
-from models.pointnet2_cls_ssg import PointNetPP4D
+from models.pointnet2_cls_ssg import PointNet2
 from models.pytorch_3dmfv import FourDmFVNet
 
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn2', help='which model to use for point cloud processing: pn1 | pn2 ')
-parser.add_argument('--steps_per_update', type=int, default=10, help='number of steps per backprop update')
+parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--steps_per_update', type=int, default=100, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=16, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=30, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=2048, help='number of points in a point cloud')
-parser.add_argument('--logdir', type=str, default='./log/pn2_2048/', help='path to model save dir')
+parser.add_argument('--logdir', type=str, default='./log/pn2_2048_wo_shuffle/', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--refine', action="store_true", help='flag to refine the model')
@@ -35,12 +35,14 @@ parser.add_argument('--refine_epoch', type=int, default=0, help='refine model fr
 parser.add_argument('--pretrained_model', type=str, default=None, help='path to pretrained model')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
+parser.add_argument('--shuffle_points', type=int, default=0, help='indicator to shuffle the input points')
 args = parser.parse_args()
 
 
 def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/sitzikbs/Datasets/dfaust/',
         logdir='', batch_size=8, refine=False, refine_epoch=0,
         pretrained_model='charades', steps_per_update=1, pc_model='pn1'):
+    shuffle_points = True if args.shuffle_points == 1 else False
 
     os.makedirs(logdir, exist_ok=True)
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
@@ -56,12 +58,14 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
     # test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
-    train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=args.n_points)
+    train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=args.n_points,
+                            shuffle_points=shuffle_points)
     print("Number of clips in the trainingset:{}".format(len(train_dataset)))
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=8,
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
-    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points)
+    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
+                           shuffle_points=shuffle_points)
     print("Number of clips in the testset:{}".format(len(test_dataset)))
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
@@ -70,7 +74,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     if pc_model == 'pn1':
         model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':
-        model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
+        model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes, n_frames=frames_per_clip)
     else:

@@ -138,59 +138,59 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
         return new_xyz, new_points
 
 
-def sample_and_group_pointlets(npoint, radius, nsample, xyz, points, returnfps=False):
-    """
-    Input:
-        npoint:
-        radius:
-        nsample:
-        xyz: input points position data, [B, t, N, 3]
-        points: input points data, [B, t, N, D]
-    Return:
-        new_xyz: sampled points position data, [B, t, npoint, nsample, 3]
-        new_points: sampled points data, [B, t, npoint, nsample, 3+D]
-    """
-    B, t, N, C = xyz.shape
-    S = npoint
-    fps_idx = farthest_point_sample(xyz[:, 0], npoint)  # [B, npoint, C]
-    xyz = xyz.reshape(-1, N, C)
-    new_xyz = index_points(xyz, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, npoint))
-    idx = query_ball_point(radius, nsample, xyz, new_xyz)
-    grouped_xyz = index_points(xyz, idx)  # [B, npoint, nsample, C]
-    grouped_xyz_norm = grouped_xyz - new_xyz.view(B*t, S, 1, C)  # shouldnt this also be scaled to unit sphere?
+# def sample_and_group_pointlets(npoint, radius, nsample, xyz, points, returnfps=False):
+#     """
+#     Input:
+#         npoint:
+#         radius:
+#         nsample:
+#         xyz: input points position data, [B, t, N, 3]
+#         points: input points data, [B, t, N, D]
+#     Return:
+#         new_xyz: sampled points position data, [B, t, npoint, nsample, 3]
+#         new_points: sampled points data, [B, t, npoint, nsample, 3+D]
+#     """
+#     B, t, N, C = xyz.shape
+#     S = npoint
+#     fps_idx = farthest_point_sample(xyz[:, 0], npoint)  # [B, npoint, C]
+#     xyz = xyz.reshape(-1, N, C)
+#     new_xyz = index_points(xyz, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, npoint))
+#     idx = query_ball_point(radius, nsample, xyz, new_xyz)
+#     grouped_xyz = index_points(xyz, idx)  # [B, npoint, nsample, C]
+#     grouped_xyz_norm = grouped_xyz - new_xyz.view(B*t, S, 1, C)  # shouldnt this also be scaled to unit sphere?
+#
+#     if points is not None:
+#         grouped_points = index_points(points.reshape(-1, N, S), idx)
+#         new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)  # [B, npoint, nsample, C+D]
+#     else:
+#         new_points = grouped_xyz_norm
+#
+#     new_xyz = new_xyz.reshape(B, t, npoint, C)
+#     new_points = new_points.reshape(B, t, npoint, nsample, -1)
+#
+#     if returnfps:
+#         return new_xyz, new_points, grouped_xyz, fps_idx
+#     else:
+#         return new_xyz, new_points
 
-    if points is not None:
-        grouped_points = index_points(points.reshape(-1, N, S), idx)
-        new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)  # [B, npoint, nsample, C+D]
-    else:
-        new_points = grouped_xyz_norm
-
-    new_xyz = new_xyz.reshape(B, t, npoint, C)
-    new_points = new_points.reshape(B, t, npoint, nsample, -1)
-
-    if returnfps:
-        return new_xyz, new_points, grouped_xyz, fps_idx
-    else:
-        return new_xyz, new_points
-
-def sample_and_group_all_pointlets(xyz, points):
-    """
-    Input:
-        xyz: input points position data, [B, N, 3]
-        points: input points data, [B, N, D]
-    Return:
-        new_xyz: sampled points position data, [B, 1, 3]
-        new_points: sampled points data, [B, 1, N, 3+D]
-    """
-    device = xyz.device
-    B, t, N, C = xyz.shape
-    new_xyz = torch.zeros(B, t, 1, C).to(device)
-    grouped_xyz = xyz.view(B, t, 1, N, C)
-    if points is not None:
-        new_points = torch.cat([grouped_xyz, points.view(B, t, 1, N, -1)], dim=-1)
-    else:
-        new_points = grouped_xyz
-    return new_xyz, new_points
+# def sample_and_group_all_pointlets(xyz, points):
+#     """
+#     Input:
+#         xyz: input points position data, [B, N, 3]
+#         points: input points data, [B, N, D]
+#     Return:
+#         new_xyz: sampled points position data, [B, 1, 3]
+#         new_points: sampled points data, [B, 1, N, 3+D]
+#     """
+#     device = xyz.device
+#     B, t, N, C = xyz.shape
+#     new_xyz = torch.zeros(B, t, 1, C).to(device)
+#     grouped_xyz = xyz.view(B, t, 1, N, C)
+#     if points is not None:
+#         new_points = torch.cat([grouped_xyz, points.view(B, t, 1, N, -1)], dim=-1)
+#     else:
+#         new_points = grouped_xyz
+#     return new_xyz, new_points
 
 
 def sample_and_group_all(xyz, points):
@@ -256,52 +256,52 @@ class PointNetSetAbstraction(nn.Module):
         new_xyz = new_xyz.permute(0, 2, 1)
         return new_xyz, new_points
 
-class PointletSetAbstraction(nn.Module):
-    def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all):
-        super(PointletSetAbstraction, self).__init__()
-        self.npoint = npoint
-        self.radius = radius
-        self.nsample = nsample
-        self.mlp_convs = nn.ModuleList()
-        self.mlp_bns = nn.ModuleList()
-        last_channel = in_channel
-        for out_channel in mlp:
-            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
-            self.mlp_bns.append(nn.BatchNorm2d(out_channel))
-            last_channel = out_channel
-        self.group_all = group_all
-
-    def forward(self, xyz, points):
-        """
-        Input:
-            xyz: input points position data, [B, t, C, N]
-            points: input points data, [B, t, D, N]
-        Return:
-            new_xyz: sampled points position data, [B, t, C, S]
-            new_points_concat: sample points feature data, [B, t, D', S]
-        """
-        B, t, C, N = xyz.shape
-        xyz = xyz.permute(0, 1,  3, 2)
-        if points is not None:
-            points = points.permute(0, 1, 3, 2)
-
-        if self.group_all:
-            new_xyz, new_points = sample_and_group_all_pointlets(xyz, points)
-        else:
-            new_xyz, new_points = sample_and_group_pointlets(self.npoint, self.radius, self.nsample, xyz, points)
-        D = new_points.shape[-1]
-        # new_xyz: sampled points position data, [B, t, npoint, C]
-        # new_points: sampled points data, [B, t, npoint, nsample, C+D]
-        new_xyz = new_xyz.reshape(-1, new_xyz.shape[-2], C)
-        new_points = new_points.reshape(-1, new_points.shape[-3], new_points.shape[-2], D)
-        new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample,npoint]
-        for i, conv in enumerate(self.mlp_convs):
-            bn = self.mlp_bns[i]
-            new_points =  F.relu(bn(conv(new_points)))
-
-        new_points = torch.max(new_points, 2)[0]
-        new_xyz = new_xyz.permute(0, 2, 1)
-        return new_xyz.reshape(B, t, C, new_xyz.shape[-1]), new_points.reshape(B, t, -1, new_points.shape[-1])
+# class PointletSetAbstraction(nn.Module):
+#     def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all):
+#         super(PointletSetAbstraction, self).__init__()
+#         self.npoint = npoint
+#         self.radius = radius
+#         self.nsample = nsample
+#         self.mlp_convs = nn.ModuleList()
+#         self.mlp_bns = nn.ModuleList()
+#         last_channel = in_channel
+#         for out_channel in mlp:
+#             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
+#             self.mlp_bns.append(nn.BatchNorm2d(out_channel))
+#             last_channel = out_channel
+#         self.group_all = group_all
+#
+#     def forward(self, xyz, points):
+#         """
+#         Input:
+#             xyz: input points position data, [B, t, C, N]
+#             points: input points data, [B, t, D, N]
+#         Return:
+#             new_xyz: sampled points position data, [B, t, C, S]
+#             new_points_concat: sample points feature data, [B, t, D', S]
+#         """
+#         B, t, C, N = xyz.shape
+#         xyz = xyz.permute(0, 1,  3, 2)
+#         if points is not None:
+#             points = points.permute(0, 1, 3, 2)
+#
+#         if self.group_all:
+#             new_xyz, new_points = sample_and_group_all_pointlets(xyz, points)
+#         else:
+#             new_xyz, new_points = sample_and_group_pointlets(self.npoint, self.radius, self.nsample, xyz, points)
+#         D = new_points.shape[-1]
+#         # new_xyz: sampled points position data, [B, t, npoint, C]
+#         # new_points: sampled points data, [B, t, npoint, nsample, C+D]
+#         new_xyz = new_xyz.reshape(-1, new_xyz.shape[-2], C)
+#         new_points = new_points.reshape(-1, new_points.shape[-3], new_points.shape[-2], D)
+#         new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample,npoint]
+#         for i, conv in enumerate(self.mlp_convs):
+#             bn = self.mlp_bns[i]
+#             new_points =  F.relu(bn(conv(new_points)))
+#
+#         new_points = torch.max(new_points, 2)[0]
+#         new_xyz = new_xyz.permute(0, 2, 1)
+#         return new_xyz.reshape(B, t, C, new_xyz.shape[-1]), new_points.reshape(B, t, -1, new_points.shape[-1])
 
 
 class PointNetSetAbstractionMsg(nn.Module):
