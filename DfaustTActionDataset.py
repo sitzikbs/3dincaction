@@ -45,8 +45,9 @@ class DfaustTActionDataset(Dataset):
         if self.shuffle_points == 'once':
             random.shuffle(self.idxs)
         else:
-            raise ValueError("Unknown shuffle protocol"
-                             "")
+            raise ValueError("Unknown shuffle protocol")
+
+
         self.vertices = []
         self.labels = []
         self.label_per_frame = []
@@ -55,8 +56,8 @@ class DfaustTActionDataset(Dataset):
         self.faces = None
         self.clip_verts = None
         self.clip_labels = None
-        self.seq_idx = None # stores the sequence index for every clip
-        self.subseq_pad = None # stores the amount of padding for every clip
+        self.seq_idx = None  # stores the sequence index for every clip
+        self.subseq_pad = None  # stores the amount of padding for every clip
 
 
         self.load_data()
