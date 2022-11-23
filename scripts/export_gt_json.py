@@ -1,8 +1,8 @@
 from DfaustTActionDataset import DfaustTActionDataset as Dataset
 import json
 
-dataset_path = '/home/sitzikbs/datasets/dfaust'
-json_filename = '/home/sitzikbs/datasets/dfaust/gt_segments.json'
+dataset_path = '/home/sitzikbs/Datasets/dfaust'
+json_filename = '/home/sitzikbs/Datasets/dfaust/gt_segments.json'
 test_dataset = Dataset(dataset_path, frames_per_clip=64, set='test', n_points=2048, last_op='pad')
 train_dataset = Dataset(dataset_path, frames_per_clip=64, set='train', n_points=2048, last_op='pad')
 

@@ -20,11 +20,10 @@ import sklearn
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--results_path', type=str,
-                    default='../log/pointnet_baseline/results/',
+                    default='../log/pn1_f32_p1024_shuffle_once/results/',
                     help='label prediction file')
-parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/',
+parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/dfaust/',
                     help='path to ground truth action segments json file')
-parser.add_argument('--mode', type=str, default='frame', help='dataset format mode frame | vid')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate')
 args = parser.parse_args()
 

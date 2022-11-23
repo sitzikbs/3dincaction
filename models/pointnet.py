@@ -128,16 +128,16 @@ class PointNetfeat(nn.Module):
             return torch.cat([x, pointfeat], 1), trans, trans_feat
 
 class PointNetfeat4D(nn.Module):
-    def __init__(self, global_feat=True, feature_transform=False, in_d=3, n_frames=32):
+    def __init__(self, global_feat=True, feature_transform=False, in_d=3, n_frames=32, k_frames=4):
         super(PointNetfeat4D, self).__init__()
         self.n_frames = n_frames
         self.stn = STN3d()
-        self.conv1 = torch.nn.Conv1d(in_d, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(256, 1024, 1)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.bn3 = nn.BatchNorm1d(1024)
+        self.conv1 = torch.nn.Conv2d(in_d, 64, [in_d, k_frames], 1, padding='same')
+        self.conv2 = torch.nn.Conv2d(64, 128, [64, k_frames], 1, padding='same')
+        self.conv3 = torch.nn.Conv2d(128, 1024, [128, k_frames], 1, padding='same')
+        self.bn1 = nn.BatchNorm2d(64, k_frames)
+        self.bn2 = nn.BatchNorm2d(128, k_frames)
+        self.bn3 = nn.BatchNorm2d(1024, k_frames)
         self.maxpool1 = torch.nn.MaxPool3d(kernel_size=[3, 1, 1], stride=[2, 1, 1])
         self.global_feat = global_feat
         self.feature_transform = feature_transform
@@ -145,37 +145,70 @@ class PointNetfeat4D(nn.Module):
             self.fstn = STNkd(k=64)
 
     def forward(self, x):
-        bt, k, n = x.shape
-        b = bt / self.n_frames
-        trans = self.stn(x)
-        x = x.transpose(2, 1)
-        x = torch.bmm(x, trans)
-        x = x.transpose(2, 1)
-        x = F.relu(self.bn1(self.conv1(x)))
+        b, t, k, n = x.shape
+        trans = self.stn(x.view(-1, k, n)) # b*t, 3, 3
+        x = torch.bmm(x.view(-1, k, n).transpose(2, 1), trans).view(b, t, k, n)  # b, t k, n
+        x = x.permute(0, 2, 3, 1)  # b, k, n, t
+        x = F.relu(self.bn1(self.conv1(x)))  # b, 64, n, t
 
         if self.feature_transform:
-            trans_feat = self.fstn(x)
-            x = x.transpose(2,1)
+            x = x.permute(0, 3, 1, 2).reshape(-1, 64, n)  # b*t, 64, n
+            trans_feat = self.fstn(x)  # b*t, 64, 64
+            x = x.transpose(2, 1)  # b*t, 64, 64
             x = torch.bmm(x, trans_feat)
-            x = x.transpose(2,1)
+            x = x.transpose(2, 1).reshape(b, t, 64, n)
         else:
             trans_feat = None
 
         pointfeat = x
+        x = x.permute(0, 2, 3, 1)
         x = F.relu(self.bn2(self.conv2(x)))
-        temporal_x = x.reshape([-1, self.n_frames, 128, n])
-        temporal_x = torch.max(temporal_x, 3, keepdim=True)[0]
-        temporal_x = self.maxpool1(temporal_x)
-        temporal_x = F.interpolate(temporal_x.squeeze().permute(0, 2, 1), self.n_frames, mode='linear').permute(0, 2, 1).unsqueeze(-1)
-        x = torch.cat([x, temporal_x.repeat([1, 1, 1, n]).reshape(-1, 128, n)], dim=1)
         x = self.bn3(self.conv3(x))
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 1024)
+        x = torch.max(x, 2, keepdim=True)[0].squeeze()
+        x = x.permute(0, 2, 1)
         if self.global_feat:
             return x, trans, trans_feat
         else:
+            #TODO fix this to support temporal per point prediction
             x = x.view(-1, 1024, 1).repeat(1, 1, n)
             return torch.cat([x, pointfeat], 1), trans, trans_feat
+
+class PointNetCls4D(nn.Module):
+    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
+        super(PointNetCls4D, self).__init__()
+        self.feature_transform = feature_transform
+        self.feat = PointNetfeat4D(global_feat=True, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, k)
+        self.dropout = nn.Dropout(p=0.3)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        b, t, k, n = x.shape
+        x, trans, trans_feat = self.feat(x)
+        x = x.reshape(-1, 1024)
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.dropout(self.fc2(x))))
+        x = self.fc3(x)
+        output =  F.log_softmax(x, dim=1)
+        return output.reshape(b, t, -1), trans, trans_feat
+class PointNet4D(nn.Module):
+    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
+        super(PointNet4D, self).__init__()
+        self.feature_transform = feature_transform
+        self.pn = PointNetCls4D(k=k, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
+
+    def forward(self, x):
+        b, t, k, n = x.shape
+        x, trans, trans_feat = self.pn(x)
+        return {'pred': x.permute([0, 2, 1]), 'trans': trans, 'trans_feat': trans_feat}
+
+    def replace_logits(self, num_classes):
+        self._num_classes = num_classes
+        self.pn.fc3 = nn.Linear(256, num_classes)
 
 
 class PointNetCls(nn.Module):
@@ -198,49 +231,21 @@ class PointNetCls(nn.Module):
         x = self.fc3(x)
         return F.log_softmax(x, dim=1), trans, trans_feat
 
-class PointNetCls4D(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
-        super(PointNetCls4D, self).__init__()
-        self.feature_transform = feature_transform
-        self.feat = PointNetfeat4D(global_feat=True, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
-        self.fc1 = nn.Linear(1024, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, k)
-        self.dropout = nn.Dropout(p=0.3)
-        self.bn1 = nn.BatchNorm1d(512)
-        self.bn2 = nn.BatchNorm1d(256)
-        self.relu = nn.ReLU()
 
-    def forward(self, x):
-        x, trans, trans_feat = self.feat(x)
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.dropout(self.fc2(x))))
-        x = self.fc3(x)
-        return F.log_softmax(x, dim=1), trans, trans_feat
-
-class PointNet4D(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
-        super(PointNet4D, self).__init__()
+class PointNet1(nn.Module):
+    def __init__(self, k=2, feature_transform=False, in_d=3):
+        super(PointNet1, self).__init__()
         self.feature_transform = feature_transform
-        # self.pn = PointNetCls4D(k=k, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
         self.pn = PointNetCls(k=k, feature_transform=feature_transform, in_d=in_d)
-        # self.maxPool1 = torch.nn.MaxPool2d(kernel_size=[3, 1], stride=[2, 1])
-        # self.maxPool2 = torch.nn.MaxPool2d(kernel_size=[2, 1], stride=[2, 1])
-        # self.avgPool = torch.nn.AvgPool2d(kernel_size=[2, 1], stride=[2, 1])
-
 
     def forward(self, x):
         b, t, k, n = x.shape
         x, trans, trans_feat = self.pn(x.reshape([-1, k, n]))
         x = x.reshape([b, t, -1])
-        # x = self.maxPool1(x)
-        # x = self.maxPool2(x)
-        # x = self.avgPool(x)
         return {'pred': x.permute([0, 2, 1]), 'trans': trans, 'trans_feat': trans_feat}
 
-    def replace_logits(self, num_classes):
-        self._num_classes = num_classes
-        self.pn.fc3 = nn.Linear(256, num_classes)
+
+
 
 class PointNetDenseCls(nn.Module):
     def __init__(self, k = 2, feature_transform=False):

@@ -25,13 +25,15 @@ parser.add_argument('--model_path', type=str, default='./log/pn1_f32_p1024_shuff
                     help='path to model save dir')
 parser.add_argument('--model', type=str, default='000025.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
-                    default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
+                    default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
 parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
-parser.add_argument('--visualize_results', type=int, default=True, help='visualzies the first subsequence in each batch')
+parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
 args = parser.parse_args()
+
+
 
 
 # from pointnet import PointNet4D
@@ -54,18 +56,24 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     checkpoints = torch.load(model_path)
 
     if pc_model == 'pn1':
+        spec = importlib.util.spec_from_file_location("PointNet1", os.path.join(args.model_path, "pointnet.py"))
+        pointnet = importlib.util.module_from_spec(spec)
+        sys.modules["PointNet1"] = pointnet
+        spec.loader.exec_module(pointnet)
+        model = pointnet.PointNet1(k=num_classes, feature_transform=True)
+    elif pc_model == 'pn1_4d':
         spec = importlib.util.spec_from_file_location("PointNet4D", os.path.join(args.model_path, "pointnet.py"))
         pointnet = importlib.util.module_from_spec(spec)
         sys.modules["PointNet4D"] = pointnet
         spec.loader.exec_module(pointnet)
         model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':
-            spec = importlib.util.spec_from_file_location("PointNetPP4D",
+            spec = importlib.util.spec_from_file_location("PointNet2",
                                                           os.path.join(args.model_path, "pointnet2_cls_ssg.py"))
             pointnet_pp = importlib.util.module_from_spec(spec)
-            sys.modules["PointNetPP4D"] = pointnet_pp
+            sys.modules["PointNet2"] = pointnet_pp
             spec.loader.exec_module(pointnet_pp)
-            model = pointnet_pp.PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
+            model = pointnet_pp.PointNet2(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
             spec = importlib.util.spec_from_file_location("FourDmFVNet",
                                                           os.path.join(args.model_path, "pytorch_3dmfv.py"))

@@ -14,20 +14,20 @@ from DfaustTActionDataset import DfaustTActionDataset as Dataset
 from tensorboardX import SummaryWriter
 
 
-from models.pointnet import PointNet4D, feature_transform_regularizer
-from models.pointnet2_cls_ssg import PointNet2
+from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1
+from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=20, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=8, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=30, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--logdir', type=str, default='./log/pn1_f32_p1024_shuffle_once/', help='path to model save dir')
+parser.add_argument('--logdir', type=str, default='./log/pn1_4d_f32_p1024_shuffle_once/', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--refine', action="store_true", help='flag to refine the model')
@@ -72,9 +72,13 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     num_classes = train_dataset.num_classes
 
     if pc_model == 'pn1':
+        model = PointNet1(k=num_classes, feature_transform=True)
+    elif pc_model == 'pn1_4d':
         model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':
         model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'pn2_4d':
+        model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes, n_frames=frames_per_clip)
     else:

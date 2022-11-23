@@ -256,53 +256,52 @@ class PointNetSetAbstraction(nn.Module):
         new_xyz = new_xyz.permute(0, 2, 1)
         return new_xyz, new_points
 
-# class PointletSetAbstraction(nn.Module):
-#     def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all):
-#         super(PointletSetAbstraction, self).__init__()
-#         self.npoint = npoint
-#         self.radius = radius
-#         self.nsample = nsample
-#         self.mlp_convs = nn.ModuleList()
-#         self.mlp_bns = nn.ModuleList()
-#         last_channel = in_channel
-#         for out_channel in mlp:
-#             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
-#             self.mlp_bns.append(nn.BatchNorm2d(out_channel))
-#             last_channel = out_channel
-#         self.group_all = group_all
-#
-#     def forward(self, xyz, points):
-#         """
-#         Input:
-#             xyz: input points position data, [B, t, C, N]
-#             points: input points data, [B, t, D, N]
-#         Return:
-#             new_xyz: sampled points position data, [B, t, C, S]
-#             new_points_concat: sample points feature data, [B, t, D', S]
-#         """
-#         B, t, C, N = xyz.shape
-#         xyz = xyz.permute(0, 1,  3, 2)
-#         if points is not None:
-#             points = points.permute(0, 1, 3, 2)
-#
-#         if self.group_all:
-#             new_xyz, new_points = sample_and_group_all_pointlets(xyz, points)
-#         else:
-#             new_xyz, new_points = sample_and_group_pointlets(self.npoint, self.radius, self.nsample, xyz, points)
-#         D = new_points.shape[-1]
-#         # new_xyz: sampled points position data, [B, t, npoint, C]
-#         # new_points: sampled points data, [B, t, npoint, nsample, C+D]
-#         new_xyz = new_xyz.reshape(-1, new_xyz.shape[-2], C)
-#         new_points = new_points.reshape(-1, new_points.shape[-3], new_points.shape[-2], D)
-#         new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample,npoint]
-#         for i, conv in enumerate(self.mlp_convs):
-#             bn = self.mlp_bns[i]
-#             new_points =  F.relu(bn(conv(new_points)))
-#
-#         new_points = torch.max(new_points, 2)[0]
-#         new_xyz = new_xyz.permute(0, 2, 1)
-#         return new_xyz.reshape(B, t, C, new_xyz.shape[-1]), new_points.reshape(B, t, -1, new_points.shape[-1])
+class PointNetPP4DSetAbstraction(nn.Module):
+    def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all):
+        super(PointNetPP4DSetAbstraction, self).__init__()
+        self.npoint = npoint
+        self.radius = radius
+        self.nsample = nsample
+        self.mlp_convs = nn.ModuleList()
+        self.mlp_bns = nn.ModuleList()
+        last_channel = in_channel
+        for out_channel in mlp:
+            self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, 1))
+            self.mlp_bns.append(nn.BatchNorm3d(out_channel))
+            last_channel = out_channel
+        self.group_all = group_all
 
+    def forward(self, xyz, points):
+        """
+        Input:
+            xyz: input points position data, [B, T, C, N]
+            points: input points data, [B, T, D, N]
+        Return:
+            new_xyz: sampled points position data, [B, C, S]
+            new_points_concat: sample points feature data, [B, D', S]
+        """
+        b, t, k, n = xyz.shape
+        xyz = xyz.permute(0, 1, 3, 2)
+        if points is not None:
+            points = points.permute(0, 1, 3, 2)
+            points = points.view(t*b, -1, n)
+        xyz = xyz.view(b*t, n, k)
+        if self.group_all:
+            new_xyz, new_points = sample_and_group_all(xyz, points)
+        else:
+            new_xyz, new_points = sample_and_group(self.npoint, self.radius, self.nsample, xyz, points)
+        # new_xyz: sampled points position data, [B, npoint, C]
+        # new_points: sampled points data, [B, npoint, nsample, C+D]
+        new_points = new_points.reshape(b, t, self.npoint, self.nsample, k)
+        new_points = new_points.permute(0, 4, 3, 2, 1)  # [B, C+D, nsample, npoint]
+
+        for i, conv in enumerate(self.mlp_convs):
+            bn = self.mlp_bns[i]
+            new_points =  F.relu(bn(conv(new_points)))
+
+        new_points = torch.max(new_points, 2)[0]
+        new_xyz = new_xyz.permute(0, 2, 1)
+        return new_xyz, new_points
 
 class PointNetSetAbstractionMsg(nn.Module):
     def __init__(self, npoint, radius_list, nsample_list, in_channel, mlp_list):
