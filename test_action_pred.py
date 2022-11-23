@@ -74,6 +74,13 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
             sys.modules["PointNet2"] = pointnet_pp
             spec.loader.exec_module(pointnet_pp)
             model = pointnet_pp.PointNet2(num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'pn2_4d':
+            spec = importlib.util.spec_from_file_location("PointNetPP4D",
+                                                          os.path.join(args.model_path, "pointnet2_cls_ssg.py"))
+            pointnet_pp = importlib.util.module_from_spec(spec)
+            sys.modules["PointNetPP4D"] = pointnet_pp
+            spec.loader.exec_module(pointnet_pp)
+            model = pointnet_pp.PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
             spec = importlib.util.spec_from_file_location("FourDmFVNet",
                                                           os.path.join(args.model_path, "pytorch_3dmfv.py"))
