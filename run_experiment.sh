@@ -1,13 +1,13 @@
 
-#DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
-DATASET_PATH='/data1/datasets/dfaust/'
-MODEL='pn1_4d'
-STEPS_PER_UPDATE=5
+DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
+#DATASET_PATH='/data1/datasets/dfaust/'
+MODEL='pn1'
+STEPS_PER_UPDATE=20
 N_FRAMES=32
-BATCH_SIZE=32
+BATCH_SIZE=8
 
 N_POINTS=1024
-N_EPOCHS=5
+N_EPOCHS=30
 POINTS_SHUFFLE='once'
 LOGDIR='./log/'$MODEL'_f'$N_FRAMES'_p'$N_POINTS'_shuffle_'$POINTS_SHUFFLE'/'
 SET='test'
