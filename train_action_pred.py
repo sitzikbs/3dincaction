@@ -256,7 +256,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 if __name__ == '__main__':
     # need to add argparse
     print("Starting training ...")
-    run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
+    run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs+1,
         batch_size=args.batch_size,  refine=args.refine, refine_epoch=args.refine_epoch,
         pretrained_model=args.pretrained_model, steps_per_update=args.steps_per_update,
         frames_per_clip=args.frames_per_clip, pc_model=args.pc_model)
