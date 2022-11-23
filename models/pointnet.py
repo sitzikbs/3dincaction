@@ -135,9 +135,9 @@ class PointNetfeat4D(nn.Module):
         self.conv1 = torch.nn.Conv2d(in_d, 64, [in_d, k_frames], 1, padding='same')
         self.conv2 = torch.nn.Conv2d(64, 128, [64, k_frames], 1, padding='same')
         self.conv3 = torch.nn.Conv2d(128, 1024, [128, k_frames], 1, padding='same')
-        self.bn1 = nn.BatchNorm2d(64, k_frames)
-        self.bn2 = nn.BatchNorm2d(128, k_frames)
-        self.bn3 = nn.BatchNorm2d(1024, k_frames)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.bn3 = nn.BatchNorm2d(1024)
         self.maxpool1 = torch.nn.MaxPool3d(kernel_size=[3, 1, 1], stride=[2, 1, 1])
         self.global_feat = global_feat
         self.feature_transform = feature_transform

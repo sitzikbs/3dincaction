@@ -266,8 +266,8 @@ class PointNetPP4DSetAbstraction(nn.Module):
         self.mlp_bns = nn.ModuleList()
         last_channel = in_channel
         for out_channel in mlp:
-            self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, 1))
-            self.mlp_bns.append(nn.BatchNorm3d(out_channel))
+            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, [1, 4], padding='same'))
+            self.mlp_bns.append(nn.BatchNorm2d(out_channel))
             last_channel = out_channel
         self.group_all = group_all
 
@@ -293,8 +293,8 @@ class PointNetPP4DSetAbstraction(nn.Module):
         # new_xyz: sampled points position data, [B, npoint, C]
         # new_points: sampled points data, [B, npoint, nsample, C+D]
         new_points = new_points.reshape(b, t, self.npoint, self.nsample, k)
-        new_points = new_points.permute(0, 4, 3, 2, 1)  # [B, C+D, nsample, npoint]
-
+        new_points = new_points.permute(0, 2, 4, 3, 1)  # [B, C+D, nsample, npoint]
+        new_points = new_points.reshape(-1, new_points.shape[-3], new_points.shape[-2], new_points.shape[-1])
         for i, conv in enumerate(self.mlp_convs):
             bn = self.mlp_bns[i]
             new_points =  F.relu(bn(conv(new_points)))
