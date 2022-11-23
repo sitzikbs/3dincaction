@@ -22,9 +22,10 @@ class MeshCustomRoutine:
         return
 
 class PCCustomRoutine:
-    def __init__(self, vert_seq, point_obj):
+    def __init__(self, vert_seq, point_obj, text):
 
         self.seq = vert_seq
+        self.text = text
         # default parameters
         self.kwargs = {'value': 0, }
         self.output = point_obj
@@ -36,6 +37,8 @@ class PCCustomRoutine:
     def update(self, value):
         # This is where you call your simulation
         pc = pv.PolyData(self.seq[int(value)])
+        if self.text is not None:
+            pv.global_theme.title = self.text[int(value)]
         self.output.overwrite(pc)
         return
 
@@ -60,6 +63,8 @@ def mesh_seq_vis(verts, faces, text=None):
     )
     if text is not None:
         pl.add_title(text)
+
+
     pl.show()
 
 def pc_seq_vis(verts, text=None):
@@ -69,7 +74,7 @@ def pc_seq_vis(verts, text=None):
     pc = pv.PolyData(verts[0])
     pl = pv.Plotter()
     pl.add_mesh(pc, render_points_as_spheres=True)
-    engine = PCCustomRoutine(verts, pc)
+    engine = PCCustomRoutine(verts, pc, text)
     pl.add_slider_widget(
         callback=lambda value: engine('value', value),
         rng=[0, n_frames - 1],
@@ -81,5 +86,10 @@ def pc_seq_vis(verts, text=None):
         event_type='always'
     )
     if text is not None:
-        pl.add_title(text)
+        pl.add_title(text[0])
+
+    pl.camera.position = (1, 1, 1)
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
     pl.show()

@@ -13,19 +13,24 @@ from torchvision import transforms
 import numpy as np
 from DfaustTActionDataset import DfaustTActionDataset as Dataset
 import importlib.util
+import visualization
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn2', help='which model to use for point cloud processing: pn1 | pn2 ')
-parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
+parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=8, help='number of clips per batch')
-parser.add_argument('--n_points', type=int, default=2048, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/pn2_1024/',
+parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
+parser.add_argument('--model_path', type=str, default='./log/pn1_f32_p1024_shuffle_once/',
                     help='path to model save dir')
 parser.add_argument('--model', type=str, default='000025.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
+parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
+                                                                       'at initialization | for each batch example | no shufll')
+parser.add_argument('--visualize_results', type=int, default=True, help='visualzies the first subsequence in each batch')
 args = parser.parse_args()
 
 
@@ -40,7 +45,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=args.set, n_points=n_points, last_op='pad',
-                           shuffle_points=False)
+                           shuffle_points=args.shuffle_points)
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
@@ -84,9 +89,9 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     for test_batchind, data in enumerate(test_dataloader):
         model.train(False)
         # get the inputs
-        inputs, labels, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
+        inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-        labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+        labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
         # inputs = inputs[:, :, 0:3, :].contiguous()
         # t = inputs.size(1)
@@ -107,6 +112,11 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         pred_labels_per_video, logits_per_video = \
             utils.accume_per_video_predictions(seq_idx, subseq_pad, pred_labels_per_video, logits_per_video,
                                                pred_labels, logits, frames_per_clip)
+
+        if args.visualize_results:
+            vis_txt = ['GT = ' + test_dataset.actions[int(labels_int[0][j].detach().cpu().numpy())] + ', Pred = '
+            + test_dataset.actions[int(pred_labels.reshape(-1, args.frames_per_clip)[0][j])] for j in  range(args.frames_per_clip)]
+            visualization.pc_seq_vis(inputs[0].permute(0, 2,1).detach().cpu().numpy(), text=vis_txt)
 
     pred_labels_per_video = [np.array(pred_video_labels) for pred_video_labels in pred_labels_per_video]
     logits_per_video = [np.array(pred_video_logits) for pred_video_logits in logits_per_video]
