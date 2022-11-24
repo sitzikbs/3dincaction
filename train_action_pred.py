@@ -176,7 +176,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])
             tot_cls_loss += cls_loss.item()
             loss = (0.5 * loc_loss + 0.5 * cls_loss) / num_steps_per_update
-            if pc_model == 'pn1':
+            if pc_model == 'pn1' or pc_model == 'pn1_4d':
                 loss = loss + 0.001*feature_transform_regularizer(trans) + 0.001*feature_transform_regularizer(trans_feat)
 
             tot_loss += loss.item()
