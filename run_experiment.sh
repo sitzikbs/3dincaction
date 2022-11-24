@@ -1,7 +1,7 @@
 DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
 #DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 
-MODEL='pn1'
+MODEL='pn1_4d'
 STEPS_PER_UPDATE=20
 N_FRAMES=32
 BATCH_SIZE=2
