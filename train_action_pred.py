@@ -159,14 +159,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
             labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
-            # inputs = inputs[:, :, 0:3, :]
-            # t = inputs.size(1)
             out_dict = model(inputs)
             per_frame_logits = out_dict['pred']
-            if pc_model == 'pn1':
-                trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
-            # per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear', align_corners=True)
-
 
             # compute localization loss
             loc_loss = F.binary_cross_entropy_with_logits(per_frame_logits, labels)
@@ -177,6 +171,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             tot_cls_loss += cls_loss.item()
             loss = (0.5 * loc_loss + 0.5 * cls_loss) / num_steps_per_update
             if pc_model == 'pn1' or pc_model == 'pn1_4d':
+                trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
                 loss = loss + 0.001*feature_transform_regularizer(trans) + 0.001*feature_transform_regularizer(trans_feat)
 
             tot_loss += loss.item()
