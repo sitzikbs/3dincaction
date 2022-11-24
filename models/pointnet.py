@@ -159,6 +159,7 @@ class PointNetfeat4D(nn.Module):
 
     def forward(self, x):
         b, t, k, n = x.shape
+        x = x.reshape(b*t, k, n)
         trans = self.stn(x)
         x = x.transpose(2, 1)
         x = torch.bmm(x, trans)

@@ -214,8 +214,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                     # t = inputs.size(1)
                     out_dict = model(inputs)
                     per_frame_logits = out_dict['pred']
-                    if pc_model == 'pn1':
-                        trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
                     # per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear', align_corners=True)
 
 
@@ -227,7 +225,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                                                                   torch.max(labels, dim=2)[0])
 
                     loss = (0.5 * loc_loss + 0.5 * cls_loss) / num_steps_per_update
-                    if pc_model == 'pn1':
+                    if pc_model == 'pn1' or pc_model == 'pn1_4d':
+                        trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
                         loss = loss + (0.001 * feature_transform_regularizer(trans) + 0.001 * feature_transform_regularizer(
                             trans_feat)) / num_steps_per_update
                     acc = utils.accuracy_v2(torch.argmax(per_frame_logits, dim=1), torch.argmax(labels, dim=1))
