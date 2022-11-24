@@ -11,9 +11,9 @@ sids = ['50002', '50004', '50007', '50009', '50020',
 # Sequences available for each subject id are listed in scripts/subjects_and_sequences.txt
 
 parser = ArgumentParser(description='Save sequence registrations as obj')
-parser.add_argument('--path', type=str, default='/home/sitzikbs/Datasets/dfaust/registrations_f.hdf5',
+parser.add_argument('--path', type=str, default='/home/sitzikbs/datasets/dfaust/registrations_f.hdf5',
                     help='dataset path in hdf5 format')
-parser.add_argument('--seq', type=str, default='punching', help='sequence name')
+parser.add_argument('--seq', type=str, default='one_leg_jump', help='sequence name')
 parser.add_argument('--sid', type=str, default='50004', choices=sids, help='subject id')
 
 args = parser.parse_args()

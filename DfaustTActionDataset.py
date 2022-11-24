@@ -175,7 +175,7 @@ class DfaustTActionDataset(Dataset):
 
 
 if __name__ == '__main__':
-    dataset = DfaustTActionDataset(dfaust_path='/home/sitzikbs/Datasets/dfaust/')
+    dataset = DfaustTActionDataset(dfaust_path='/home/sitzikbs/datasets/dfaust/')
     test_loader = DataLoader(dataset, batch_size=4, num_workers=2, shuffle=True, drop_last=True)
     for batch, data in enumerate(test_loader):
         verts, labels = data['points'], data['labels']
