@@ -22,10 +22,11 @@ class MeshCustomRoutine:
         return
 
 class PCCustomRoutine:
-    def __init__(self, vert_seq, point_obj, text):
+    def __init__(self, vert_seq, point_obj, text, pl):
 
         self.seq = vert_seq
         self.text = text
+        self.pl = pl
         # default parameters
         self.kwargs = {'value': 0, }
         self.output = point_obj
@@ -38,7 +39,8 @@ class PCCustomRoutine:
         # This is where you call your simulation
         pc = pv.PolyData(self.seq[int(value)])
         if self.text is not None:
-            pv.global_theme.title = self.text[int(value)]
+            self.pl.add_title(self.text[int(value)])
+
         self.output.overwrite(pc)
         return
 
@@ -78,7 +80,7 @@ def pc_seq_vis(verts, text=None):
     pc = pv.PolyData(verts[0])
     pl = pv.Plotter()
     pl.add_mesh(pc, render_points_as_spheres=True)
-    engine = PCCustomRoutine(verts, pc, text)
+    engine = PCCustomRoutine(verts, pc, text, pl)
     pl.add_slider_widget(
         callback=lambda value: engine('value', value),
         rng=[0, n_frames - 1],

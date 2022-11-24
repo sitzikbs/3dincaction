@@ -19,9 +19,9 @@ import visualization
 parser = argparse.ArgumentParser()
 parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=8, help='number of clips per batch')
+parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/pn1_f32_p1024_shuffle_once/',
+parser.add_argument('--model_path', type=str, default='./log/pn1_f32_p1024_shuffle_once_sampler_weighted/',
                     help='path to model save dir')
 parser.add_argument('--model', type=str, default='000030.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
@@ -30,7 +30,7 @@ parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussi
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
 parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
-parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
+parser.add_argument('--visualize_results', type=int, default=True, help='visualzies the first subsequence in each batch')
 args = parser.parse_args()
 
 
@@ -123,15 +123,15 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         logits = logits.permute(0, 2, 1)
         logits = logits.reshape(inputs.shape[0] * frames_per_clip, -1)
         pred_labels = torch.argmax(logits, 1).detach().cpu().numpy()
-        logits = torch.nn.functional.softmax(logits, dim=1).detach().cpu().numpy().tolist()
+        # logits = torch.nn.functional.softmax(logits, dim=1).detach().cpu().numpy().tolist()
 
         pred_labels_per_video, logits_per_video = \
             utils.accume_per_video_predictions(seq_idx, subseq_pad, pred_labels_per_video, logits_per_video,
                                                pred_labels, logits, frames_per_clip)
 
         if args.visualize_results:
-            vis_txt = ['GT = ' + test_dataset.actions[int(labels_int[0][j].detach().cpu().numpy())] + ', Pred = '
-            + test_dataset.actions[int(pred_labels.reshape(-1, args.frames_per_clip)[0][j])] for j in  range(args.frames_per_clip)]
+            vis_txt = ['GT = ' + test_dataset.action_dataset.actions[int(labels_int[0][j].detach().cpu().numpy())] + ', Pred = '
+            + test_dataset.action_dataset.actions[int(pred_labels.reshape(-1, args.frames_per_clip)[0][j])] for j in  range(args.frames_per_clip)]
             visualization.pc_seq_vis(inputs[0].permute(0, 2,1).detach().cpu().numpy(), text=vis_txt)
 
     pred_labels_per_video = [np.array(pred_video_labels) for pred_video_labels in pred_labels_per_video]
