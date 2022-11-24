@@ -23,7 +23,7 @@ parser.add_argument('--batch_size', type=int, default=8, help='number of clips p
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
 parser.add_argument('--model_path', type=str, default='./log/pn1_f32_p1024_shuffle_once/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000025.pt', help='path to model save dir')
+parser.add_argument('--model', type=str, default='000030.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
