@@ -139,7 +139,7 @@ class PointNetfeat4D(nn.Module):
         # self.bn2 = nn.BatchNorm2d(128)
         # self.bn3 = nn.BatchNorm2d(1024)
         # self.temporal_maxpool1 = torch.nn.MaxPool2d(kernel_size=[1, 3], stride=[1, 2])
-        self.temporal_avgpool1 = torch.nn.AvgPool2d(kernel_size=[1, 3], stride=[1, 2])
+        # self.temporal_avgpool1 = torch.nn.AvgPool2d(kernel_size=[1, 3], stride=[1, 2])
         # self.temporal_maxpool2 = torch.nn.MaxPool3d(kernel_size=[1, 1, 3], stride=[1, 1, 2])
 
         self.conv1 = torch.nn.Conv1d(in_d, 64, 1)
@@ -159,34 +159,25 @@ class PointNetfeat4D(nn.Module):
 
     def forward(self, x):
         b, t, k, n = x.shape
-        trans = self.stn(x.view(-1, k, n)) # b*t, 3, 3
-        x = torch.bmm(x.view(-1, k, n).transpose(2, 1), trans).view(b, t, k, n)  # b, t k, n
+        trans = self.stn(x)
+        x = x.transpose(2, 1)
+        x = torch.bmm(x, trans)
+        x = x.transpose(2, 1)
+        x = F.relu(self.bn1(self.conv1(x)))
 
-        x = x.reshape(b*t, k, n)
-        x = F.relu(self.bn1(self.conv1(x)))  # b, 64, n, t
-        # x = x.reshape(b, t, 64, n)
-        # x = x.permute(0, 2, 3, 1)  # b, k, n, t
         if self.feature_transform:
-            # x = x.permute(0, 3, 1, 2).reshape(-1, 64, n)  # b*t, 64, n
-            trans_feat = self.fstn(x)  # b*t, 64, 64
-            x = x.transpose(2, 1)  # b*t, 64, 64
+            trans_feat = self.fstn(x)
+            x = x.transpose(2,1)
             x = torch.bmm(x, trans_feat)
-            x = x.transpose(2, 1)#.reshape(b, t, 64, n)
+            x = x.transpose(2,1)
         else:
             trans_feat = None
 
         pointfeat = x
-        # x = x.permute(0, 2, 3, 1)
         x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = torch.max(x, 2, keepdim=True)[0].squeeze()
-
-        x = x.reshape(b, 1, t, 1024).permute(0, 1, 3, 2)
-        x = self.bn4(self.conv_t(x).squeeze())
-        x = self.temporal_avgpool1(x)
-        x = F.interpolate(x, t, mode='linear', align_corners=True)
-
-        x = x.permute(0, 2, 1)
+        x = self.bn3(self.conv3(x))
+        x = torch.max(x, 2, keepdim=True)[0]
+        x = x.view(-1, 1024)
         if self.global_feat:
             return x, trans, trans_feat
         else:
