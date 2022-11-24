@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 import numpy as np
-from DfaustTActionDataset import DfaustTActionDataset as Dataset
+from DfaustDataset import DfaustActionClipsDataset as Dataset
 import importlib.util
 import visualization
 
@@ -44,14 +44,15 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
     # setup dataset
     # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
-    test_transforms = transforms.Compose([transforms.CenterCrop(224)])
+    # test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=args.set, n_points=n_points, last_op='pad',
                            shuffle_points=args.shuffle_points)
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
-    num_classes = test_dataset.num_classes
+    num_classes = test_dataset.action_dataset.num_classes
+
     # setup the model
     checkpoints = torch.load(model_path)
 
@@ -98,8 +99,8 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
     # Iterate over data.
     avg_acc = []
-    pred_labels_per_video = [[] for i in range(len(test_dataset.vertices))]
-    logits_per_video = [[] for i in range(len(test_dataset.vertices)) ]
+    pred_labels_per_video = [[] for i in range(len(test_dataset.action_dataset.vertices))]
+    logits_per_video = [[] for i in range(len(test_dataset.action_dataset.vertices)) ]
     # last_vid_idx = 0
     for test_batchind, data in enumerate(test_dataloader):
         model.train(False)
@@ -137,8 +138,8 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     logits_per_video = [np.array(pred_video_logits) for pred_video_logits in logits_per_video]
 
     np.save(pred_output_filename, {'pred_labels': pred_labels_per_video, 'logits': logits_per_video})
-    utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.sid_per_seq,
-                                               test_dataset.actions)
+    utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.action_dataset.sid_per_seq,
+                                               test_dataset.action_dataset.actions)
 
 
 if __name__ == '__main__':

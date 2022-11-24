@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add utils dir
 import utils
 import eval_utils
-from DfaustTActionDataset import DfaustTActionDataset as Dataset
+from DfaustDataset import DfaustActionClipsDataset as Dataset
 import matplotlib.pyplot as plt
 sys.path.append('evaluation')
 from eval_detection import ANETdetection
@@ -30,7 +30,7 @@ args = parser.parse_args()
 # load the gt and predicted data
 gt_json_path = os.path.join(args.dataset_path, 'gt_segments.json')
 dataset = Dataset(args.dataset_path, set=args.set)
-gt_labels = dataset.label_per_frame
+gt_labels = dataset.action_dataset.label_per_frame
 results_json = os.path.join(args.results_path, args.set + '_action_segments.json')
 results_npy = os.path.join(args.results_path, args.set + '_pred.npy')
 pred_labels = dataset.get_actions_labels_from_json(results_json, mode='pred')
@@ -98,8 +98,8 @@ with open(os.path.join(args.results_path, 'scores.txt'), 'w') as file:
 print('Comptuing confusion matrix...')
 
 c_matrix = confusion_matrix(np.concatenate(gt_single_labels).ravel(), np.concatenate(pred_labels).ravel(),
-                            labels=range(dataset.num_classes))
-class_names = utils.squeeze_class_names(dataset.actions)
+                            labels=range(dataset.action_dataset.num_classes))
+class_names = utils.squeeze_class_names(dataset.action_dataset.actions)
 
 fig, ax = utils.plot_confusion_matrix(cm=c_matrix,
                       target_names=class_names,

@@ -64,6 +64,10 @@ def mesh_seq_vis(verts, faces, text=None):
     if text is not None:
         pl.add_title(text)
 
+    pl.camera.position = (1, 1, 1)
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
 
     pl.show()
 

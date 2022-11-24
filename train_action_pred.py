@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-from DfaustTActionDataset import DfaustTActionDataset as Dataset
+from DfaustDataset import DfaustActionClipsDataset as Dataset
 from tensorboardX import SummaryWriter
 
 
@@ -21,7 +21,7 @@ from models.pytorch_3dmfv import FourDmFVNet
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn2_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=20, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=8, help='number of clips per batch')
@@ -37,6 +37,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
+parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 args = parser.parse_args()
 
 
@@ -61,7 +62,14 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=args.n_points,
                             shuffle_points=args.shuffle_points)
     print("Number of clips in the trainingset:{}".format(len(train_dataset)))
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
+
+    if args.sampler == 'weighted':
+        weights = train_dataset.make_weights_for_balanced_classes()
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
+                                                   pin_memory=True, drop_last=True, sampler=sampler)
+    else:
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
@@ -69,7 +77,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     print("Number of clips in the testset:{}".format(len(test_dataset)))
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
-    num_classes = train_dataset.num_classes
+    num_classes = train_dataset.action_dataset.num_classes
 
     if pc_model == 'pn1':
         model = PointNet1(k=num_classes, feature_transform=True)
