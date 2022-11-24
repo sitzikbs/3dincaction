@@ -138,7 +138,8 @@ class PointNetfeat4D(nn.Module):
         # self.bn1 = nn.BatchNorm2d(64)
         # self.bn2 = nn.BatchNorm2d(128)
         # self.bn3 = nn.BatchNorm2d(1024)
-        self.temporal_maxpool1 = torch.nn.MaxPool2d(kernel_size=[1, 3], stride=[1, 2])
+        # self.temporal_maxpool1 = torch.nn.MaxPool2d(kernel_size=[1, 3], stride=[1, 2])
+        self.temporal_avgpool1 = torch.nn.AvgPool2d(kernel_size=[1, 3], stride=[1, 2])
         # self.temporal_maxpool2 = torch.nn.MaxPool3d(kernel_size=[1, 1, 3], stride=[1, 1, 2])
 
         self.conv1 = torch.nn.Conv1d(in_d, 64, 1)
@@ -180,7 +181,7 @@ class PointNetfeat4D(nn.Module):
         x = torch.max(x, 2, keepdim=True)[0].squeeze()
         x = x.reshape(b, 1, t, 1024).permute(0, 1, 3, 2)
         x = self.conv_t(x).squeeze()
-        x = self.temporal_maxpool1(x)
+        x = self.temporal_avgpool1(x)
         x = F.interpolate(x, t, mode='linear', align_corners=True)
         x = x.permute(0, 2, 1)
         if self.global_feat:
