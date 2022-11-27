@@ -24,7 +24,7 @@ class DfaustActionClipsDataset(Dataset):
         self.idxs = np.arange(DATASET_N_POINTS)
         if self.shuffle_points == 'once':
             random.shuffle(self.idxs)
-        elif self.shuffle_points == 'none':
+        elif self.shuffle_points == 'none' or self.shuffle_points == 'each':
             pass
         else:
             raise ValueError("Unknown shuffle protocol")
@@ -138,7 +138,7 @@ class DfaustActionClipsDataset(Dataset):
 
     # This returns given an index the i-th sample and label
     def __getitem__(self, idx):
-        if self.shuffle_points == 'shuffle_each':
+        if self.shuffle_points == 'each':
             self.idxs = np.arange(DATASET_N_POINTS)
             random.shuffle(self.idxs)
         out_dict = {'points': self.clip_verts[idx][:, self.idxs[:self.n_points]], 'labels': self.clip_labels[idx],

@@ -21,13 +21,13 @@ from models.pytorch_3dmfv import FourDmFVNet
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn1_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=1, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=16, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--logdir', type=str, default='./log/debug_pn1_4d_f32_p1024_shuffle_once_sampler_weighted/', help='path to model save dir')
+parser.add_argument('--logdir', type=str, default='./log/pn1_f32_p1024_shuffle_each_sampler_weighted/', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--refine', action="store_true", help='flag to refine the model')
@@ -35,7 +35,7 @@ parser.add_argument('--refine_epoch', type=int, default=0, help='refine model fr
 parser.add_argument('--pretrained_model', type=str, default=None, help='path to pretrained model')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
+parser.add_argument('--shuffle_points', type=str, default='each', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 args = parser.parse_args()
