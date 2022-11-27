@@ -22,7 +22,7 @@ from models.pytorch_3dmfv import FourDmFVNet
 parser = argparse.ArgumentParser()
 parser.add_argument('--pc_model', type=str, default='pn2', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=2, help='number of steps per backprop update')
-parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
+parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')

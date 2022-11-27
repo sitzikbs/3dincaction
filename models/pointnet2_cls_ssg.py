@@ -64,18 +64,18 @@ class PointNet2(nn.Module):
 
 
     def forward(self, xyz):
-        B, t, d, n = xyz.shape
+        b, t, k, n = xyz.shape
         norm = None
-        xyz = xyz.reshape(-1, d, n)
+        # xyz = xyz.reshape(-1, d, n)
         l1_xyz, l1_points = self.sa1(xyz, norm)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
-        x = l3_points.view(-1, 1024)
-        x = self.drop1(F.relu(self.bn1(self.fc1(x))))
-        x = self.drop2(F.relu(self.bn2(self.fc2(x))))
+        x = l3_points.reshape(b*t, 1024)
+        x = self.drop1(F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512))
+        x = self.drop2(F.relu(self.bn2(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 256))
         x = self.fc3(x)
         x = F.log_softmax(x, -1)
-        return {'pred': x.reshape(B, t, -1).permute(0, 2, 1), 'features': l3_points.reshape(B, t, -1)}
+        return {'pred': x.reshape(b, t, -1).permute(0, 2, 1), 'features': l3_points.reshape(b, t, -1)}
 
     def replace_logits(self, num_classes):
         self._num_classes = num_classes

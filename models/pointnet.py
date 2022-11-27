@@ -257,8 +257,6 @@ class PointNet1(nn.Module):
         return {'pred': x, 'trans': trans, 'trans_feat': trans_feat}
 
 
-
-
 class PointNetDenseCls(nn.Module):
     def __init__(self, k = 2, feature_transform=False):
         super(PointNetDenseCls, self).__init__()
@@ -285,6 +283,7 @@ class PointNetDenseCls(nn.Module):
         x = F.log_softmax(x.view(-1,self.k), dim=-1)
         x = x.view(batchsize, n_pts, self.k)
         return x, trans, trans_feat
+
 
 def feature_transform_regularizer(trans):
     d = trans.size()[1]
