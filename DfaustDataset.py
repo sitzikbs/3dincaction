@@ -6,17 +6,18 @@ import visualization
 import numpy as np
 import random
 import json
-
+import pc_transforms as transforms
 DATASET_N_POINTS=6890
 
 class DfaustActionClipsDataset(Dataset):
     def __init__(self, action_dataset_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
-                 shuffle_points='once'):
+                 shuffle_points='once', data_augmentation=False):
         self.action_dataset = DfaustActionDataset(action_dataset_path, set)
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
         self.last_op = last_op
+        self.data_augmentation = data_augmentation
 
         self.clip_verts = None
         self.clip_labels = None
@@ -132,6 +133,16 @@ class DfaustActionClipsDataset(Dataset):
             weight[idx] = np.dot(weight_per_class, ratios)
         return weight
 
+    def augment_points(self, points):
+        if self.data_augmentation:
+            out_points = points
+            out_points = transforms.random_scale_point_cloud(out_points, scale_low=0.8, scale_high=1.25)
+            out_points = transforms.rotate_perturbation_point_cloud(out_points, angle_sigma=0.06, angle_clip=0.18)
+            out_points = transforms.jitter_point_cloud(out_points, sigma=0.01, clip=0.05)
+            out_points = transforms.shift_point_cloud(out_points, shift_range=0.1)
+        else:
+            out_points = points
+        return out_points
 
     def __len__(self):
         return len(self.clip_verts)
@@ -141,7 +152,10 @@ class DfaustActionClipsDataset(Dataset):
         if self.shuffle_points == 'each':
             self.idxs = np.arange(DATASET_N_POINTS)
             random.shuffle(self.idxs)
-        out_dict = {'points': self.clip_verts[idx][:, self.idxs[:self.n_points]], 'labels': self.clip_labels[idx],
+        out_points = self.augment_points(self.clip_verts[idx][:, self.idxs[:self.n_points]])
+
+
+        out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
                     'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx]}
         return out_dict
 
