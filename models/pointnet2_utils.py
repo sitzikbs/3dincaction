@@ -138,61 +138,6 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
         return new_xyz, new_points
 
 
-# def sample_and_group_pointlets(npoint, radius, nsample, xyz, points, returnfps=False):
-#     """
-#     Input:
-#         npoint:
-#         radius:
-#         nsample:
-#         xyz: input points position data, [B, t, N, 3]
-#         points: input points data, [B, t, N, D]
-#     Return:
-#         new_xyz: sampled points position data, [B, t, npoint, nsample, 3]
-#         new_points: sampled points data, [B, t, npoint, nsample, 3+D]
-#     """
-#     B, t, N, C = xyz.shape
-#     S = npoint
-#     fps_idx = farthest_point_sample(xyz[:, 0], npoint)  # [B, npoint, C]
-#     xyz = xyz.reshape(-1, N, C)
-#     new_xyz = index_points(xyz, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, npoint))
-#     idx = query_ball_point(radius, nsample, xyz, new_xyz)
-#     grouped_xyz = index_points(xyz, idx)  # [B, npoint, nsample, C]
-#     grouped_xyz_norm = grouped_xyz - new_xyz.view(B*t, S, 1, C)  # shouldnt this also be scaled to unit sphere?
-#
-#     if points is not None:
-#         grouped_points = index_points(points.reshape(-1, N, S), idx)
-#         new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)  # [B, npoint, nsample, C+D]
-#     else:
-#         new_points = grouped_xyz_norm
-#
-#     new_xyz = new_xyz.reshape(B, t, npoint, C)
-#     new_points = new_points.reshape(B, t, npoint, nsample, -1)
-#
-#     if returnfps:
-#         return new_xyz, new_points, grouped_xyz, fps_idx
-#     else:
-#         return new_xyz, new_points
-
-# def sample_and_group_all_pointlets(xyz, points):
-#     """
-#     Input:
-#         xyz: input points position data, [B, N, 3]
-#         points: input points data, [B, N, D]
-#     Return:
-#         new_xyz: sampled points position data, [B, 1, 3]
-#         new_points: sampled points data, [B, 1, N, 3+D]
-#     """
-#     device = xyz.device
-#     B, t, N, C = xyz.shape
-#     new_xyz = torch.zeros(B, t, 1, C).to(device)
-#     grouped_xyz = xyz.view(B, t, 1, N, C)
-#     if points is not None:
-#         new_points = torch.cat([grouped_xyz, points.view(B, t, 1, N, -1)], dim=-1)
-#     else:
-#         new_points = grouped_xyz
-#     return new_xyz, new_points
-
-
 def sample_and_group_all(xyz, points):
     """
     Input:
@@ -211,6 +156,64 @@ def sample_and_group_all(xyz, points):
     else:
         new_points = grouped_xyz
     return new_xyz, new_points
+
+
+def sample_and_group_4d(npoint, radius, nsample, xyz, points, returnfps=False):
+    """
+    Input:
+        npoint:
+        radius:
+        nsample:
+        xyz: input points position data, [B, t, N, 3]
+        points: input points data, [B, t, N, D]
+    Return:
+        new_xyz: sampled points position data, [B, t, npoint, nsample, 3]
+        new_points: sampled points data, [B, t, npoint, nsample, 3+D]
+    """
+    B, t, N, C = xyz.shape
+    S = npoint
+    fps_idx = farthest_point_sample(xyz[:, 0], npoint)  # [B, npoint, C]
+    xyz = xyz.reshape(-1, N, C)
+    new_xyz = index_points(xyz, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, npoint))
+    idx = query_ball_point(radius, nsample, xyz, new_xyz)
+    grouped_xyz = index_points(xyz, idx)  # [B, npoint, nsample, C]
+    grouped_xyz_norm = grouped_xyz - new_xyz.view(B*t, S, 1, C)  # shouldnt this also be scaled to unit sphere?
+
+    if points is not None:
+        grouped_points = index_points(points.reshape(-1, N, S), idx)
+        new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)  # [B, npoint, nsample, C+D]
+    else:
+        new_points = grouped_xyz_norm
+
+    new_xyz = new_xyz.reshape(B, t, npoint, C)
+    new_points = new_points.reshape(B, t, npoint, nsample, -1)
+
+    if returnfps:
+        return new_xyz, new_points, grouped_xyz, fps_idx
+    else:
+        return new_xyz, new_points
+
+def sample_and_group_all_4d(xyz, points):
+    """
+    Input:
+        xyz: input points position data, [B, N, 3]
+        points: input points data, [B, N, D]
+    Return:
+        new_xyz: sampled points position data, [B, 1, 3]
+        new_points: sampled points data, [B, 1, N, 3+D]
+    """
+    device = xyz.device
+    B, t, N, C = xyz.shape
+    new_xyz = torch.zeros(B, t, 1, C).to(device)
+    grouped_xyz = xyz.view(B, t, 1, N, C)
+    if points is not None:
+        new_points = torch.cat([grouped_xyz, points.view(B, t, 1, N, -1)], dim=-1)
+    else:
+        new_points = grouped_xyz
+    return new_xyz, new_points
+
+
+
 
 
 class PointNetSetAbstraction(nn.Module):
@@ -290,12 +293,14 @@ class PointNetPP4DSetAbstraction(nn.Module):
         xyz = xyz.permute(0, 2, 1)
         if points is not None:
             points = points.permute(0, 1, 3, 2)
-            points = points.reshape(-1, points.shape[-2], points.shape[-1])
+            # points = points.reshape(-1, points.shape[-2], points.shape[-1])
 
         if self.group_all:
-            new_xyz, new_points = sample_and_group_all(xyz, points)
+            new_xyz, new_points = sample_and_group_all_4d(xyz.reshape(b, t, n, k), points)
         else:
-            new_xyz, new_points = sample_and_group(self.npoint, self.radius, self.nsample, xyz, points)
+            new_xyz, new_points = sample_and_group_4d(self.npoint, self.radius, self.nsample,
+                                                      xyz.reshape(b, t, n, k), points)
+
         # new_xyz: sampled points position data, [b*t, npoint, k]
         # new_points: sampled points data, [b*t, npoint, nsample, d+k]
         new_points = new_points.reshape(b, t, new_points.shape[-3], new_points.shape[-2], new_points.shape[-1])
