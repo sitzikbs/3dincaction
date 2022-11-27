@@ -26,7 +26,7 @@ parser.add_argument('--frames_per_clip', type=int, default=32, help='number of f
 parser.add_argument('--batch_size', type=int, default=16, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--logdir', type=str, default='./log/pn1_f32_p1024_augmentations/', help='path to model save dir')
+parser.add_argument('--logdir', type=str, default='./log/debug/', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--refine', action="store_true", help='flag to refine the model')

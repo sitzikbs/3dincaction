@@ -2,7 +2,7 @@
 #adapted for temporal inputs
 import numpy as np
 
-
+#TODO move augmentations to be batch based on the GPU
 def random_scale_point_cloud(batch_data, scale_low=0.8, scale_high=1.25):
     """ Randomly scale the point cloud. Scale is per point cloud.
         Input:
