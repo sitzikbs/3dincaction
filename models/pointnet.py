@@ -12,34 +12,35 @@ import torch.nn.functional as F
 class STN3d(nn.Module):
     def __init__(self):
         super(STN3d, self).__init__()
-        self.conv1 = torch.nn.Conv1d(3, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, 1024, 1)
+        self.conv1 = torch.nn.Conv2d(3, 64, 1)
+        self.conv2 = torch.nn.Conv2d(64, 128, 1)
+        self.conv3 = torch.nn.Conv2d(128, 1024, 1)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 9)
         self.relu = nn.ReLU()
 
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.bn3 = nn.BatchNorm1d(1024)
-        self.bn4 = nn.BatchNorm1d(512)
-        self.bn5 = nn.BatchNorm1d(256)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.bn3 = nn.BatchNorm2d(1024)
+        self.bn4 = nn.BatchNorm1d(512)  # on FC layers
+        self.bn5 = nn.BatchNorm1d(256)  # on FC layers
 
 
     def forward(self, x):
-        batchsize = x.size()[0]
+        b, t = x.size()[0], x.size()[2]
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 1024)
+        x = torch.max(x, -1)[0]
 
-        x = F.relu(self.bn4(self.fc1(x)))
-        x = F.relu(self.bn5(self.fc2(x)))
+        x = x.permute(0, 2, 1).reshape(-1, 1024)
+
+        x = F.relu(self.bn4(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
+        x = F.relu(self.bn5(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 256)
         x = self.fc3(x)
 
-        iden = Variable(torch.from_numpy(np.array([1,0,0,0,1,0,0,0,1]).astype(np.float32))).view(1,9).repeat(batchsize,1)
+        iden = Variable(torch.from_numpy(np.array([1,0,0,0,1,0,0,0,1]).astype(np.float32))).view(1,9).repeat(b*t,1)
         if x.is_cuda:
             iden = iden.cuda()
         x = x + iden
@@ -50,147 +51,98 @@ class STN3d(nn.Module):
 class STNkd(nn.Module):
     def __init__(self, k=64):
         super(STNkd, self).__init__()
-        self.conv1 = torch.nn.Conv1d(k, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, 1024, 1)
+        self.conv1 = torch.nn.Conv2d(k, 64, 1)
+        self.conv2 = torch.nn.Conv2d(64, 128, 1)
+        self.conv3 = torch.nn.Conv2d(128, 1024, 1)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, k*k)
         self.relu = nn.ReLU()
 
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.bn3 = nn.BatchNorm1d(1024)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.bn3 = nn.BatchNorm2d(1024)
         self.bn4 = nn.BatchNorm1d(512)
         self.bn5 = nn.BatchNorm1d(256)
 
         self.k = k
 
     def forward(self, x):
-        batchsize = x.size()[0]
+        b, k, t, n = x.size()
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 1024)
+        x = torch.max(x, -1)[0]
 
-        x = F.relu(self.bn4(self.fc1(x)))
-        x = F.relu(self.bn5(self.fc2(x)))
+        x = x.permute(0, 2, 1).reshape(-1, 1024)
+
+        x = F.relu(self.bn4(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
+        x = F.relu(self.bn5(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 256)
         x = self.fc3(x)
 
-        iden = Variable(torch.from_numpy(np.eye(self.k).flatten().astype(np.float32))).view(1,self.k*self.k).repeat(batchsize,1)
+        iden = Variable(torch.from_numpy(np.eye(self.k).flatten().astype(np.float32))).view(1,self.k*self.k).repeat(b*t,1)
         if x.is_cuda:
             iden = iden.cuda()
         x = x + iden
         x = x.view(-1, self.k, self.k)
         return x
 
-class PointNetfeat(nn.Module):
-    def __init__(self, global_feat = True, feature_transform = False, in_d=3):
-        super(PointNetfeat, self).__init__()
-        self.stn = STN3d()
-        self.conv1 = torch.nn.Conv1d(in_d, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, 1024, 1)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.bn3 = nn.BatchNorm1d(1024)
-        self.global_feat = global_feat
-        self.feature_transform = feature_transform
-        if self.feature_transform:
-            self.fstn = STNkd(k=64)
-
-    def forward(self, x):
-        n_pts = x.size()[2]
-        trans = self.stn(x)
-        x = x.transpose(2, 1)
-        x = torch.bmm(x, trans)
-        x = x.transpose(2, 1)
-        x = F.relu(self.bn1(self.conv1(x)))
-
-        if self.feature_transform:
-            trans_feat = self.fstn(x)
-            x = x.transpose(2,1)
-            x = torch.bmm(x, trans_feat)
-            x = x.transpose(2,1)
-        else:
-            trans_feat = None
-
-        pointfeat = x
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = self.bn3(self.conv3(x))
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 1024)
-        if self.global_feat:
-            return x, trans, trans_feat
-        else:
-            x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
-            return torch.cat([x, pointfeat], 1), trans, trans_feat
 
 class PointNetfeat4D(nn.Module):
     def __init__(self, global_feat=True, feature_transform=False, in_d=3, n_frames=32, k_frames=4):
         super(PointNetfeat4D, self).__init__()
-        self.n_frames = n_frames
         self.stn = STN3d()
-        # self.conv1 = torch.nn.Conv2d(in_d, 64, [in_d, k_frames], 1, padding='same')
-        # self.conv2 = torch.nn.Conv2d(64, 128, [64, k_frames], 1, padding='same')
-        # self.conv3 = torch.nn.Conv2d(128, 1024, [128, k_frames], 1, padding='same')
-        # self.bn1 = nn.BatchNorm2d(64)
-        # self.bn2 = nn.BatchNorm2d(128)
-        # self.bn3 = nn.BatchNorm2d(1024)
-        # self.temporal_maxpool1 = torch.nn.MaxPool2d(kernel_size=[1, 3], stride=[1, 2])
-        # self.temporal_avgpool1 = torch.nn.AvgPool2d(kernel_size=[1, 3], stride=[1, 2])
-        # self.temporal_maxpool2 = torch.nn.MaxPool3d(kernel_size=[1, 1, 3], stride=[1, 1, 2])
-
-        self.conv1 = torch.nn.Conv1d(in_d, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, 1024, 1)
-
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.bn3 = nn.BatchNorm1d(1024)
-        self.bn4 = nn.BatchNorm1d(1024)
-        self.maxpool1 = torch.nn.MaxPool3d(kernel_size=[3, 1, 1], stride=[2, 1, 1])
-        self.conv_t = torch.nn.Conv2d(1, 1, [1024, k_frames], 1, padding='same')
+        self.conv1 = torch.nn.Conv2d(in_d, 64, [7, 1], 1, padding='same')
+        self.conv2 = torch.nn.Conv2d(64, 128, [3, 1], 1, padding='same')
+        self.conv3 = torch.nn.Conv2d(128, 1024, [3, 1], 1, padding='same')
+        self.temporal_pool1 = torch.nn.MaxPool2d([3, 1])
+        self.temporal_pool2 = torch.nn.MaxPool2d([2, 1])
+        self.bn1 = nn.BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.bn3 = nn.BatchNorm2d(1024)
         self.global_feat = global_feat
         self.feature_transform = feature_transform
         if self.feature_transform:
             self.fstn = STNkd(k=64)
 
     def forward(self, x):
-        b, t, k, n = x.shape
-        x = x.reshape(b*t, k, n)
+        b, k, t, n = x.size()  # batch, feature_dim , temporal, n_points
         trans = self.stn(x)
-        x = x.transpose(2, 1)
-        x = torch.bmm(x, trans)
-        x = x.transpose(2, 1)
+        x = torch.bmm(x.permute(0, 2, 3, 1).reshape(b * t, n, k), trans)
+        x = x.reshape(b, t, n, k).permute(0, 3, 1, 2)
         x = F.relu(self.bn1(self.conv1(x)))
 
         if self.feature_transform:
             trans_feat = self.fstn(x)
-            x = x.transpose(2,1)
-            x = torch.bmm(x, trans_feat)
-            x = x.transpose(2,1)
+            x = torch.bmm(x.permute(0, 2, 3, 1).reshape(b * t, n, 64), trans_feat)
+            x = x.reshape(b, t, n, 64).permute(0, 3, 1, 2)
+
         else:
             trans_feat = None
 
+        x = self.temporal_pool1(x)
         pointfeat = x
         x = F.relu(self.bn2(self.conv2(x)))
+        x = self.temporal_pool2(x)
         x = self.bn3(self.conv3(x))
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 1024)
+        x = torch.max(x, -1)[0]
+        x = F.interpolate(x, t, mode='linear', align_corners=True)
+        x = x.permute(0, 2, 1).reshape(-1, 1024)
+
         if self.global_feat:
             return x, trans, trans_feat
         else:
-            #TODO fix this to support temporal per point prediction
+            # TODO support temporal segmentation
             x = x.view(-1, 1024, 1).repeat(1, 1, n)
             return torch.cat([x, pointfeat], 1), trans, trans_feat
 
+
 class PointNetCls4D(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
+    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32, k_frames=4):
         super(PointNetCls4D, self).__init__()
         self.feature_transform = feature_transform
-        self.feat = PointNetfeat4D(global_feat=True, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
+        self.feat = PointNetfeat4D(global_feat=True, feature_transform=feature_transform, in_d=in_d,
+                                   n_frames=32, k_frames=k_frames)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, k)
@@ -200,14 +152,17 @@ class PointNetCls4D(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        b, t, k, n = x.shape
+        b, k, t, n = x.size()
         x, trans, trans_feat = self.feat(x)
-        x = x.reshape(-1, 1024)
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.dropout(self.fc2(x))))
+        x = F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
+        x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2,
+                                                                                                    1).reshape(-1,
+                                                                                                               256)
         x = self.fc3(x)
-        output =  F.log_softmax(x, dim=1)
-        return output.reshape(b, t, -1), trans, trans_feat
+
+        return F.log_softmax(x, dim=1), trans, trans_feat
+
+
 class PointNet4D(nn.Module):
     def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
         super(PointNet4D, self).__init__()
@@ -216,8 +171,9 @@ class PointNet4D(nn.Module):
 
     def forward(self, x):
         b, t, k, n = x.shape
-        x, trans, trans_feat = self.pn(x)
-        return {'pred': x.permute([0, 2, 1]), 'trans': trans, 'trans_feat': trans_feat}
+        x, trans, trans_feat = self.pn(x.permute([0, 2, 1, 3]))
+        x = x.reshape([b, t, -1]).permute([0, 2, 1])
+        return {'pred': x, 'trans': trans, 'trans_feat': trans_feat}
 
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
@@ -238,11 +194,54 @@ class PointNetCls(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
+        b, k, t, n = x.size()
         x, trans, trans_feat = self.feat(x)
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.dropout(self.fc2(x))))
+        x = F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
+        x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
         x = self.fc3(x)
         return F.log_softmax(x, dim=1), trans, trans_feat
+
+class PointNetfeat(nn.Module):
+    def __init__(self, global_feat = True, feature_transform = False, in_d=3):
+        super(PointNetfeat, self).__init__()
+        self.stn = STN3d()
+        self.conv1 = torch.nn.Conv2d(in_d, 64, 1)
+        self.conv2 = torch.nn.Conv2d(64, 128, 1)
+        self.conv3 = torch.nn.Conv2d(128, 1024, 1)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.bn3 = nn.BatchNorm2d(1024)
+        self.global_feat = global_feat
+        self.feature_transform = feature_transform
+        if self.feature_transform:
+            self.fstn = STNkd(k=64)
+
+    def forward(self, x):
+        b, k, t, n = x.size() # batch, feature_dim , temporal, n_points
+        trans = self.stn(x)
+        x = torch.bmm(x.permute(0, 2, 3, 1).reshape(b*t, n, k), trans)
+        x = x.reshape(b, t, n, k).permute(0, 3, 1, 2)
+        x = F.relu(self.bn1(self.conv1(x)))
+
+        if self.feature_transform:
+            trans_feat = self.fstn(x)
+            x = torch.bmm(x.permute(0, 2, 3, 1).reshape(b*t, n, 64), trans_feat)
+            x = x.reshape(b, t, n, 64).permute(0, 3, 1, 2)
+
+        else:
+            trans_feat = None
+
+        pointfeat = x
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = self.bn3(self.conv3(x))
+        x = torch.max(x, -1)[0]
+        x = x.permute(0, 2, 1).reshape(-1, 1024)
+        if self.global_feat:
+            return x, trans, trans_feat
+        else:
+            #TODO support temporal segmentation
+            x = x.view(-1, 1024, 1).repeat(1, 1, n)
+            return torch.cat([x, pointfeat], 1), trans, trans_feat
 
 
 class PointNet1(nn.Module):
@@ -253,9 +252,9 @@ class PointNet1(nn.Module):
 
     def forward(self, x):
         b, t, k, n = x.shape
-        x, trans, trans_feat = self.pn(x.reshape([-1, k, n]))
-        x = x.reshape([b, t, -1])
-        return {'pred': x.permute([0, 2, 1]), 'trans': trans, 'trans_feat': trans_feat}
+        x, trans, trans_feat = self.pn(x.permute([0, 2, 1, 3]))
+        x = x.reshape([b, t, -1]).permute([0, 2, 1])
+        return {'pred': x, 'trans': trans, 'trans_feat': trans_feat}
 
 
 
