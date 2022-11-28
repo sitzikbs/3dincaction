@@ -7,7 +7,8 @@ import numpy as np
 import random
 import json
 import pc_transforms as transforms
-DATASET_N_POINTS=6890
+
+DATASET_N_POINTS = 6890
 
 class DfaustActionClipsDataset(Dataset):
     def __init__(self, action_dataset_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
@@ -24,7 +25,7 @@ class DfaustActionClipsDataset(Dataset):
         self.subseq_pad = None  # stores the amount of padding for every clip
         self.idxs = np.arange(DATASET_N_POINTS)
         if self.shuffle_points == 'once':
-            random.shuffle(self.idxs)
+            random.Random(0).shuffle(self.idxs)
         elif self.shuffle_points == 'none' or self.shuffle_points == 'each':
             pass
         else:
@@ -151,9 +152,8 @@ class DfaustActionClipsDataset(Dataset):
     def __getitem__(self, idx):
         if self.shuffle_points == 'each':
             self.idxs = np.arange(DATASET_N_POINTS)
-            random.shuffle(self.idxs)
+            random.Random(0).shuffle(self.idxs)
         out_points = self.augment_points(self.clip_verts[idx][:, self.idxs[:self.n_points]])
-
 
         out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
                     'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx]}
@@ -242,8 +242,8 @@ class DfaustActionDataset(Dataset):
 
 
 if __name__ == '__main__':
-    # dataset = DfaustActionDataset(dfaust_path='/home/sitzikbs/datasets/dfaust/')
-    dataset = DfaustActionClipsDataset(action_dataset_path='/home/sitzikbs/datasets/dfaust/',
+    # dataset = DfaustActionDataset(dfaust_path='/home/sitzikbs/Datasets/dfaust/')
+    dataset = DfaustActionClipsDataset(action_dataset_path='/home/sitzikbs/Datasets/dfaust/',
                                        frames_per_clip=64, set='train', n_points=2048, last_op='pad',
                                        shuffle_points='once')
     test_loader = DataLoader(dataset, batch_size=1, num_workers=2, shuffle=True, drop_last=True)
@@ -251,5 +251,8 @@ if __name__ == '__main__':
         verts, labels = data['points'], data['labels']
         # visualization.mesh_seq_vis(verts[0].detach().cpu().numpy(), dataset.faces,
         #                            text=dataset.actions[int(labels.detach().cpu().numpy()[0])])
+        points_color = np.repeat(np.arange(len(verts[0][0]))[None, :], len(verts[0]), axis=0)
         visualization.pc_seq_vis(verts[0].detach().cpu().numpy(),
-                                   text=np.take(dataset.action_dataset.actions, labels.detach().cpu().numpy()[0].astype(int)))
+                                text=np.take(dataset.action_dataset.actions,
+                                                labels.detach().cpu().numpy()[0].astype(int)),
+                                 color=points_color)

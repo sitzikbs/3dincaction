@@ -17,6 +17,8 @@ from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 
+np.random.seed(0)
+torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--pc_model', type=str, default='pn2_4d', help='which model to use for point cloud processing: pn1 | pn2 ')

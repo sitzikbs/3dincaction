@@ -15,6 +15,8 @@ from DfaustDataset import DfaustActionClipsDataset as Dataset
 import importlib.util
 import visualization
 
+np.random.seed(0)
+torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
@@ -144,7 +146,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
 if __name__ == '__main__':
     # need to add argparse
-    output_path = os.path.join(args.model_path, 'results')
+    output_path = os.path.join(args.model_path, 'results_'+str(args.model.removesuffix('.pt')))
     os.makedirs(output_path, exist_ok=True)
     model_path = os.path.join(args.model_path, args.model)
     run(dataset_path=args.dataset_path,  model_path=model_path, output_path=output_path, batch_size=args.batch_size,
