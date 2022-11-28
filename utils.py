@@ -2,6 +2,9 @@
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+import sys
+import importlib
+
 
 def squeeze_class_names(class_names):
     """
@@ -452,3 +455,40 @@ def accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logi
 
     return pred_labels_per_video, logits_per_video
 
+
+def get_model(pc_model, num_classes, args):
+    if pc_model == 'pn1':
+        spec = importlib.util.spec_from_file_location("PointNet1", os.path.join(args.model_path, "pointnet.py"))
+        pointnet = importlib.util.module_from_spec(spec)
+        sys.modules["PointNet1"] = pointnet
+        spec.loader.exec_module(pointnet)
+        model = pointnet.PointNet1(k=num_classes, feature_transform=True)
+    elif pc_model == 'pn1_4d':
+        spec = importlib.util.spec_from_file_location("PointNet4D", os.path.join(args.model_path, "pointnet.py"))
+        pointnet = importlib.util.module_from_spec(spec)
+        sys.modules["PointNet4D"] = pointnet
+        spec.loader.exec_module(pointnet)
+        model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=args.frames_per_clip)
+    elif pc_model == 'pn2':
+        spec = importlib.util.spec_from_file_location("PointNet2",
+                                                      os.path.join(args.model_path, "pointnet2_cls_ssg.py"))
+        pointnet_pp = importlib.util.module_from_spec(spec)
+        sys.modules["PointNet2"] = pointnet_pp
+        spec.loader.exec_module(pointnet_pp)
+        model = pointnet_pp.PointNet2(num_class=num_classes, n_frames=args.frames_per_clip)
+    elif pc_model == 'pn2_4d':
+        spec = importlib.util.spec_from_file_location("PointNetPP4D",
+                                                      os.path.join(args.model_path, "pointnet2_cls_ssg.py"))
+        pointnet_pp = importlib.util.module_from_spec(spec)
+        sys.modules["PointNetPP4D"] = pointnet_pp
+        spec.loader.exec_module(pointnet_pp)
+        model = pointnet_pp.PointNetPP4D(num_class=num_classes, n_frames=args.frames_per_clip)
+    elif pc_model == '3dmfv':
+        spec = importlib.util.spec_from_file_location("FourDmFVNet",
+                                                      os.path.join(args.model_path, "pytorch_3dmfv.py"))
+        pytorch_3dmfv = importlib.util.module_from_spec(spec)
+        sys.modules["FourDmFVNet"] = pytorch_3dmfv
+        spec.loader.exec_module(pytorch_3dmfv)
+        model = pytorch_3dmfv.FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes,
+                                          n_frames=args.frames_per_clip)
+    return model

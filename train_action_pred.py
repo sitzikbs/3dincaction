@@ -13,7 +13,6 @@ import numpy as np
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 from tensorboardX import SummaryWriter
 
-
 from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
@@ -51,8 +50,10 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     os.system('cp %s %s' % ('./models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pytorch_3dmfv.py', logdir))  # backup the models files
 
-    # setup dataset
+    params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
+    torch.save(args, params_filename)
 
+    # setup dataset
     train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=args.n_points,
                             shuffle_points=args.shuffle_points, data_augmentation=data_augmentation)
     print("Number of clips in the trainingset:{}".format(len(train_dataset)))
