@@ -20,13 +20,12 @@ parser.add_argument('--model', type=str, default='000200.pt', help='file name of
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
-parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
 params = parser.parse_args()
 
 args = torch.load(os.path.join(params.model_path, 'params.pth'))
 
-output_path = os.path.join(params.model_path, 'result_visualization')
-os.makedirs(output_path, exist_ok=True)
+# output_path = os.path.join(params.model_path, 'result_visualization')
+# os.makedirs(output_path, exist_ok=True)
 model_path = os.path.join(params.model_path, params.model)
 
 

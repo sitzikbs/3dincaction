@@ -92,11 +92,13 @@ class PointNetfeat4D(nn.Module):
     def __init__(self, global_feat=True, feature_transform=False, in_d=3, n_frames=32, k_frames=4):
         super(PointNetfeat4D, self).__init__()
         self.stn = STN3d()
-        self.conv1 = torch.nn.Conv2d(in_d, 64, [7, 1], 1, padding='same')
-        self.conv2 = torch.nn.Conv2d(64, 128, [4, 1], 1, padding='same')
-        self.conv3 = torch.nn.Conv2d(128, 1024, [4, 1], 1, padding='same')
-        self.temporal_pool1 = torch.nn.MaxPool2d([4, 1])
-        self.temporal_pool2 = torch.nn.MaxPool2d([4, 1])
+        self.conv1 = torch.nn.Conv2d(in_d, 64, [8, 1], 1, padding='same')
+        self.conv2 = torch.nn.Conv2d(64, 128, [3, 1], 1, padding='same')
+        self.conv3 = torch.nn.Conv2d(128, 1024, [3, 1], 1, padding='same')
+        self.temporal_pool1 = torch.nn.MaxPool2d([3, 1])
+        self.temporal_pool2 = torch.nn.MaxPool2d([3, 1])
+        # self.temporal_pool1 = torch.nn.AvgPool2d([4, 1])
+        # self.temporal_pool2 = torch.nn.AvgPool2d([4, 1])
         self.bn1 = nn.BatchNorm2d(64)
         self.bn2 = nn.BatchNorm2d(128)
         self.bn3 = nn.BatchNorm2d(1024)
@@ -154,12 +156,12 @@ class PointNetCls4D(nn.Module):
     def forward(self, x):
         b, k, t, n = x.size()
         x, trans, trans_feat = self.feat(x)
-        x = F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
-        x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2,
+        x = F.relu(self.bn1(self.fc1(x).reshape(b, -1, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
+        x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, -1, 256).permute(0, 2, 1)))).permute(0, 2,
                                                                                                     1).reshape(-1,
                                                                                                                256)
         x = self.fc3(x)
-
+        # x = F.interpolate(x.reshape(b, -1, x.shape[-1]).permute(0, 2, 1), t, mode='linear', align_corners=True).permute(0, 2, 1)
         return F.log_softmax(x, dim=1), trans, trans_feat
 
 

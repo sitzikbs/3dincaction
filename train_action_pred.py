@@ -21,7 +21,7 @@ np.random.seed(0)
 torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn2_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=1, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
@@ -35,7 +35,7 @@ parser.add_argument('--refine_epoch', type=int, default=0, help='refine model fr
 parser.add_argument('--pretrained_model', type=str, default=None, help='path to pretrained model')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
+parser.add_argument('--shuffle_points', type=str, default='each', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=int, default=1, help='apply input data point augmentations')

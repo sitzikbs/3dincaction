@@ -24,14 +24,14 @@ class DfaustActionClipsDataset(Dataset):
         self.clip_labels = None
         self.subseq_pad = None  # stores the amount of padding for every clip
         self.idxs = np.arange(DATASET_N_POINTS)
+        self.randomizer = random.Random(0)
         if self.shuffle_points == 'once':
-            random.Random(0).shuffle(self.idxs)
+            self.randomizer.shuffle(self.idxs)
         elif self.shuffle_points == 'none' or self.shuffle_points == 'each':
             pass
         else:
             raise ValueError("Unknown shuffle protocol")
 
-        self.last_op = shuffle_points
         self.clip_data()
     def chunks(self, lst, n):
         """Yield successive n-sized chunks from lst."""
@@ -46,7 +46,7 @@ class DfaustActionClipsDataset(Dataset):
                 if self.last_op == 'drop':
                     clip_vertices.pop()
                     frame_pad = frame_pad[:-2]
-                else:  # pad
+                elif self.last_op == 'pad':  # pad
                     frame_pad[-1] = int(self.frames_per_clip - len(clip_vertices[-1]))
                     clip_vertices[-1] = np.concatenate(
                         [clip_vertices[-2][len(clip_vertices[-1]):], clip_vertices[-1]])
@@ -152,7 +152,7 @@ class DfaustActionClipsDataset(Dataset):
     def __getitem__(self, idx):
         if self.shuffle_points == 'each':
             self.idxs = np.arange(DATASET_N_POINTS)
-            random.Random(0).shuffle(self.idxs)
+            random.shuffle(self.idxs)
         out_points = self.augment_points(self.clip_verts[idx][:, self.idxs[:self.n_points]])
 
         out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
