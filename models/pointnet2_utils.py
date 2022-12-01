@@ -213,9 +213,6 @@ def sample_and_group_all_4d(xyz, points):
     return new_xyz, new_points
 
 
-
-
-
 class PointNetSetAbstraction(nn.Module):
     def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all):
         super(PointNetSetAbstraction, self).__init__()
@@ -265,7 +262,7 @@ class PointNetSetAbstraction(nn.Module):
         return new_xyz, new_points
 
 class PointNetPP4DSetAbstraction(nn.Module):
-    def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all):
+    def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all, temporal_conv=4):
         super(PointNetPP4DSetAbstraction, self).__init__()
         self.npoint = npoint
         self.radius = radius
@@ -274,7 +271,7 @@ class PointNetPP4DSetAbstraction(nn.Module):
         self.mlp_bns = nn.ModuleList()
         last_channel = in_channel
         for out_channel in mlp:
-            self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, [1, 4, 1], 1, padding='same'))
+            self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, [1, temporal_conv, 1], 1, padding='same'))
             self.mlp_bns.append(nn.BatchNorm3d(out_channel))
             last_channel = out_channel
         self.group_all = group_all

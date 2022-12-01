@@ -10,12 +10,16 @@ class PointNetPP4D(nn.Module):
     def __init__(self, num_class, n_frames=32, in_channel=3):
         super(PointNetPP4D, self).__init__()
         self.n_frames = n_frames
-        self.sa1 = PointNetPP4DSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel, mlp=[64, 64, 128], group_all=False)
-        self.sa2 = PointNetPP4DSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3, mlp=[128, 128, 256], group_all=False)
-        self.sa3 = PointNetPP4DSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + 3, mlp=[256, 512, 1024], group_all=True)
+        self.sa1 = PointNetPP4DSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel,
+                                              mlp=[64, 64, 128], group_all=False, temporal_conv=8)
+        self.sa2 = PointNetPP4DSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3,
+                                              mlp=[128, 128, 256], group_all=False, temporal_conv=4)
+        self.sa3 = PointNetPP4DSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + 3,
+                                              mlp=[256, 512, 1024], group_all=True, temporal_conv=4)
 
         self.temporal_pool1 = torch.nn.MaxPool3d([4, 1, 1])
         self.temporal_pool2 = torch.nn.MaxPool3d([4, 1, 1])
+        self.temporal_pool_xyz = torch.nn.AvgPool3d([4, 1, 1])
         self.fc1 = nn.Linear(1024, 512)
         self.bn1 = nn.BatchNorm1d(512)
         self.drop1 = nn.Dropout(0.4)
@@ -29,9 +33,9 @@ class PointNetPP4D(nn.Module):
         b, t, d, n = xyz.shape
         # new_B = B*t
         l1_xyz, l1_points = self.sa1(xyz, None)
-        l1_xyz, l1_points = self.temporal_pool1(l1_xyz), self.temporal_pool1(l1_points)
+        l1_xyz, l1_points = self.temporal_pool_xyz(l1_xyz), self.temporal_pool1(l1_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
-        l2_xyz, l2_points = self.temporal_pool2(l2_xyz), self.temporal_pool2(l2_points)
+        l2_xyz, l2_points = self.temporal_pool_xyz(l2_xyz), self.temporal_pool2(l2_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
 
         l3_xyz, l3_points = l3_xyz.squeeze(-1), l3_points.squeeze(-1)

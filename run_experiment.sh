@@ -1,10 +1,10 @@
-#DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
-DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
+DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
+#DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 
-MODEL='pn2'
-STEPS_PER_UPDATE=8
+MODEL='pn2_4d'
+STEPS_PER_UPDATE=2
 N_FRAMES=64
-BATCH_SIZE=2
+BATCH_SIZE=8
 TEST_BATCH_SIZE=1
 TEST_ITER=200
 
