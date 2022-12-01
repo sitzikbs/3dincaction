@@ -35,7 +35,7 @@ parser.add_argument('--refine_epoch', type=int, default=0, help='refine model fr
 parser.add_argument('--pretrained_model', type=str, default=None, help='path to pretrained model')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--shuffle_points', type=str, default='each', help='once | each | none shuffle the input points '
+parser.add_argument('--shuffle_points', type=str, default='each_frame', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=int, default=1, help='apply input data point augmentations')

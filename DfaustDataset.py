@@ -27,7 +27,7 @@ class DfaustActionClipsDataset(Dataset):
         self.randomizer = random.Random(0)
         if self.shuffle_points == 'once':
             self.randomizer.shuffle(self.idxs)
-        elif self.shuffle_points == 'none' or self.shuffle_points == 'each':
+        elif self.shuffle_points == 'none' or self.shuffle_points == 'each' or self.shuffle_points == 'each_frame':
             pass
         else:
             raise ValueError("Unknown shuffle protocol")
@@ -153,7 +153,14 @@ class DfaustActionClipsDataset(Dataset):
         if self.shuffle_points == 'each':
             self.idxs = np.arange(DATASET_N_POINTS)
             random.shuffle(self.idxs)
-        out_points = self.augment_points(self.clip_verts[idx][:, self.idxs[:self.n_points]])
+            points_seq = self.clip_verts[idx][:, self.idxs[:self.n_points]]
+        elif self.shuffle_points == 'each_frame':
+            self.idxs = np.arange(DATASET_N_POINTS)
+            self.idxs = np.array([np.random.permutation(self.idxs) for _ in range(self.frames_per_clip)])[:, :, None]
+            points_seq = np.take_along_axis(self.clip_verts[idx], self.idxs[:, :self.n_points], axis=1)
+        else:
+            points_seq = self.clip_verts[idx][self.idxs[:self.n_points], :]
+        out_points = self.augment_points(points_seq)
 
         out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
                     'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx]}
