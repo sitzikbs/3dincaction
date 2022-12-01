@@ -13,7 +13,7 @@ import numpy as np
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 from tensorboardX import SummaryWriter
 
-from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1
+from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1, PointNet1Basic
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 
@@ -21,7 +21,7 @@ np.random.seed(0)
 torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn2_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1_4d_basic', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=1, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
@@ -80,6 +80,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
         model = PointNet1(k=num_classes, feature_transform=True)
     elif pc_model == 'pn1_4d':
         model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+    elif pc_model == 'pn1_4d_basic':
+        model = PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':
         model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_4d':

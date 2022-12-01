@@ -71,6 +71,12 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         sys.modules["PointNet4D"] = pointnet
         spec.loader.exec_module(pointnet)
         model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+    elif pc_model == 'pn1_4d_basic':
+        spec = importlib.util.spec_from_file_location("PointNet1Basic", os.path.join(args.model_path, "pointnet.py"))
+        pointnet = importlib.util.module_from_spec(spec)
+        sys.modules["PointNet1Basic"] = pointnet
+        spec.loader.exec_module(pointnet)
+        model = pointnet.PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':
             spec = importlib.util.spec_from_file_location("PointNet2",
                                                           os.path.join(args.model_path, "pointnet2_cls_ssg.py"))

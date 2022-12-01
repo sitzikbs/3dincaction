@@ -107,7 +107,7 @@ for test_batchind, data in enumerate(test_dataloader):
     out_dict = model(inputs)
     logits = out_dict['pred']
 
-    gradients = utils.gradient(inputs, logits, create_graph=True, retain_graph=False).detach().clone()
+    gradients = utils.gradient(inputs, logits, create_graph=False, retain_graph=False).detach().clone()
     grad_mag = torch.linalg.norm(gradients, dim=2).detach().cpu().numpy()
 
 

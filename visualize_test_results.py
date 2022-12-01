@@ -14,7 +14,7 @@ import visualization
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_path', type=str, default='./log/pn1_f32_p1024_shuffle_once_aug1_b16_u1/',
+parser.add_argument('--model_path', type=str, default='./log/pn2_f64_p1024_shuffle_each_aug1_b8_u2/',
                     help='path to model save dir')
 parser.add_argument('--model', type=str, default='000200.pt', help='file name of model checkpint to load')
 parser.add_argument('--dataset_path', type=str,

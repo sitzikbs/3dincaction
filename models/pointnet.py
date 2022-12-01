@@ -259,6 +259,43 @@ class PointNet1(nn.Module):
         return {'pred': x, 'trans': trans, 'trans_feat': trans_feat}
 
 
+class PointNetClsBasic(nn.Module):
+    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
+        super(PointNetClsBasic, self).__init__()
+        self.num_classes = k
+        self.feature_transform = feature_transform
+        self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, in_d=in_d)
+        self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, k)
+        self.dropout = nn.Dropout(p=0.3)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.bn3 = nn.BatchNorm1d(256)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        b, k, t, n = x.size()
+        x, trans, trans_feat = self.feat(x)
+        x = F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
+        x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
+        x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
+        x = self.fc3(x)
+
+        return F.log_softmax(x, dim=1), trans, trans_feat
+class PointNet1Basic(nn.Module):
+    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=64):
+        super(PointNet1Basic, self).__init__()
+        self.feature_transform = feature_transform
+        self.pn = PointNetClsBasic(k=k, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
+
+    def forward(self, x):
+        b, t, k, n = x.shape
+        x, trans, trans_feat = self.pn(x.permute([0, 2, 1, 3]))
+        x = x.reshape([b, t, -1]).permute([0, 2, 1])
+        return {'pred': x, 'trans': trans, 'trans_feat': trans_feat}
+
 class PointNetDenseCls(nn.Module):
     def __init__(self, k = 2, feature_transform=False):
         super(PointNetDenseCls, self).__init__()
@@ -281,7 +318,7 @@ class PointNetDenseCls(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
         x = self.conv4(x)
-        x = x.transpose(2,1).contiguous()
+        x = x.transpose(2, 1).contiguous()
         x = F.log_softmax(x.view(-1,self.k), dim=-1)
         x = x.view(batchsize, n_pts, self.k)
         return x, trans, trans_feat
