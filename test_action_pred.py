@@ -14,6 +14,7 @@ import numpy as np
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 import importlib.util
 import visualization
+import pathlib
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -146,7 +147,8 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
 if __name__ == '__main__':
     # need to add argparse
-    output_path = os.path.join(args.model_path, 'results_'+str(args.model.removesuffix('.pt')))
+
+    output_path = pathlib.Path(os.path.join(args.model_path, 'results_'+str(args.model))).with_suffix("")
     os.makedirs(output_path, exist_ok=True)
     model_path = os.path.join(args.model_path, args.model)
     run(dataset_path=args.dataset_path,  model_path=model_path, output_path=output_path, batch_size=args.batch_size,
