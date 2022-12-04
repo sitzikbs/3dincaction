@@ -1,4 +1,5 @@
 **/log/
+**/wandb/
 **/__pycache__/
 **/pt_models/
 **/.idea/

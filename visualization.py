@@ -115,3 +115,12 @@ def pc_seq_vis(verts, text=None, color=None):
     pl.camera.up = (0.0, 1.0, 0.0)
     pl.camera.zoom(0.5)
     pl.show()
+
+
+def plot_pc_ov(verts, text=None, color=None):
+
+    pc = pv.PolyData(verts[0])
+    pl = pv.Plotter()
+    # pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'])
+    pl.add_mesh(pc, render_points_as_spheres=True)
+    pl.show()
