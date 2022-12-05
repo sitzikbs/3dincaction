@@ -2,6 +2,8 @@ import numpy as np
 from torch.utils.data import Dataset
 import pyvista as pv
 import torch
+import sys
+sys.path.append('../')
 import visualization as vis
 
 class SphereGenerator(Dataset):
