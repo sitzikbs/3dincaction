@@ -7,6 +7,8 @@ import argparse
 from data_spheres import SphereGenerator
 import torch.nn.functional as F
 import numpy as np
+import sys
+sys.path.append("../")
 import visualization as vis
 
 
