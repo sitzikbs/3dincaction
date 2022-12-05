@@ -7,7 +7,9 @@ import argparse
 from data_spheres import SphereGenerator
 import torch.nn.functional as F
 import numpy as np
-
+import sys
+sys.path.append('../')
+import visualization as vis
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--num_pts", type=int, default=128)
@@ -85,18 +87,6 @@ def cosine_similarity(x, y):
   # Return the cosine similarity
   return sim
 
-def get_pc_pv_image(verts, text=None, color=None):
-    pv.global_theme.cmap = 'cet_glasbey_bw'
-    if color is None:
-        color = 0.5*np.ones([len(verts), len(verts[0])])
-
-    pc = pv.PolyData(verts)
-    pc['scalars'] = color
-    pl = pv.Plotter(off_screen=True)
-    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=50)
-    # pl.add_mesh(pc, render_points_as_spheres=True)
-    pl.screenshot()
-    return pl.image
 
 # Set up data
 sphere_dataset = SphereGenerator(args.num_pts, 0.5, 32)
@@ -170,8 +160,8 @@ for epoch in range(args.train_epochs):
         writer.add_image("images/max", max_corr[0].unsqueeze(0).detach().cpu().numpy(), epoch)
         writer.add_image("images/max_diff", torch.abs(gt_corr[0] - max_corr[0]).unsqueeze(0).detach().cpu().numpy(), epoch)
 
-        pc1_pv = get_pc_pv_image(points[0].detach().cpu().numpy(), text=None, color=np.arange(args.num_pts))
-        pc2_pv = get_pc_pv_image(points2[0].detach().cpu().numpy(), text=None, color=max_ind[0].detach().cpu().numpy())
+        pc1_pv = vis.get_pc_pv_image(points[0].detach().cpu().numpy(), text=None, color=np.arange(args.num_pts))
+        pc2_pv = vis.get_pc_pv_image(points2[0].detach().cpu().numpy(), text=None, color=max_ind[0].detach().cpu().numpy())
         writer.add_image("3D_corr_images/source", pc1_pv.transpose(2, 0, 1), epoch)
         writer.add_image("3D_corr_images/target", pc2_pv.transpose(2, 0, 1), epoch)
         print(f"Epoch {epoch}: train loss {loss:.3f}")
