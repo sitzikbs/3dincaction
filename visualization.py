@@ -118,9 +118,26 @@ def pc_seq_vis(verts, text=None, color=None):
 
 
 def plot_pc_ov(verts, text=None, color=None):
+    pv.global_theme.cmap = 'glasby'
+    if color is None:
+        color = 0.5*np.ones([len(verts), len(verts[0])])
 
     pc = pv.PolyData(verts[0])
+    pc['scalars'] = color[0]
     pl = pv.Plotter()
-    # pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'])
-    pl.add_mesh(pc, render_points_as_spheres=True)
+    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'])
+    # pl.add_mesh(pc, render_points_as_spheres=True)
     pl.show()
+
+def get_pc_pv_image(verts, text=None, color=None):
+    pv.global_theme.cmap = 'cet_glasbey_bw'
+    if color is None:
+        color = 0.5*np.ones([len(verts), len(verts[0])])
+
+    pc = pv.PolyData(verts)
+    pc['scalars'] = color
+    pl = pv.Plotter(off_screen=True)
+    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=50)
+    # pl.add_mesh(pc, render_points_as_spheres=True)
+    pl.screenshot()
+    return pl.image
