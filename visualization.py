@@ -129,7 +129,7 @@ def plot_pc_ov(verts, text=None, color=None):
     # pl.add_mesh(pc, render_points_as_spheres=True)
     pl.show()
 
-def get_pc_pv_image(verts, text=None, color=None):
+def get_pc_pv_image(verts, text=None, color=None, point_size=50):
     pv.global_theme.cmap = 'cet_glasbey_bw'
     if color is None:
         color = 0.5*np.ones([len(verts), len(verts[0])])
@@ -137,7 +137,15 @@ def get_pc_pv_image(verts, text=None, color=None):
     pc = pv.PolyData(verts)
     pc['scalars'] = color
     pl = pv.Plotter(off_screen=True)
-    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=50)
+    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=point_size)
+
     # pl.add_mesh(pc, render_points_as_spheres=True)
+    pl.camera.position = (1, 1, 1)
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
+
     pl.screenshot()
-    return pl.image
+    image = pl.image
+    pl.close()
+    return image

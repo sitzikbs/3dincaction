@@ -7,7 +7,7 @@ import torch.utils.data
 from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
-
+from models.correformer import CorreFormer
 
 class STN3d(nn.Module):
     def __init__(self):
@@ -166,13 +166,34 @@ class PointNetCls4D(nn.Module):
 
 
 class PointNet4D(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
+    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32, correforemer=None):
         super(PointNet4D, self).__init__()
         self.feature_transform = feature_transform
         self.pn = PointNetCls4D(k=k, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
+        self.correformer = None
+        if correforemer is not None:
+            params_str = correforemer.split("/")[-2].split("_")[2]
+            correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
+            correformer_nheads = int(params_str[params_str.index('h') + 1:])
+            self.correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
+                                           num_decoder_layers=1, dim_feedforward=1024)
 
+    def sort_points(self, x):
+        b, t, k, n = x.shape
+        sorted_seq = x[:, 0, :, :].unsqueeze(1)
+        for frame_idx in range(t-1):
+            p1 = x[:, frame_idx, :, :].permute(0, 2, 1)
+            p2 = x[:, frame_idx+1, :, :].permute(0, 2, 1)
+            corre_out_dict = self.correformer(p1, p2)
+            corr_idx = corre_out_dict['corr_idx']
+            sorted_frame = torch.gather(x[:, frame_idx+1, :, :], -1, corr_idx.unsqueeze(1).repeat([1, 3, 1]))
+            sorted_seq = torch.concat([sorted_seq, sorted_frame.unsqueeze(1)], dim=1)
+        return sorted_seq
     def forward(self, x):
         b, t, k, n = x.shape
+        if self.correformer is not None:
+            with torch.no_grad():
+                x = self.sort_points(x)
         x, trans, trans_feat = self.pn(x.permute([0, 2, 1, 3]))
         x = x.reshape([b, t, -1]).permute([0, 2, 1])
         return {'pred': x, 'trans': trans, 'trans_feat': trans_feat}

@@ -506,3 +506,18 @@ def gradient(inputs, outputs, create_graph=True, retain_graph=True):
         retain_graph=retain_graph,
         only_inputs=True)[0]#[:, -3:]
     return points_grad
+
+
+def cosine_similarity(x, y):
+  # Compute the dot product between the two batches
+  dot = torch.bmm(x, y.transpose(2, 1))
+
+  # Compute the norms of the two batches
+  norm1 = torch.norm(x, dim=-1)
+  norm2 = torch.norm(y, dim=-1)
+
+  # Compute the cosine similarity
+  sim = dot.abs() / (norm1.unsqueeze(-1) * norm2.unsqueeze(-2))
+
+  # Return the cosine similarity
+  return sim

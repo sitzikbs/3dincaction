@@ -1,5 +1,5 @@
-DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
-#DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
+#DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
+DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 
 MODEL='pn1_4d'
 STEPS_PER_UPDATE=2
@@ -14,7 +14,7 @@ N_EPOCHS=200
 POINTS_SHUFFLE='each_frame'
 SAMPLER='weighted'
 AUGMENT=1
-LOGDIR='./log/'$MODEL'_f'$N_FRAMES'_p'$N_POINTS'_shuffle_'$POINTS_SHUFFLE'_aug'$AUGMENT'_b'$BATCH_SIZE'_u'$STEPS_PER_UPDATE'/'
+LOGDIR='./log/correformer'$MODEL'_f'$N_FRAMES'_p'$N_POINTS'_shuffle_'$POINTS_SHUFFLE'_aug'$AUGMENT'_b'$BATCH_SIZE'_u'$STEPS_PER_UPDATE'/'
 SET='test'
 
 

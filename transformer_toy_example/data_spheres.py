@@ -8,22 +8,28 @@ import visualization as vis
 
 class SphereGenerator(Dataset):
     def __init__(self, n_points, radius=0.5, n_samples=1):
-        # Generate random spherical coordinates
-        u = np.random.uniform(0, 2 * np.pi, 100)
-        v = np.random.uniform(0, np.pi, 100)
-
-        # Convert spherical coordinates to Cartesian coordinates
-        x = radius * np.cos(u) * np.sin(v)
-        y = radius * np.sin(u) * np.sin(v)
-        z = radius * np.cos(v)
-
+        # # Generate random spherical coordinates
+        # u = np.random.uniform(0, 2 * np.pi, 500)
+        # v = np.random.uniform(0, np.pi, 500)
+        #
+        # # Convert spherical coordinates to Cartesian coordinates
+        # x = radius * np.cos(u) * np.sin(v)
+        # y = radius * np.sin(u) * np.sin(v)
+        # z = radius * np.cos(v)
+        #
+        #
+        # points = np.array([x, y, z]).T.astype(np.float32)
+        self.radius = radius
         self.points = []
-        points = np.array([x, y, z]).T.astype(np.float32)
         for i in range(n_samples):
-            np.random.shuffle(points)
-            self.points.append(points[:n_points])
+            # np.random.shuffle(points)
+            # self.points.append(points[:n_points])
+            self.points.append(self.sample_spherical(n_points).T.astype(np.float32))
 
-
+    def sample_spherical(self, npoints, ndim=3):
+        vec = np.random.randn(ndim, npoints)
+        vec /= np.linalg.norm(vec, axis=0)
+        return self.radius * vec
     def __len__(self):
         return len(self.points)
 
