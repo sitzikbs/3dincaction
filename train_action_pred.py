@@ -40,7 +40,8 @@ parser.add_argument('--shuffle_points', type=str, default='each_frame', help='on
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=int, default=1, help='apply input data point augmentations')
 parser.add_argument('--correformer', type=str,
-                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16/000000.pt', help='apply input data point augmentations')
+                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16/000000.pt',
+                    help='None or path to correformer model')
 
 args = parser.parse_args()
 

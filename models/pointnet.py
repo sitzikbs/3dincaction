@@ -181,14 +181,16 @@ class PointNet4D(nn.Module):
     def sort_points(self, x):
         b, t, k, n = x.shape
         sorted_seq = x[:, 0, :, :].unsqueeze(1)
+        sorted_frame = x[:, 0, :, :]
         for frame_idx in range(t-1):
-            p1 = x[:, frame_idx, :, :].permute(0, 2, 1)
+            p1 = sorted_frame.permute(0, 2, 1)
             p2 = x[:, frame_idx+1, :, :].permute(0, 2, 1)
             corre_out_dict = self.correformer(p1, p2)
             corr_idx = corre_out_dict['corr_idx']
             sorted_frame = torch.gather(x[:, frame_idx+1, :, :], -1, corr_idx.unsqueeze(1).repeat([1, 3, 1]))
             sorted_seq = torch.concat([sorted_seq, sorted_frame.unsqueeze(1)], dim=1)
         return sorted_seq
+
     def forward(self, x):
         b, t, k, n = x.shape
         if self.correformer is not None:

@@ -28,7 +28,7 @@ def log_scalars(writer, log_dict, iter):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=32)
+parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-5)
 parser.add_argument("--batch_size", type=int, default=16)
 parser.add_argument("--dim", type=int, default=1024)
@@ -68,9 +68,9 @@ for epoch in range(args.train_epochs):
     for batch_idx, data in enumerate(train_dataloader):
 
         points = data['points'].cuda()
-        points2 = torch.roll(points, 1, dims=1).detach().clone()
-        points = points[:, 1:, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
-        points2 = points2[:, 1:, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
+        points2 = torch.roll(points, -1, dims=1).detach().clone()
+        points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
+        points2 = points2[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
         point_ids = torch.randperm(args.n_points).cuda()
         points2 = points2[:, point_ids, :]
         gt_corr = (point_ids.unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(0).repeat([args.batch_size, 1, 1]).cuda()
@@ -124,9 +124,9 @@ for epoch in range(args.train_epochs):
             if test_batchind == len(test_dataloader):
                 test_enum = enumerate(test_dataloader, 0)
             points = data['points']
-            points2 = torch.roll(points, 1, dims=1).detach().clone()
-            points = points[:, 1:, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
-            points2 = points2[:, 1:, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
+            points2 = torch.roll(points, -1, dims=1).detach().clone()
+            points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
+            points2 = points2[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
             point_ids = torch.randperm(args.n_points).cuda()
             points2 = points2[:, point_ids, :]
             gt_corr = (point_ids.unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(0).repeat([args.batch_size, 1, 1]).cuda()
