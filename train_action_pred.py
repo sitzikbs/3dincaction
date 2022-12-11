@@ -61,7 +61,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 
     # setup dataset
     train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=args.n_points,
-                            shuffle_points=args.shuffle_points, data_augmentation=data_augmentation)
+                            shuffle_points=args.shuffle_points, data_augmentation=data_augmentation,
+                            correforemer=args.correformer)
     print("Number of clips in the trainingset:{}".format(len(train_dataset)))
 
     if args.sampler == 'weighted':
@@ -74,7 +75,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
-                           shuffle_points=args.shuffle_points)
+                           shuffle_points=args.shuffle_points, correforemer=args.correformer)
     print("Number of clips in the testset:{}".format(len(test_dataset)))
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
@@ -83,7 +84,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     if pc_model == 'pn1':
         model = PointNet1(k=num_classes, feature_transform=True)
     elif pc_model == 'pn1_4d':
-        model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip, correforemer=args.correformer)
+        model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn1_4d_basic':
         model = PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':

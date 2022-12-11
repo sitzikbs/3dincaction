@@ -7,6 +7,9 @@ import numpy as np
 import random
 import json
 import pc_transforms as transforms
+import models.correformer as correformer
+import torch
+
 
 DATASET_N_POINTS = 6890
 
@@ -32,7 +35,34 @@ class DfaustActionClipsDataset(Dataset):
         else:
             raise ValueError("Unknown shuffle protocol")
 
+        # self.correformer = None
+        # if correforemer is not None:
+        #     params_str = correforemer.split("/")[-2].split("_")[2]
+        #     correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
+        #     correformer_nheads = int(params_str[params_str.index('h') + 1:])
+        #     self.correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
+        #                                    num_decoder_layers=1, dim_feedforward=1024).cuda()
+        #     self.correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
+        #     self.correformer.eval()
+
         self.clip_data()
+
+    # def sort_points(self, x):
+    #     t, n, k = x.shape
+    #     x = torch.Tensor(x).cuda()
+    #     sorted_seq = x[[0], :, :]
+    #     sorted_frame = x[[0], :, :]
+    #     corr_pred = torch.arange(n)[None, :].cuda()
+    #     for frame_idx in range(t-1):
+    #         p1 = sorted_frame
+    #         p2 = x[[frame_idx+1], :, :]
+    #         corre_out_dict = self.correformer(p1, p2)
+    #         corr_idx12, corr_idx21 = corre_out_dict['corr_idx12'], corre_out_dict['corr_idx21']
+    #         sorted_frame = torch.gather(p2, 1, corr_idx12.unsqueeze(2).repeat([1, 1, 3]))
+    #         sorted_seq = torch.concat([sorted_seq, sorted_frame], dim=0)
+    #         corr_pred = torch.concat([corr_pred, corr_idx21], axis=0)
+    #     return sorted_seq, corr_pred
+
     def chunks(self, lst, n):
         """Yield successive n-sized chunks from lst."""
         for i in range(0, len(lst), n):
@@ -151,19 +181,31 @@ class DfaustActionClipsDataset(Dataset):
     # This returns given an index the i-th sample and label
     def __getitem__(self, idx):
         if self.shuffle_points == 'each':
-            self.idxs = np.arange(DATASET_N_POINTS)
-            random.shuffle(self.idxs)
-            points_seq = self.clip_verts[idx][:, self.idxs[:self.n_points]]
+            shuffled_idxs = np.arange(DATASET_N_POINTS)
+            random.shuffle(shuffled_idxs)
+            shuffled_idxs = shuffled_idxs[:self.n_points]
+            points_seq = self.clip_verts[idx][:, shuffled_idxs]
         elif self.shuffle_points == 'each_frame':
-            self.idxs = np.arange(DATASET_N_POINTS)
-            self.idxs = np.array([np.random.permutation(self.idxs) for _ in range(self.frames_per_clip)])[:, :, None]
-            points_seq = np.take_along_axis(self.clip_verts[idx], self.idxs[:, :self.n_points], axis=1)
+            shuffled_idxs = np.arange(DATASET_N_POINTS)
+            random.shuffle(shuffled_idxs)
+            points_seq = self.clip_verts[idx][:, shuffled_idxs[:self.n_points]]
+            shuffled_idxs = np.array([np.random.permutation(np.arange(self.n_points)) for _ in range(self.frames_per_clip-1)])[:, :, None]
+            shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None], axis=0) # make sure thefirst frame indices are unchanged (they are refs)
+            points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
         else:
+            shuffled_idxs = np.arange(DATASET_N_POINTS)[:self.n_points] #not shuffled
             points_seq = self.clip_verts[idx][self.idxs[:self.n_points], :]
         out_points = self.augment_points(points_seq)
 
+        # if self.correformer is not None:
+        #     with torch.no_grad():
+        #         sorted_out_points, corr_pred = self.sort_points(out_points)
+        # else:
+        #     corr_pred = []
+
         out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
-                    'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx]}
+                    'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx],
+                    'corr_gt': shuffled_idxs}
         return out_dict
 
 class DfaustActionDataset(Dataset):
@@ -250,14 +292,26 @@ class DfaustActionDataset(Dataset):
 
 if __name__ == '__main__':
     # dataset = DfaustActionDataset(dfaust_path='/home/sitzikbs/Datasets/dfaust/')
+    correformer_path = './transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt'
     dataset = DfaustActionClipsDataset(action_dataset_path='/home/sitzikbs/Datasets/dfaust/',
-                                       frames_per_clip=64, set='train', n_points=2048, last_op='pad',
-                                       shuffle_points='once')
-    test_loader = DataLoader(dataset, batch_size=1, num_workers=2, shuffle=True, drop_last=True)
+                                       frames_per_clip=16, set='train', n_points=1024, last_op='pad',
+                                       shuffle_points='each_frame')
+    test_loader = DataLoader(dataset, batch_size=2, num_workers=2, shuffle=True, drop_last=True,
+                             multiprocessing_context='spawn')
+
+
+    correformer = correformer.get_correformer(correformer_path)
+
     for batch, data in enumerate(test_loader):
         verts, labels = data['points'], data['labels']
         # visualization.mesh_seq_vis(verts[0].detach().cpu().numpy(), dataset.faces,
         #                            text=dataset.actions[int(labels.detach().cpu().numpy()[0])])
+        corr_gt = data['corr_gt']
+
+        sorted_verts, corr_pred = correformer.sort_points(verts)
+
+        diff = torch.abs(corr_gt[[0]].squeeze() - corr_pred[[0]].detach().cpu().numpy())
+        points_color = np.repeat(np.arange(len(verts[0][0]))[None, :], len(verts[0]), axis=0)
         points_color = np.repeat(np.arange(len(verts[0][0]))[None, :], len(verts[0]), axis=0)
         visualization.pc_seq_vis(verts[0].detach().cpu().numpy(),
                                 text=np.take(dataset.action_dataset.actions,

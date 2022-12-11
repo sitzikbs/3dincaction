@@ -28,14 +28,14 @@ def log_scalars(writer, log_dict, iter):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=32)
+parser.add_argument("--n_points", type=int, default=128)
 parser.add_argument("--learning_rate", type=float, default=1e-5)
 parser.add_argument("--batch_size", type=int, default=16)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=16)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
-                    default='/home/sitzikbs/datasets/dfaust/', help='path to dataset')
+                    default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 point_size = 25
 args = parser.parse_args()
@@ -68,7 +68,7 @@ for epoch in range(args.train_epochs):
     for batch_idx, data in enumerate(train_dataloader):
 
         points = data['points'].cuda()
-        points2 = torch.roll(points, -1, dims=1).detach().clone()
+        points2 = torch.roll(points, -1, dims=1).clone().detach()
         points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
         points2 = points2[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
         point_ids = torch.randperm(args.n_points).cuda()
@@ -95,7 +95,8 @@ for epoch in range(args.train_epochs):
         iter = epoch * len(train_dataloader) + batch_idx
 
         loss_log_dict = {"acc": avg_acc, "losses/l1_loss": l1_loss.detach().cpu().numpy(),
-                         "losses/total_loss": loss.detach().cpu().numpy()}
+                         "losses/total_loss": loss.detach().cpu().numpy(),
+                         "idx_acc": (point_ids == max_ind).float().mean().detach().cpu().numpy()}
         log_scalars(writer, loss_log_dict, iter)
 
         print(f"Epoch {epoch} batch {batch_idx}: train loss {loss:.3f}")
@@ -124,7 +125,7 @@ for epoch in range(args.train_epochs):
             if test_batchind == len(test_dataloader):
                 test_enum = enumerate(test_dataloader, 0)
             points = data['points']
-            points2 = torch.roll(points, -1, dims=1).detach().clone()
+            points2 = torch.roll(points, -1, dims=1).clone().detach()
             points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
             points2 = points2[:, 0:-1, :, :].reshape(-1, args.n_points, 3) # remove first frame pair
             point_ids = torch.randperm(args.n_points).cuda()
@@ -144,7 +145,8 @@ for epoch in range(args.train_epochs):
             test_correct = (max_ind == point_ids).sum().detach().cpu().numpy()
             avg_acc = test_correct / (args.n_points*args.batch_size)
             loss_log_dict = {"acc": avg_acc, "losses/l1_loss": l1_loss.detach().cpu().numpy(),
-                        "losses/total_loss": loss.detach().cpu().numpy()}
+                        "losses/total_loss": loss.detach().cpu().numpy(),
+                         "idx_error": torch.abs(point_ids - max_ind).float().mean().detach().cpu().numpy()}
             log_scalars(test_writer, loss_log_dict, iter)
             max_corr = (max_ind[0].unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(
                 0).repeat([args.batch_size, 1, 1]).cuda()

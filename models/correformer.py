@@ -28,6 +28,38 @@ class CorreFormer(nn.Module):
         out1 = self.model(x1)
         out2 = self.model(x2)
 
-        corr = F.softmax(cosine_similarity(out2, out1), dim=-1)
-        _, max_ind = torch.max(corr, dim=-1)
-        return {'out1': out1, 'out2': out2, 'corr_mat': corr, 'corr_idx': max_ind}
+        corr21 = F.softmax(cosine_similarity(out2, out1), dim=-1)
+        # _, max_ind = torch.max(corr, dim=-1)
+        max_ind21 = torch.argmax(corr21, dim=-1)
+        corr12 = F.softmax(cosine_similarity(out2, out1), dim=-2)
+        max_ind12 = torch.argmax(corr12, dim=-2)
+        return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
+
+
+    def sort_points(self, x):
+        b, t, n, k = x.shape
+        x = x.cuda()
+        sorted_seq = x[:, [0], :, :]
+        sorted_frame = x[:, 0, :, :]
+        corr_pred = torch.arange(n)[None, None, :].cuda().repeat([b, 1, 1])
+        for frame_idx in range(t-1):
+            p1 = sorted_frame
+            p2 = x[:, frame_idx+1, :, :]
+            corre_out_dict = self.forward(p1, p2)
+            corr_idx12, corr_idx21 = corre_out_dict['corr_idx12'], corre_out_dict['corr_idx21']
+            sorted_frame = torch.gather(p2, 1, corr_idx12.unsqueeze(-1).repeat([1, 1, 3]))
+            sorted_seq = torch.concat([sorted_seq, sorted_frame.unsqueeze(1)], dim=1)
+            corr_pred = torch.concat([corr_pred, corr_idx21.unsqueeze(1)], axis=1)
+        return sorted_seq, corr_pred
+
+
+def get_correformer(correformer_path):
+    # load a correformer model from path
+    params_str = correformer_path.split("/")[-2].split("_")[2]
+    correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
+    correformer_nheads = int(params_str[params_str.index('h') + 1:])
+    correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
+                                   num_decoder_layers=1, dim_feedforward=1024).cuda()
+    correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
+    correformer.eval()
+    return correformer
