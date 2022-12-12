@@ -1,16 +1,17 @@
-# from modules import ISAB, PMA, SAB
-from torch.utils.tensorboard import SummaryWriter
 
+import numpy as np
+import sys
+import os
+sys.path.append('../')
+from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 import argparse
 # from data_spheres import SphereGenerator
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 import torch.nn.functional as F
-import numpy as np
-import sys
-import os
-sys.path.append('../')
+
+
 import visualization as vis
 from models.correformer import CorreFormer
 from utils import cosine_similarity
