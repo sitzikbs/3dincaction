@@ -15,8 +15,8 @@ DATASET_N_POINTS = 6890
 
 class DfaustActionClipsDataset(Dataset):
     def __init__(self, action_dataset_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
-                 shuffle_points='once', data_augmentation=False):
-        self.action_dataset = DfaustActionDataset(action_dataset_path, set)
+                 shuffle_points='once', data_augmentation=False, gender='female'):
+        self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender)
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
@@ -35,33 +35,8 @@ class DfaustActionClipsDataset(Dataset):
         else:
             raise ValueError("Unknown shuffle protocol")
 
-        # self.correformer = None
-        # if correforemer is not None:
-        #     params_str = correforemer.split("/")[-2].split("_")[2]
-        #     correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
-        #     correformer_nheads = int(params_str[params_str.index('h') + 1:])
-        #     self.correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
-        #                                    num_decoder_layers=1, dim_feedforward=1024).cuda()
-        #     self.correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
-        #     self.correformer.eval()
-
         self.clip_data()
 
-    # def sort_points(self, x):
-    #     t, n, k = x.shape
-    #     x = torch.Tensor(x).cuda()
-    #     sorted_seq = x[[0], :, :]
-    #     sorted_frame = x[[0], :, :]
-    #     corr_pred = torch.arange(n)[None, :].cuda()
-    #     for frame_idx in range(t-1):
-    #         p1 = sorted_frame
-    #         p2 = x[[frame_idx+1], :, :]
-    #         corre_out_dict = self.correformer(p1, p2)
-    #         corr_idx12, corr_idx21 = corre_out_dict['corr_idx12'], corre_out_dict['corr_idx21']
-    #         sorted_frame = torch.gather(p2, 1, corr_idx12.unsqueeze(2).repeat([1, 1, 3]))
-    #         sorted_seq = torch.concat([sorted_seq, sorted_frame], dim=0)
-    #         corr_pred = torch.concat([corr_pred, corr_idx21], axis=0)
-    #     return sorted_seq, corr_pred
 
     def chunks(self, lst, n):
         """Yield successive n-sized chunks from lst."""
@@ -198,11 +173,6 @@ class DfaustActionClipsDataset(Dataset):
 
         out_points = self.augment_points(points_seq)
 
-        # if self.correformer is not None:
-        #     with torch.no_grad():
-        #         sorted_out_points, corr_pred = self.sort_points(out_points)
-        # else:
-        #     corr_pred = []
 
         out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
                     'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx],
@@ -212,18 +182,29 @@ class DfaustActionClipsDataset(Dataset):
 class DfaustActionDataset(Dataset):
     # A dataset class for action sequences. No batch support since sequences are not of equal lengths.
     # batch is supported in the clip based version that clips the sequences into equal length clips
-    def __init__(self, dfaust_path,  set='train'):
-        # self.sids = ['50002', '50004', '50007', '50009', '50020',
-        # '50021', '50022', '50025', '50026', '50027']
-        #TODO: add support for male set
+    def __init__(self, dfaust_path,  set='train', gender='female'):
 
-        if set == 'train':
-            self.sids = ['50004', '50020', '50021', ]
-        elif set =='test':
-            self.sids = ['50022', '50025']
-        else:
-            raise ValueError("unsupported set")
-        self.data_filename = os.path.join(dfaust_path, 'registrations_f.hdf5')
+        #TODO: add support for male set
+        dataset_subdivision_dict = {'train': {'female': {'sids': ['50004', '50020', '50021'],
+                                                         'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5')]},
+                                              'male': {'sids': ['50002', '50007', '50009'],
+                                                         'filnames': [os.path.join(dfaust_path, 'registrations_m.hdf5')]},
+                                              'all': {'sids': ['50004', '50020', '50021', '50002', '50007', '50009'],
+                                                         'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5'),
+                                                                      os.path.join(dfaust_path, 'registrations_m.hdf5')]}
+                                              },
+                                    'test': {'female': {'sids': ['50022', '50025'],
+                                                        'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5')]},
+                                             'male': {'sids': ['50026', '50027'],
+                                                      'filnames': [os.path.join(dfaust_path, 'registrations_m.hdf5')]},
+                                             'all': {'sids': ['50022', '50025', '50026', '50027'],
+                                                     'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5'),
+                                                                  os.path.join(dfaust_path, 'registrations_m.hdf5')]}
+                                             }
+                                    }
+
+        self.sids = dataset_subdivision_dict[set][gender]['sids']
+        self.data_filename =  dataset_subdivision_dict[set][gender]['filnames']
         self.actions = ['chicken_wings',
                     'hips',
                     'jiggle_on_toes',
@@ -253,25 +234,26 @@ class DfaustActionDataset(Dataset):
 
 
     def load_data(self):
-        with h5py.File(self.data_filename, 'r') as f:
-            for id in self.sids:
-                for i, action in enumerate(self.actions):
-                    sidseq = id + '_' + action
-                    if sidseq in f:
-                        vertices = f[sidseq][()].transpose([2, 0, 1])
-                        faces = f['faces'][()]
-                        #scale to unit sphere centered at the first frame
-                        t = np.mean(vertices[0], axis=0)
-                        s = np.linalg.norm(np.max(np.abs(vertices[0] - t), axis=0))
-                        vertices = (vertices - t )/ s
+        for filename in self.data_filename:
+            with h5py.File(filename, 'r') as f:
+                for id in self.sids:
+                    for i, action in enumerate(self.actions):
+                        sidseq = id + '_' + action
+                        if sidseq in f:
+                            vertices = f[sidseq][()].transpose([2, 0, 1])
+                            faces = f['faces'][()]
+                            #scale to unit sphere centered at the first frame
+                            t = np.mean(vertices[0], axis=0)
+                            s = np.linalg.norm(np.max(np.abs(vertices[0] - t), axis=0))
+                            vertices = (vertices - t )/ s
 
-                        self.vertices.append(vertices)
-                        if self.faces is None:
-                            self.faces = faces
-                        self.labels.append(i)
-                        self.label_per_frame.append(i*np.ones(len(vertices)))
-                        self.sid_per_seq.append(sidseq)
-                        self.n_frames_per_seq[sidseq] = len(vertices)
+                            self.vertices.append(vertices)
+                            if self.faces is None:
+                                self.faces = faces
+                            self.labels.append(i)
+                            self.label_per_frame.append(i*np.ones(len(vertices)))
+                            self.sid_per_seq.append(sidseq)
+                            self.n_frames_per_seq[sidseq] = len(vertices)
 
     def get_dataset_statistics(self):
         n_frames_per_label = np.zeros(len(self.actions))

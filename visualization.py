@@ -117,8 +117,8 @@ def pc_seq_vis(verts, text=None, color=None):
     pl.show()
 
 
-def plot_pc_ov(verts, text=None, color=None):
-    pv.global_theme.cmap = 'glasby'
+def plot_pc_pv(verts, text=None, color=None):
+    pv.global_theme.cmap = 'cet_glasbey_bw'
     if color is None:
         color = 0.5*np.ones([len(verts), len(verts[0])])
 
