@@ -14,4 +14,4 @@ DIM=1024
 DATASET_PATH='/data1/datasets/dfaust/'
 
 
-python3 train_defaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS
+python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS
