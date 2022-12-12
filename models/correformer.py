@@ -31,9 +31,10 @@ class CorreFormer(nn.Module):
 
         corr21 = F.softmax(cosine_similarity(out2, out1), dim=-1)
         # _, max_ind = torch.max(corr, dim=-1)
-        max_ind21 = torch.argmax(corr21, dim=-1)
-        corr12 = F.softmax(cosine_similarity(out2, out1), dim=-2)
-        max_ind12 = torch.argmax(corr12, dim=-2)
+        with torch.no_grad():
+            max_ind21 = torch.argmax(corr21, dim=-1)
+            corr12 = F.softmax(cosine_similarity(out2, out1), dim=-2)
+            max_ind12 = torch.argmax(corr12, dim=-2)
         return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 

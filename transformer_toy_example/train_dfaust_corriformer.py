@@ -28,15 +28,16 @@ def log_scalars(writer, log_dict, iter):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=128)
+parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-5)
-parser.add_argument("--batch_size", type=int, default=16)
+parser.add_argument("--batch_size", type=int, default=4)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=16)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
+
 point_size = 25
 args = parser.parse_args()
 args.exp_name = f"dfaust_N{args.n_points}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
@@ -77,7 +78,7 @@ for epoch in range(args.train_epochs):
         gt_corr = (point_ids.unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(0).repeat([args.batch_size, 1, 1]).cuda()
 
         out_dict = model(points, points2)
-        out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx']
+        out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
         l1_loss = criterion(gt_corr, corr)
         l1_mask = torch.max(gt_corr, 1.0*(torch.rand(args.batch_size, args.n_points, args.n_points).cuda() < gt_corr.mean()))
@@ -134,7 +135,7 @@ for epoch in range(args.train_epochs):
             gt_corr = (point_ids.unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(0).repeat([args.batch_size, 1, 1]).cuda()
 
             out_dict = model(points, points2)
-            out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx']
+            out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
             l1_loss = criterion(gt_corr, corr)
             l1_mask = torch.max(gt_corr, 1.0*(torch.rand(args.batch_size, args.n_points, args.n_points).cuda() < gt_corr.mean()))
