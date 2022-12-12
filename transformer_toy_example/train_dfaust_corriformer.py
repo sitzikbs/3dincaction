@@ -57,7 +57,8 @@ test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batc
 test_enum = enumerate(test_dataloader, 0)
 
 # set up model
-model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1, dim_feedforward=1024)
+model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
+                    dim_feedforward=1024)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 criterion = torch.nn.MSELoss(reduction='none')

@@ -13,7 +13,8 @@ class CorreFormer(nn.Module):
         self.bn2 = nn.BatchNorm1d(128)
         self.bn3 = nn.BatchNorm1d(d_model)
         self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
-                                                num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward)
+                                                num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
+                                                batch_first=True)
 
     def model(self, x):
         x = x.permute(0, 2, 1)
@@ -36,21 +37,21 @@ class CorreFormer(nn.Module):
         return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 
-    def sort_points(self, x):
-        b, t, n, k = x.shape
-        x = x.cuda()
-        sorted_seq = x[:, [0], :, :]
-        sorted_frame = x[:, 0, :, :]
-        corr_pred = torch.arange(n)[None, None, :].cuda().repeat([b, 1, 1])
-        for frame_idx in range(t-1):
-            p1 = sorted_frame
-            p2 = x[:, frame_idx+1, :, :]
-            corre_out_dict = self.forward(p1, p2)
-            corr_idx12, corr_idx21 = corre_out_dict['corr_idx12'], corre_out_dict['corr_idx21']
-            sorted_frame = torch.gather(p2, 1, corr_idx12.unsqueeze(-1).repeat([1, 1, 3]))
-            sorted_seq = torch.concat([sorted_seq, sorted_frame.unsqueeze(1)], dim=1)
-            corr_pred = torch.concat([corr_pred, corr_idx21.unsqueeze(1)], axis=1)
-        return sorted_seq, corr_pred
+def sort_points(correformer, x):
+    b, t, n, k = x.shape
+    x = x.cuda()
+    sorted_seq = x[:, [0], :, :]
+    sorted_frame = x[:, 0, :, :]
+    corr_pred = torch.arange(n)[None, None, :].cuda().repeat([b, 1, 1])
+    for frame_idx in range(t-1):
+        p1 = sorted_frame
+        p2 = x[:, frame_idx+1, :, :]
+        corre_out_dict = correformer(p1, p2)
+        corr_idx12, corr_idx21 = corre_out_dict['corr_idx12'], corre_out_dict['corr_idx21']
+        sorted_frame = torch.gather(p2, 1, corr_idx12.unsqueeze(-1).repeat([1, 1, 3]))
+        sorted_seq = torch.concat([sorted_seq, sorted_frame.unsqueeze(1)], dim=1)
+        corr_pred = torch.concat([corr_pred, corr_idx21.unsqueeze(1)], axis=1)
+    return sorted_seq, corr_pred
 
 
 def get_correformer(correformer_path):
@@ -62,4 +63,5 @@ def get_correformer(correformer_path):
                                    num_decoder_layers=1, dim_feedforward=1024).cuda()
     correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
     correformer.eval()
+    correformer.train(False)
     return correformer

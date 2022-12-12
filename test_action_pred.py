@@ -15,6 +15,7 @@ from DfaustDataset import DfaustActionClipsDataset as Dataset
 import importlib.util
 import visualization
 import pathlib
+import models.correformer as cf
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -34,6 +35,9 @@ parser.add_argument('--set', type=str, default='test', help='test | train set to
 parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
+parser.add_argument('--correformer', type=str,
+                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
+                    help='None or path to correformer model')
 args = parser.parse_args()
 
 
@@ -60,23 +64,23 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     checkpoints = torch.load(model_path)
 
     if pc_model == 'pn1':
-        spec = importlib.util.spec_from_file_location("PointNet1", os.path.join(args.model_path, "pointnet.py"))
-        pointnet = importlib.util.module_from_spec(spec)
-        sys.modules["PointNet1"] = pointnet
-        spec.loader.exec_module(pointnet)
-        model = pointnet.PointNet1(k=num_classes, feature_transform=True)
+            spec = importlib.util.spec_from_file_location("PointNet1", os.path.join(args.model_path, "pointnet.py"))
+            pointnet = importlib.util.module_from_spec(spec)
+            sys.modules["PointNet1"] = pointnet
+            spec.loader.exec_module(pointnet)
+            model = pointnet.PointNet1(k=num_classes, feature_transform=True)
     elif pc_model == 'pn1_4d':
-        spec = importlib.util.spec_from_file_location("PointNet4D", os.path.join(args.model_path, "pointnet.py"))
-        pointnet = importlib.util.module_from_spec(spec)
-        sys.modules["PointNet4D"] = pointnet
-        spec.loader.exec_module(pointnet)
-        model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+            spec = importlib.util.spec_from_file_location("PointNet4D", os.path.join(args.model_path, "pointnet.py"))
+            pointnet = importlib.util.module_from_spec(spec)
+            sys.modules["PointNet4D"] = pointnet
+            spec.loader.exec_module(pointnet)
+            model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn1_4d_basic':
-        spec = importlib.util.spec_from_file_location("PointNet1Basic", os.path.join(args.model_path, "pointnet.py"))
-        pointnet = importlib.util.module_from_spec(spec)
-        sys.modules["PointNet1Basic"] = pointnet
-        spec.loader.exec_module(pointnet)
-        model = pointnet.PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+            spec = importlib.util.spec_from_file_location("PointNet1Basic", os.path.join(args.model_path, "pointnet.py"))
+            pointnet = importlib.util.module_from_spec(spec)
+            sys.modules["PointNet1Basic"] = pointnet
+            spec.loader.exec_module(pointnet)
+            model = pointnet.PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':
             spec = importlib.util.spec_from_file_location("PointNet2",
                                                           os.path.join(args.model_path, "pointnet2_cls_ssg.py"))
@@ -104,6 +108,10 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     model.cuda()
     model = nn.DataParallel(model)
 
+    # Load correspondance transformer
+    if args.correformer is not None:
+        correformer = cf.get_correformer(args.correformer)
+
     n_examples = 0
 
     # Iterate over data.
@@ -115,6 +123,9 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         model.train(False)
         # get the inputs
         inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
+        if correformer is not None:
+            with torch.no_grad():
+                inputs, _ = cf.sort_points(correformer, inputs)
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
         labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 

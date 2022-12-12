@@ -16,6 +16,8 @@ from tensorboardX import SummaryWriter
 from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1, PointNet1Basic
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
+import models.correformer as cf
+
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -40,7 +42,7 @@ parser.add_argument('--shuffle_points', type=str, default='each_frame', help='on
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=int, default=1, help='apply input data point augmentations')
 parser.add_argument('--correformer', type=str,
-                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16/000000.pt',
+                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
                     help='None or path to correformer model')
 
 args = parser.parse_args()
@@ -61,8 +63,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 
     # setup dataset
     train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=args.n_points,
-                            shuffle_points=args.shuffle_points, data_augmentation=data_augmentation,
-                            correforemer=args.correformer)
+                            shuffle_points=args.shuffle_points, data_augmentation=data_augmentation)
     print("Number of clips in the trainingset:{}".format(len(train_dataset)))
 
     if args.sampler == 'weighted':
@@ -75,7 +76,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
-                           shuffle_points=args.shuffle_points, correforemer=args.correformer)
+                           shuffle_points=args.shuffle_points)
     print("Number of clips in the testset:{}".format(len(test_dataset)))
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
@@ -96,6 +97,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     else:
         raise ValueError("point cloud architecture not supported. Check the pc_model input")
 
+    # Load correspondance transformer
+    if args.correformer is not None:
+        correformer = cf.get_correformer(args.correformer)
 
     if pretrained_model is not None:
         checkpoints = torch.load(pretrained_model)
@@ -161,6 +165,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             num_iter += 1
             # get the inputs
             inputs, labels = data['points'], data['labels']
+            if correformer is not None:
+                with torch.no_grad():
+                    inputs, _ = cf.sort_points(correformer, inputs)
             inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
             labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
@@ -210,6 +217,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels = data['points'], data['labels']
+                if correformer is not None:
+                    with torch.no_grad():
+                        inputs, _ = cf.sort_points(correformer, inputs)
                 inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
                 labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 

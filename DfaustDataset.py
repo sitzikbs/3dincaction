@@ -7,7 +7,7 @@ import numpy as np
 import random
 import json
 import pc_transforms as transforms
-import models.correformer as correformer
+import models.correformer as cf
 import torch
 
 
@@ -195,6 +195,7 @@ class DfaustActionClipsDataset(Dataset):
         else:
             shuffled_idxs = np.arange(DATASET_N_POINTS)[:self.n_points] #not shuffled
             points_seq = self.clip_verts[idx][self.idxs[:self.n_points], :]
+
         out_points = self.augment_points(points_seq)
 
         # if self.correformer is not None:
@@ -205,7 +206,7 @@ class DfaustActionClipsDataset(Dataset):
 
         out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
                     'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx],
-                    'corr_gt': shuffled_idxs}
+                    'corr_gt': shuffled_idxs, 'idx': idx}
         return out_dict
 
 class DfaustActionDataset(Dataset):
@@ -296,11 +297,11 @@ if __name__ == '__main__':
     dataset = DfaustActionClipsDataset(action_dataset_path='/home/sitzikbs/Datasets/dfaust/',
                                        frames_per_clip=16, set='train', n_points=1024, last_op='pad',
                                        shuffle_points='each_frame')
-    test_loader = DataLoader(dataset, batch_size=2, num_workers=2, shuffle=True, drop_last=True,
-                             multiprocessing_context='spawn')
+    test_loader = DataLoader(dataset, batch_size=2, num_workers=1, shuffle=False, drop_last=True)#,
+                             # multiprocessing_context='spawn')
 
 
-    correformer = correformer.get_correformer(correformer_path)
+    correformer = cf.get_correformer(correformer_path)
 
     for batch, data in enumerate(test_loader):
         verts, labels = data['points'], data['labels']
@@ -308,7 +309,7 @@ if __name__ == '__main__':
         #                            text=dataset.actions[int(labels.detach().cpu().numpy()[0])])
         corr_gt = data['corr_gt']
 
-        sorted_verts, corr_pred = correformer.sort_points(verts)
+        sorted_verts, corr_pred = cf.sort_points(correformer, verts)
 
         diff = torch.abs(corr_gt[[0]].squeeze() - corr_pred[[0]].detach().cpu().numpy())
         points_color = np.repeat(np.arange(len(verts[0][0]))[None, :], len(verts[0]), axis=0)
