@@ -58,6 +58,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     os.system('cp %s %s' % ('./models/pointnet.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pytorch_3dmfv.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('./models/correformer.py', logdir))  # backup the models files
 
     params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
     torch.save(args, params_filename)
@@ -99,7 +100,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
         raise ValueError("point cloud architecture not supported. Check the pc_model input")
 
     # Load correspondance transformer
-    if args.correformer is not None:
+    if not args.correformer == 'none':
         correformer = cf.get_correformer(args.correformer)
 
     if pretrained_model is not None:
@@ -166,7 +167,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             num_iter += 1
             # get the inputs
             inputs, labels = data['points'], data['labels']
-            if correformer is not None:
+            if not correformer == 'none':
                 with torch.no_grad():
                     inputs, _ = cf.sort_points(correformer, inputs)
             inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
@@ -218,7 +219,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels = data['points'], data['labels']
-                if correformer is not None:
+                if not correformer == 'none':
                     with torch.no_grad():
                         inputs, _ = cf.sort_points(correformer, inputs)
                 inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()

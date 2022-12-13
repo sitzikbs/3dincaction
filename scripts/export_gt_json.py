@@ -1,10 +1,11 @@
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 import json
 
+gender = 'all'
 dataset_path = '/home/sitzikbs/Datasets/dfaust'
-json_filename = '/home/sitzikbs/Datasets/dfaust/gt_segments_all.json'
-test_dataset = Dataset(dataset_path, frames_per_clip=64, set='test', n_points=2048, last_op='pad', gender='all')
-train_dataset = Dataset(dataset_path, frames_per_clip=64, set='train', n_points=2048, last_op='pad', gender='all')
+json_filename = '/home/sitzikbs/Datasets/dfaust/gt_segments_'+gender+'.json'
+test_dataset = Dataset(dataset_path, frames_per_clip=64, set='test', n_points=2048, last_op='pad', gender=gender)
+train_dataset = Dataset(dataset_path, frames_per_clip=64, set='train', n_points=2048, last_op='pad', gender=gender)
 
 json_dict_to_write = {"version": "VERSION 1.3"}
 

@@ -38,6 +38,8 @@ parser.add_argument('--visualize_results', type=int, default=False, help='visual
 parser.add_argument('--correformer', type=str,
                     default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
                     help='None or path to correformer model')
+parser.add_argument('--gender', type=str,
+                    default='female', help='female | male | all indicating which subset of the dataset to use')
 args = parser.parse_args()
 
 
@@ -54,7 +56,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     # test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=args.set, n_points=n_points, last_op='pad',
-                           shuffle_points=args.shuffle_points)
+                           shuffle_points=args.shuffle_points, gender=args.gender)
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
@@ -109,7 +111,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     model = nn.DataParallel(model)
 
     # Load correspondance transformer
-    if args.correformer is not None:
+    if not args.correformer =='none':
         correformer = cf.get_correformer(args.correformer)
 
     n_examples = 0
@@ -123,7 +125,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         model.train(False)
         # get the inputs
         inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
-        if correformer is not None:
+        if not correformer == 'none':
             with torch.no_grad():
                 inputs, _ = cf.sort_points(correformer, inputs)
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
