@@ -9,7 +9,7 @@ export GOMP_CPU_AFFINITY="95-191"
 
 #DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 DATASET_PATH='/data1/datasets/dfaust/'
-MODEL='pn1_4d_basic'
+MODEL='pn2'
 STEPS_PER_UPDATE=1
 N_FRAMES=64
 BATCH_SIZE=16
