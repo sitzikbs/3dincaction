@@ -14,9 +14,9 @@ class CorreFormer(nn.Module):
         self.bn3 = nn.BatchNorm1d(d_model)
         self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                 num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
-                                                batch_first=True)
+                                                batch_first=True, dropout=0.0)
 
-    def model(self, x):
+    def single_pass(self, x):
         x = x.permute(0, 2, 1)
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
@@ -26,8 +26,8 @@ class CorreFormer(nn.Module):
         return out
 
     def forward(self, x1, x2):
-        out1 = self.model(x1)
-        out2 = self.model(x2)
+        out1 = self.single_pass(x1)
+        out2 = self.single_pass(x2)
 
         corr21 = F.softmax(cosine_similarity(out2, out1), dim=-1)
         # _, max_ind = torch.max(corr, dim=-1)
@@ -66,3 +66,13 @@ def get_correformer(correformer_path):
     correformer.eval()
     correformer.train(False)
     return correformer
+
+
+def compute_corr_loss(gt_corr, corr):
+    # compute correspondance loss
+    b, n1, n2 = gt_corr.shape
+    l1_loss = (gt_corr - corr).square()
+    l1_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean()))
+    l1_loss = (l1_mask * l1_loss)
+    loss = l1_loss.mean()
+    return loss
