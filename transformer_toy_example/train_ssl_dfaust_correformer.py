@@ -81,7 +81,8 @@ for epoch in range(args.train_epochs):
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
         l1_loss = criterion(gt_corr, corr)
-        l1_mask = torch.max(gt_corr, 1.0*(torch.rand(args.batch_size, args.n_points, args.n_points).cuda() < gt_corr.mean()))
+        l1_mask = torch.max(gt_corr, 1.0*(torch.rand(args.batch_size, args.n_points,
+                                                     args.n_points).cuda() < gt_corr.mean()))
         l1_loss = (l1_mask * l1_loss).mean()
         loss = l1_loss
 
@@ -117,7 +118,7 @@ for epoch in range(args.train_epochs):
                 test_points = test_points[:, 0:-1, :, :].reshape(-1, args.n_points, 3)  # remove first frame pair
                 test_points2 = test_points2[:, 0:-1, :, :].reshape(-1, args.n_points, 3)  # remove first frame pair
                 test_point_ids = torch.randperm(args.n_points).cuda()
-                test_points2 = test_points2[:, point_ids, :]
+                test_points2 = test_points2[:, test_point_ids, :]
                 test_gt_corr = (test_point_ids.unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(
                     0).repeat([args.batch_size, 1, 1]).cuda()
 
