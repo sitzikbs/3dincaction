@@ -25,13 +25,15 @@ parser.add_argument('--results_path', type=str,
 parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/dfaust/',
                     help='path to ground truth action segments json file')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate')
+parser.add_argument('--gender', type=str,
+                    default='all', help='female | male | all indicating which subset of the dataset to use')
 parser.add_argument('--gt_segments_json_filename', type=str, default='gt_segments',
                     help='name of gt json filename to load')
 args = parser.parse_args()
 
 # load the gt and predicted data
 gt_json_path = os.path.join(args.dataset_path, args.gt_segments_json_filename)
-dataset = Dataset(args.dataset_path, set=args.set)
+dataset = Dataset(args.dataset_path, set=args.set, gender=args.gender)
 gt_labels = dataset.action_dataset.label_per_frame
 results_json = os.path.join(args.results_path, args.set + '_action_segments.json')
 results_npy = os.path.join(args.results_path, args.set + '_pred.npy')
