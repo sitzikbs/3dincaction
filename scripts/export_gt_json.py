@@ -1,7 +1,7 @@
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 import json
 
-gender = 'all'
+gender = 'male'
 dataset_path = '/home/sitzikbs/Datasets/dfaust'
 json_filename = '/home/sitzikbs/Datasets/dfaust/gt_segments_'+gender+'.json'
 test_dataset = Dataset(dataset_path, frames_per_clip=64, set='test', n_points=2048, last_op='pad', gender=gender)
