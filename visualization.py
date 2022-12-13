@@ -129,8 +129,8 @@ def plot_pc_pv(verts, text=None, color=None):
     # pl.add_mesh(pc, render_points_as_spheres=True)
     pl.show()
 
-def get_pc_pv_image(verts, text=None, color=None, point_size=50):
-    pv.global_theme.cmap = 'cet_glasbey_bw'
+def get_pc_pv_image(verts, text=None, color=None, point_size=50, cmap='cet_glasbey_bw'):
+    pv.global_theme.cmap = cmap
     if color is None:
         color = 0.5*np.ones([len(verts), len(verts[0])])
 

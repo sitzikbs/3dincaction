@@ -9,12 +9,9 @@ import torch.nn as nn
 import argparse
 # from data_spheres import SphereGenerator
 from DfaustDataset import DfaustActionClipsDataset as Dataset
-import torch.nn.functional as F
-
-
 import visualization as vis
 from models.correformer import CorreFormer
-from utils import cosine_similarity
+
 
 
 def log_images(writer,
@@ -41,6 +38,8 @@ parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=20)
+parser.add_argument('--gender', type=str,
+                    default='female', help='female | male | all indicating which subset of the dataset to use')
 
 point_size = 25
 args = parser.parse_args()
@@ -67,10 +66,11 @@ model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 criterion = torch.nn.MSELoss(reduction='none')
+eval_steps = 0
 
 for epoch in range(args.train_epochs):
     model.train()
-    losses, total, correct = [], 0, 0
+    losses = []
     for batch_idx, data in enumerate(train_dataloader):
 
         points = data['points'].cuda()
@@ -87,7 +87,6 @@ for epoch in range(args.train_epochs):
         l1_loss = criterion(gt_corr, corr)
         l1_mask = torch.max(gt_corr, 1.0*(torch.rand(args.batch_size, args.n_points, args.n_points).cuda() < gt_corr.mean()))
         l1_loss = (l1_mask * l1_loss).mean()
-
         loss = l1_loss
 
 
@@ -95,9 +94,9 @@ for epoch in range(args.train_epochs):
         loss.backward()
         optimizer.step()
 
-        total += args.n_points*args.batch_size
-        correct += (max_ind == point_ids).sum().detach().cpu().numpy()
-        avg_acc = correct / total
+        true_corr = max_ind == point_ids
+        correct = (true_corr).sum().detach().cpu().numpy()
+        avg_acc = correct / (args.n_points*args.batch_size)
         iter = epoch * len(train_dataloader) + batch_idx
 
         loss_log_dict = {"acc": avg_acc, "losses/l1_loss": l1_loss.detach().cpu().numpy(),
@@ -138,8 +137,8 @@ for epoch in range(args.train_epochs):
                 test_l1_loss = (test_l1_mask * test_l1_loss).mean()
                 test_loss = test_l1_loss
                 print(f"Epoch {epoch} batch {batch_idx}: test loss {test_loss:.3f}")
-
-                test_correct = (test_max_ind == test_point_ids).sum().detach().cpu().numpy()
+                test_true_corr = test_max_ind == test_point_ids
+                test_correct = (test_true_corr).sum().detach().cpu().numpy()
                 test_avg_acc = test_correct / (args.n_points * args.batch_size)
                 test_loss_log_dict = {"acc": test_avg_acc, "losses/l1_loss": test_l1_loss.detach().cpu().numpy(),
                                       "losses/total_loss": test_loss.detach().cpu().numpy(),
@@ -155,15 +154,19 @@ for epoch in range(args.train_epochs):
                                      color=np.arange(args.n_points), point_size=point_size).transpose(2, 0, 1)
         pc2_pv = vis.get_pc_pv_image(points2[0].detach().cpu().numpy(),  text=None,
                                      color=max_ind[0].detach().cpu().numpy(), point_size=point_size).transpose(2, 0, 1)
+        pc_diff_pv = vis.get_pc_pv_image(points2[0].detach().cpu().numpy(),  text=None,
+                                     color=torch.logical_not(true_corr[0]).detach().cpu().numpy(),
+                                         point_size=point_size, cmap='jet').transpose(2, 0, 1)
         image_log_dict = {"images/GT": gt_corr[0].unsqueeze(0).detach().cpu().numpy(),
                           "images/corr": corr[0].unsqueeze(0).detach().cpu().numpy(),
                           "images/diff": torch.abs(gt_corr[0] - corr[0]).unsqueeze(0).detach().cpu().numpy(),
                           "images/max": max_corr[0].unsqueeze(0).detach().cpu().numpy(),
                           "images/max_diff": torch.abs(gt_corr[0] - max_corr[0]).unsqueeze(0).detach().cpu().numpy(),
-                          "3D_corr_images/source": pc1_pv, "3D_corr_images/target": pc2_pv}
+                          "3D_corr_images/source": pc1_pv, "3D_corr_images/target": pc2_pv,
+                          "3D_corr_images/diff": pc_diff_pv}
         log_images(writer, image_log_dict, epoch)
         print(f"Epoch {epoch}: train loss {loss:.3f}")
-        writer.flush()
+
 
         # log test images
         test_max_corr = (test_max_ind[0].unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(
@@ -172,12 +175,16 @@ for epoch in range(args.train_epochs):
                                      point_size=point_size).transpose(2, 0, 1)
         test_pc2_pv = vis.get_pc_pv_image(test_points2[0].detach().cpu().numpy(), text=None,
                                      color=test_max_ind[0].detach().cpu().numpy(), point_size=point_size).transpose(2, 0, 1)
+        test_pc_diff_pv = vis.get_pc_pv_image(test_points2[0].detach().cpu().numpy(),  text=None,
+                                     color=torch.logical_not(test_true_corr[0]).detach().cpu().numpy(),
+                                         point_size=point_size, cmap='jet').transpose(2, 0, 1)
         test_image_log_dict = {"images/GT": test_gt_corr[0].unsqueeze(0).detach().cpu().numpy(),
                           "images/corr": test_corr[0].unsqueeze(0).detach().cpu().numpy(),
                           "images/diff": torch.abs(test_gt_corr[0] - test_corr[0]).unsqueeze(0).detach().cpu().numpy(),
                           "images/max": test_max_corr[0].unsqueeze(0).detach().cpu().numpy(),
                           "images/max_diff": torch.abs(test_gt_corr[0] - test_max_corr[0]).unsqueeze(0).detach().cpu().numpy(),
-                          "3D_corr_images/source": test_pc1_pv, "3D_corr_images/target": test_pc2_pv}
+                          "3D_corr_images/source": test_pc1_pv, "3D_corr_images/target": test_pc2_pv,
+                            "3D_corr_images/diff": test_pc_diff_pv}
         log_images(test_writer, test_image_log_dict, epoch)
 
         print("Saving model ...")

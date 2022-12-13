@@ -44,7 +44,8 @@ parser.add_argument('--data_augmentation', type=int, default=1, help='apply inpu
 parser.add_argument('--correformer', type=str,
                     default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
                     help='None or path to correformer model')
-
+parser.add_argument('--gender', type=str,
+                    default='female', help='female | male | all indicating which subset of the dataset to use')
 args = parser.parse_args()
 
 

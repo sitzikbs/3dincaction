@@ -38,6 +38,8 @@ parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=20)
+parser.add_argument('--gender', type=str,
+                    default='female', help='female | male | all indicating which subset of the dataset to use')
 point_size = 25
 args = parser.parse_args()
 
