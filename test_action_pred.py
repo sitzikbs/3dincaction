@@ -125,7 +125,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         model.train(False)
         # get the inputs
         inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
-        if not correformer == 'none':
+        if not args.correformer == 'none':
             with torch.no_grad():
                 inputs, _ = cf.sort_points(correformer, inputs)
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()

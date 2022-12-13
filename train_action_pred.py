@@ -167,7 +167,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             num_iter += 1
             # get the inputs
             inputs, labels = data['points'], data['labels']
-            if not correformer == 'none':
+            if not args.correformer == 'none':
                 with torch.no_grad():
                     inputs, _ = cf.sort_points(correformer, inputs)
             inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
@@ -219,7 +219,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels = data['points'], data['labels']
-                if not correformer == 'none':
+                if not args.correformer == 'none':
                     with torch.no_grad():
                         inputs, _ = cf.sort_points(correformer, inputs)
                 inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
