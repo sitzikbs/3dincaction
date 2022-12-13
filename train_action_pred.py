@@ -71,10 +71,10 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     if args.sampler == 'weighted':
         weights = train_dataset.make_weights_for_balanced_classes()
         sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=8,
                                                    pin_memory=True, drop_last=True, sampler=sampler)
     else:
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=8,
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
