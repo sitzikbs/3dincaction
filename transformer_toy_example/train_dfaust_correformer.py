@@ -39,9 +39,9 @@ def get_frame_pairs(points):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=128)
+parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-5)
-parser.add_argument("--batch_size", type=int, default=32)
+parser.add_argument("--batch_size", type=int, default=4)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=16)
 parser.add_argument("--train_epochs", type=int, default=500000)
@@ -50,7 +50,7 @@ parser.add_argument('--dataset_path', type=str,
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=1)
 parser.add_argument('--gender', type=str,
-                    default='female', help='female | male | all indicating which subset of the dataset to use')
+                    default='all', help='female | male | all indicating which subset of the dataset to use')
 
 point_size = 25
 args = parser.parse_args()
