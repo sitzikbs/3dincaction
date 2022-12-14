@@ -12,7 +12,7 @@ from DfaustDataset import DfaustActionClipsDataset as Dataset
 import visualization as vis
 from models.correformer import CorreFormer
 import models.correformer
-
+import utils
 
 def log_images(writer,
                log_dict, iter):
@@ -26,7 +26,7 @@ def log_scalars(writer, log_dict, iter):
         writer.add_scalar(key, log_dict[key], iter)
     writer.flush()
 
-def get_frame_pairs_train(points):
+def get_frame_pairs(points):
     # generate correspondance pairs by shuffling the points
     points2 = points.clone().detach()
     point_ids = torch.randperm(args.n_points).cuda()
@@ -35,7 +35,7 @@ def get_frame_pairs_train(points):
         [args.batch_size, 1, 1]).cuda()
     return points, points2, point_ids, gt_corr
 
-def get_frame_pairs_test(points):
+def get_frame_pairs_seq(points):
     # generate correspondance pairs by shifting the sequence by one frame
     points2 = torch.roll(points, -1, dims=1).clone().detach()
     points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3)  # remove first frame pair
@@ -48,9 +48,9 @@ def get_frame_pairs_test(points):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=1024)
-parser.add_argument("--learning_rate", type=float, default=1e-5)
-parser.add_argument("--batch_size", type=int, default=4)
+parser.add_argument("--n_points", type=int, default=128)
+parser.add_argument("--learning_rate", type=float, default=1e-4)
+parser.add_argument("--batch_size", type=int, default=32)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=16)
 parser.add_argument("--train_epochs", type=int, default=500000)
@@ -64,14 +64,15 @@ point_size = 25
 args = parser.parse_args()
 
 args.exp_name = f"ssl_N{args.n_points}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
-log_dir = "./log_ssl/" + args.exp_name
+log_dir = "./log/" + args.exp_name
 model_path = log_dir + "/model"
 writer = SummaryWriter(os.path.join(log_dir, 'train'))
 test_writer = SummaryWriter(os.path.join(log_dir, 'test'))
 
 # Set up data
-train_dataset = NoiseGenerator(args.n_points, radius=0.5, n_samples=512, sigma=0.3)
-
+# train_dataset = NoiseGenerator(args.n_points, radius=0.5, n_samples=512, sigma=0.3)
+train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip, set='test', n_points=args.n_points,
+                       shuffle_points='each', gender=args.gender) # in SSL you can train on the test set
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0,
                                                pin_memory=True, shuffle=True, drop_last=True)
 test_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='test', n_points=args.n_points,
@@ -94,7 +95,10 @@ for epoch in range(args.train_epochs):
     for batch_idx, data in enumerate(train_dataloader):
 
         points = data['points'].cuda()
-        points, points2, point_ids, gt_corr = get_frame_pairs_train(points)
+        points = utils.local_distort(points, r=0.1)
+        # points, points2, point_ids, gt_corr = get_frame_pairs_train(points)
+        points = points.cuda()
+        points, points2, point_ids, gt_corr = get_frame_pairs(points)
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
@@ -127,7 +131,7 @@ for epoch in range(args.train_epochs):
                 if test_batchind == len(test_dataloader) - 1:
                     test_enum = enumerate(test_dataloader, 0)
                 test_points = test_data['points']
-                test_points, test_points2, test_point_ids, test_gt_corr = get_frame_pairs_test(test_points)
+                test_points, test_points2, test_point_ids, test_gt_corr = get_frame_pairs_seq(test_points)
                 test_out_dict = model(test_points, test_points2)
                 test_out1, test_out2, test_corr, test_max_ind = test_out_dict['out1'], test_out_dict['out2'], \
                     test_out_dict['corr_mat'], test_out_dict['corr_idx21']

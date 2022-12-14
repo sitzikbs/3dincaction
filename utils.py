@@ -7,6 +7,8 @@ import importlib
 import torch
 from torch.autograd import grad
 import os
+from scipy.spatial import KDTree
+# import pytorch3d
 
 def squeeze_class_names(class_names):
     """
@@ -521,3 +523,36 @@ def cosine_similarity(x, y):
 
   # Return the cosine similarity
   return sim
+
+
+def local_distort(points, r=0.1, ratio=0.1):
+    b, n, _ = points.size()
+    n_ratio = int(ratio*n)
+
+    # Introfuce perturbations:
+    # Select a random subset of the points to distort
+    subset = torch.randperm(n)[:n_ratio]
+
+    # Add a random offset to the selected points to distort them
+    points[:, subset, :] += torch.rand((n_ratio, 3)) * 0.05
+
+    #make local distortions
+    ## TODO use pytorch3d instead of scipy to allow ball query on gpu - ops not recognized. probably environment issue with torchvision
+    # translation_vec = torch.rand(b, 1, 3) * 0.05
+    # query_points = points[torch.arange(b), subset, :].unsqueeze(1)
+    # nn_idxs = pytorch3d.ops.ball_query(points, query_points, radius=r)
+    points = points.cpu().numpy()
+    subset = torch.randperm(n)[:b]
+    translation_vec = np.random.rand(b, 3) * 0.05
+
+    for i, pts in enumerate(points):
+        tree = KDTree(pts)
+        nn_idx = tree.query_ball_point(points[i, subset[i], :], r=r)
+        if nn_idx:  # neighbor list not empty
+            points[i, nn_idx, :] += translation_vec[i]
+    return torch.tensor(points)
+
+
+if __name__ == '__main__':
+    points = torch.rand(16, 1000, 3)
+    new_points = local_distort(points, r=0.1)
