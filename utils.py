@@ -525,16 +525,16 @@ def cosine_similarity(x, y):
   return sim
 
 
-def local_distort(points, r=0.1, ratio=0.1):
+def local_distort(points, r=0.1, ratio=0.1, sigma=0.05):
     b, n, _ = points.size()
     n_ratio = int(ratio*n)
 
-    # Introfuce perturbations:
-    # Select a random subset of the points to distort
-    subset = torch.randperm(n)[:n_ratio]
-
-    # Add a random offset to the selected points to distort them
-    points[:, subset, :] += torch.rand((n_ratio, 3)) * 0.05
+    # # Introfuce perturbations:
+    # # Select a random subset of the points to distort
+    # subset = torch.randperm(n)[:n_ratio]
+    #
+    # # Add a random offset to the selected points to distort them
+    # points[:, subset, :] += torch.rand((n_ratio, 3)) * sigma
 
     #make local distortions
     ## TODO use pytorch3d instead of scipy to allow ball query on gpu - ops not recognized. probably environment issue with torchvision
@@ -543,7 +543,7 @@ def local_distort(points, r=0.1, ratio=0.1):
     # nn_idxs = pytorch3d.ops.ball_query(points, query_points, radius=r)
     points = points.cpu().numpy()
     subset = torch.randperm(n)[:b]
-    translation_vec = np.random.rand(b, 3) * 0.05
+    translation_vec = np.random.rand(b, 3) * sigma
 
     for i, pts in enumerate(points):
         tree = KDTree(pts)

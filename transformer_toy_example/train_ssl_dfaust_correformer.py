@@ -28,7 +28,7 @@ def log_scalars(writer, log_dict, iter):
 
 def get_frame_pairs(points):
     # generate correspondance pairs by shuffling the points
-    points2 = points.clone().detach()
+    points2 = points.detach().clone()
     point_ids = torch.randperm(args.n_points).cuda()
     points2 = points2[:, point_ids, :]
     gt_corr = (point_ids.unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(0).repeat(
@@ -94,11 +94,13 @@ for epoch in range(args.train_epochs):
     losses = []
     for batch_idx, data in enumerate(train_dataloader):
 
-        points = data['points'].cuda()
-        points = utils.local_distort(points, r=0.1)
+        points = data['points']
         # points, points2, point_ids, gt_corr = get_frame_pairs_train(points)
+
+        points, points2, point_ids, gt_corr = get_frame_pairs(points.squeeze())
+        points2 = utils.local_distort(points2, r=0.1)
+
         points = points.cuda()
-        points, points2, point_ids, gt_corr = get_frame_pairs(points)
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
