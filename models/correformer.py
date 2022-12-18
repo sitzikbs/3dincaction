@@ -61,8 +61,9 @@ def get_correformer(correformer_path):
     params_str = correformer_path.split("/")[-2].split("_")[2]
     correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
     correformer_nheads = int(params_str[params_str.index('h') + 1:])
+    correformer_feedforward = int(params_str[params_str.index('dff') + 1:])
     correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
-                                   num_decoder_layers=1, dim_feedforward=1024).cuda()
+                                   num_decoder_layers=1, dim_feedforward=correformer_feedforward).cuda()
     correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
     correformer.eval()
     correformer.train(False)
