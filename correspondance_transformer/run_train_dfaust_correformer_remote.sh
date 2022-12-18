@@ -10,8 +10,9 @@ export GOMP_CPU_AFFINITY="1-96"
 NPOINTS=1024
 BATCH_SIZE=128
 NHEADS=4
-DIM=256
+DIM=1024
+DFF=256
 DATASET_PATH='/data1/datasets/dfaust/'
 
 
-python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS
+python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS --d_feedforward $DFF

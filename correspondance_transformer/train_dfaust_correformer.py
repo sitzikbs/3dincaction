@@ -43,6 +43,7 @@ parser.add_argument("--n_points", type=int, default=128)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
 parser.add_argument("--batch_size", type=int, default=32)
 parser.add_argument("--dim", type=int, default=1024)
+parser.add_argument("--d_feedforward", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=16)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
@@ -54,7 +55,7 @@ parser.add_argument('--gender', type=str,
 
 point_size = 25
 args = parser.parse_args()
-args.exp_name = f"dfaust_N{args.n_points}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
+args.exp_name = f"dfaust_N{args.n_points}_dff{args.d_feedforward}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
 log_dir = "./log/" + args.exp_name
 model_path = log_dir + "/model"
 writer = SummaryWriter(os.path.join(log_dir, 'train'))
@@ -77,7 +78,7 @@ test_enum = enumerate(test_dataloader, 0)
 
 # set up model
 model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
-                    dim_feedforward=1024)
+                    dim_feedforward=args.d_feedforward)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 
