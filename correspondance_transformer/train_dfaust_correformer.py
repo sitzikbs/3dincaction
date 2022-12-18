@@ -61,7 +61,8 @@ writer = SummaryWriter(os.path.join(log_dir, 'train'))
 test_writer = SummaryWriter(os.path.join(log_dir, 'test'))
 os.system('cp %s %s' % (__file__, log_dir))  # backup the current training file
 os.system('cp %s %s' % ('../models/correformer.py', log_dir))  # backup the models files
-
+params_filename = os.path.join(log_dir, 'params.pth')  # backup parameters file
+torch.save(args, params_filename)
 
 # Set up data
 train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='train', n_points=args.n_points,

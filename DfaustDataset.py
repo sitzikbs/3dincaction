@@ -182,7 +182,7 @@ class DfaustActionClipsDataset(Dataset):
 class DfaustActionDataset(Dataset):
     # A dataset class for action sequences. No batch support since sequences are not of equal lengths.
     # batch is supported in the clip based version that clips the sequences into equal length clips
-    def __init__(self, dfaust_path,  set='train', gender='female', n_points=DATASET_N_POINTS, shuffule_points='none'):
+    def __init__(self, dfaust_path,  set='train', gender='female', n_points=DATASET_N_POINTS, shuffle_points='none'):
 
         dataset_subdivision_dict = {'train': {'female': {'sids': ['50004', '50020', '50021'],
                                                          'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5')]},
@@ -228,7 +228,7 @@ class DfaustActionDataset(Dataset):
         self.seq_idx = None  # stores the sequence index for every clip
 
         self.n_points = n_points
-        self.shuffle_points = shuffule_points
+        self.shuffle_points = shuffle_points
         self.idxs = np.arange(DATASET_N_POINTS)
         self.randomizer = random.Random(0)
         if self.shuffle_points == 'once':
@@ -289,12 +289,12 @@ class DfaustActionDataset(Dataset):
             shuffled_idxs = np.arange(DATASET_N_POINTS)
             random.shuffle(shuffled_idxs)
             points_seq = self.vertices[idx][:, shuffled_idxs[:self.n_points]]
-            shuffled_idxs = np.array([np.random.permutation(np.arange(self.n_points)) for _ in range(self.frames_per_clip-1)])[:, :, None]
+            shuffled_idxs = np.array([np.random.permutation(np.arange(self.n_points)) for _ in range(len(self.vertices[idx])-1)])[:, :, None]
             shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None], axis=0) # make sure thefirst frame indices are unchanged (they are refs)
             points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
         else:
             shuffled_idxs = np.arange(DATASET_N_POINTS)[:self.n_points]  # not shuffled
-            points_seq = self.vertices[idx][shuffled_idxs[:self.n_points], :]
+            points_seq = self.vertices[idx][:, shuffled_idxs, :]
 
         out_dict = {'points': points_seq, 'labels': self.labels[idx], 'seq_idx': idx, 'corr_gt': shuffled_idxs}
         return out_dict
