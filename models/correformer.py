@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from utils import cosine_similarity
 
 class CorreFormer(nn.Module):
-    def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256):
+    def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256, twosided=True):
         super(CorreFormer, self).__init__()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
@@ -15,6 +15,7 @@ class CorreFormer(nn.Module):
         self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                 num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
                                                 batch_first=True, dropout=0.0)
+        self.twosided = twosided
 
     def single_pass(self, x):
         x = x.permute(0, 2, 1)
@@ -34,8 +35,11 @@ class CorreFormer(nn.Module):
         # _, max_ind = torch.max(corr, dim=-1)
         with torch.no_grad():
             max_ind21 = torch.argmax(corr21, dim=-1)
-            corr12 = F.softmax(sim_mat, dim=-2)
-            max_ind12 = torch.argmax(corr12, dim=-2)
+            if self.twosided:
+                corr12 = F.softmax(sim_mat, dim=-2)
+                max_ind12 = torch.argmax(corr12, dim=-2)
+            else:
+                max_ind12 = []
         return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 
@@ -58,10 +62,11 @@ def sort_points(correformer, x):
 
 def get_correformer(correformer_path):
     # load a correformer model from path
+    #TODO change this to load the parameter file instead of parsing the dir name
     params_str = correformer_path.split("/")[-2].split("_")[2]
     correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
     correformer_nheads = int(params_str[params_str.index('h') + 1:])
-    correformer_feedforward = int(params_str[params_str.index('dff') + 1:])
+    correformer_feedforward = int(params_str[params_str.index('ff') + 2:params_str.index('d')])
     correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
                                    num_decoder_layers=1, dim_feedforward=correformer_feedforward).cuda()
     correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])

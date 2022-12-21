@@ -58,7 +58,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=args.set, n_points=n_points, last_op='pad',
                            shuffle_points=args.shuffle_points, gender=args.gender)
 
-    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8,
                                                   pin_memory=True)
     num_classes = test_dataset.action_dataset.num_classes
 

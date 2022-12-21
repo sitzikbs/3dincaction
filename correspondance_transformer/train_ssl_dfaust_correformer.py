@@ -48,12 +48,12 @@ def get_frame_pairs_seq(points):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=128)
-parser.add_argument("--learning_rate", type=float, default=1e-4)
-parser.add_argument("--batch_size", type=int, default=32)
-parser.add_argument("--dim", type=int, default=1024)
-parser.add_argument("--d_feedforward", type=int, default=1024)
-parser.add_argument("--n_heads", type=int, default=16)
+parser.add_argument("--n_points", type=int, default=1024)
+parser.add_argument("--learning_rate", type=float, default=1e-6)
+parser.add_argument("--batch_size", type=int, default=24)
+parser.add_argument("--dim", type=int, default=128)
+parser.add_argument("--d_feedforward", type=int, default=128)
+parser.add_argument("--n_heads", type=int, default=4)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
@@ -64,27 +64,31 @@ parser.add_argument('--gender', type=str,
 point_size = 25
 args = parser.parse_args()
 
-args.exp_name = f"ssl_N{args.n_points}_dff{args.d_feedforward}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
+args.exp_name = f"ssl_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
 log_dir = "./log/" + args.exp_name
 model_path = log_dir + "/model"
 writer = SummaryWriter(os.path.join(log_dir, 'train'))
 test_writer = SummaryWriter(os.path.join(log_dir, 'test'))
+os.system('cp %s %s' % (__file__, log_dir))  # backup the current training file
+os.system('cp %s %s' % ('../models/correformer.py', log_dir))  # backup the models files
+params_filename = os.path.join(log_dir, 'params.pth')  # backup parameters file
+torch.save(args, params_filename)
 
 # Set up data
-# train_dataset = NoiseGenerator(args.n_points, radius=0.5, n_samples=512, sigma=0.3)
+# train_dataset = NoiseGenerator(args.n_points, radius=0.5, n_samples=8192, sigma=0.3)
 train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip, set='test', n_points=args.n_points,
                        shuffle_points='each', gender=args.gender) # in SSL you can train on the test set
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0,
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=8,
                                                pin_memory=True, shuffle=True, drop_last=True)
 test_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='test', n_points=args.n_points,
                        shuffle_points='each', gender=args.gender)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0,
+test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8,
                                               pin_memory=True, drop_last=True)
 test_enum = enumerate(test_dataloader, 0)
 
 # set up model
 model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
-                    dim_feedforward=args.d_feedforward)
+                    dim_feedforward=args.d_feedforward, twosided=False)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 
@@ -96,10 +100,10 @@ for epoch in range(args.train_epochs):
     for batch_idx, data in enumerate(train_dataloader):
 
         points = data['points']
-        # points, points2, point_ids, gt_corr = get_frame_pairs_train(points)
+        # points, points2, point_ids, gt_corr = get_frame_pairs(points)
 
         points, points2, point_ids, gt_corr = get_frame_pairs(points.squeeze())
-        points2 = utils.local_distort(points2, r=0.1)
+        points2 = utils.local_distort(points2, r=0.2, ratio=0.15, sigma=0.1)
 
         points = points.cuda()
         out_dict = model(points, points2)

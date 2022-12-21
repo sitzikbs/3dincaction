@@ -15,10 +15,10 @@ POINTS_SHUFFLE='each_frame'
 SAMPLER='weighted'
 AUGMENT=1
 
-LOGDIR='./log/dfaust_'$GENDER'_'$MODEL'_f'$N_FRAMES'_p'$N_POINTS'_shuffle_'$POINTS_SHUFFLE'_aug'$AUGMENT'_b'$BATCH_SIZE'_u'$STEPS_PER_UPDATE'/'
+LOGDIR='./log/dfaust_correformer_'$GENDER'_'$MODEL'_f'$N_FRAMES'_p'$N_POINTS'_shuffle_'$POINTS_SHUFFLE'_aug'$AUGMENT'_b'$BATCH_SIZE'_u'$STEPS_PER_UPDATE'/'
 SET='test'
 GT_JSON='gt_segments_'$GENDER'.json'
-CORREFORMER='none'
+CORREFORMER='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt'
 
 python3 train_action_pred.py --dataset_path $DATASET_PATH --pc_model $MODEL --steps_per_update $STEPS_PER_UPDATE --frames_per_clip $N_FRAMES --batch_size $BATCH_SIZE --shuffle_points $POINTS_SHUFFLE --logdir $LOGDIR --n_epochs $N_EPOCHS --n_points $N_POINTS --sampler $SAMPLER --data_augmentation $AUGMENT --gender $GENDER --correformer $CORREFORMER
 python3 test_action_pred.py --dataset_path $DATASET_PATH --pc_model $MODEL --frames_per_clip $N_FRAMES --batch_size $TEST_BATCH_SIZE --shuffle_points $POINTS_SHUFFLE --n_points $N_POINTS --model $(printf %06d $TEST_ITER).pt --model_path $LOGDIR --set $SET --visualize_results 0 --gender $GENDER --correformer $CORREFORMER

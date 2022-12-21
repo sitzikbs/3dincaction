@@ -525,7 +525,7 @@ def cosine_similarity(x, y):
   return sim
 
 
-def local_distort(points, r=0.1, ratio=0.1, sigma=0.05):
+def local_distort(points, r=0.1, ratio=0.15, sigma=0.05):
     b, n, _ = points.size()
     n_ratio = int(ratio*n)
 
@@ -536,7 +536,7 @@ def local_distort(points, r=0.1, ratio=0.1, sigma=0.05):
     # # Add a random offset to the selected points to distort them
     # points[:, subset, :] += torch.rand((n_ratio, 3)) * sigma
 
-    #make local distortions
+    # make local distortions
     ## TODO use pytorch3d instead of scipy to allow ball query on gpu - ops not recognized. probably environment issue with torchvision
     # translation_vec = torch.rand(b, 1, 3) * 0.05
     # query_points = points[torch.arange(b), subset, :].unsqueeze(1)
@@ -547,9 +547,12 @@ def local_distort(points, r=0.1, ratio=0.1, sigma=0.05):
 
     for i, pts in enumerate(points):
         tree = KDTree(pts)
-        nn_idx = tree.query_ball_point(points[i, subset[i], :], r=r)
-        if nn_idx:  # neighbor list not empty
-            points[i, nn_idx, :] += translation_vec[i]
+        # nn_idx = tree.query_ball_point(points[i, subset[i], :], r=r) # distort ball of nn
+
+        _, nn_idx = tree.query(points[i, subset[i], :], k=n_ratio) #distort knn
+        points[i, nn_idx, :] += translation_vec[i]
+        # if nn_idx:  # neighbor list not empty
+        #     points[i, nn_idx, :] += translation_vec[i]
     return torch.tensor(points)
 
 

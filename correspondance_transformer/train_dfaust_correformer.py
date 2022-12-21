@@ -55,7 +55,7 @@ parser.add_argument('--gender', type=str,
 
 point_size = 25
 args = parser.parse_args()
-args.exp_name = f"dfaust_N{args.n_points}_dff{args.d_feedforward}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
+args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_lr{args.learning_rate}bs{args.batch_size}"
 log_dir = "./log/" + args.exp_name
 model_path = log_dir + "/model"
 writer = SummaryWriter(os.path.join(log_dir, 'train'))
@@ -68,11 +68,11 @@ torch.save(args, params_filename)
 # Set up data
 train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='train', n_points=args.n_points,
                         shuffle_points='each', data_augmentation=False, gender=args.gender)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0,
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=8,
                                                pin_memory=True, shuffle=True, drop_last=True)
 test_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='test', n_points=args.n_points,
                        shuffle_points='each', gender=args.gender)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0,
+test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8,
                                               pin_memory=True, drop_last=True)
 test_enum = enumerate(test_dataloader, 0)
 

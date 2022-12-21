@@ -10,13 +10,13 @@ from models.sinkhorn import SinkhornCorr
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--method', type=str, default='sinkhorn', help='nn  | sinkhorn | transformer ')
+parser.add_argument('--method', type=str, default='transformer', help='nn  | sinkhorn | transformer ')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=1, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024_d1024h8_lr0.0001bs32/',
+parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000840.pt', help='path to model save dir')
+parser.add_argument('--model', type=str, default='001290.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')

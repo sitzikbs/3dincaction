@@ -42,7 +42,7 @@ parser.add_argument('--shuffle_points', type=str, default='each_frame', help='on
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=int, default=1, help='apply input data point augmentations')
 parser.add_argument('--correformer', type=str,
-                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
+                    default='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt',
                     help='None or path to correformer model')
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')
@@ -71,10 +71,10 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     if args.sampler == 'weighted':
         weights = train_dataset.make_weights_for_balanced_classes()
         sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=8,
                                                    pin_memory=True, drop_last=True, sampler=sampler)
     else:
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=8,
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
