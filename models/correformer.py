@@ -2,9 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utils import cosine_similarity
+from models.point_transformer_pytorch import PointTransformerLayer
+
 
 class CorreFormer(nn.Module):
-    def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256, twosided=True):
+    def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
+                 twosided=True, transformer_type='none'):
         super(CorreFormer, self).__init__()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
@@ -12,18 +15,28 @@ class CorreFormer(nn.Module):
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(128)
         self.bn3 = nn.BatchNorm1d(d_model)
-        self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
-                                                num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
-                                                batch_first=True, dropout=0.0)
+        self.transformer_type = transformer_type
+        if self.transformer_type == 'point':
+            # only the 16 nearest neighbors would be attended to for each point
+            self.transformer = PointTransformerLayer(dim=dim_feedforward,  pos_mlp_hidden_dim=d_model,
+                                                      attn_mlp_hidden_mult=nhead, num_neighbors=16)
+        else:
+            self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
+                                                    num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
+                                                    batch_first=True, dropout=0.0)
         self.twosided = twosided
 
     def single_pass(self, x):
-        x = x.permute(0, 2, 1)
-        x = F.relu(self.bn1(self.conv1(x)))
+        points = x.permute(0, 2, 1)
+        x = F.relu(self.bn1(self.conv1(points)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.bn3(self.conv3(x))
         x = x.permute(0, 2, 1)
-        out = self.transformer(x, x)
+        if self.transformer_type == 'point':
+
+            out = self.transformer(x.permute(0, 2, 1), points.permute(0, 2, 1))
+        else:
+            out = self.transformer(x, x)
         return out
 
     def forward(self, x1, x2):
