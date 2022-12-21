@@ -39,9 +39,9 @@ def get_frame_pairs(points):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=128)
+parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-5)
-parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--batch_size", type=int, default=48)
 parser.add_argument("--dim", type=int, default=128)
 parser.add_argument("--d_feedforward", type=int, default=128)
 parser.add_argument("--n_heads", type=int, default=16)
@@ -53,7 +53,9 @@ parser.add_argument("--eval_steps", type=int, default=1)
 parser.add_argument('--gender', type=str,
                     default='all', help='female | male | all indicating which subset of the dataset to use')
 parser.add_argument('--transformer_type', type=str,
-                    default='point', help='point | none - use point transformer or default pytorch implementation')
+                    default='ptr', help='plr | ptr | none - use point transformer layer (plr)'
+                                        ' or point transformer full segmentation architecture (ptr)'
+                                        'or none which is the default pytorch transformer implementation')
 point_size = 25
 args = parser.parse_args()
 args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}lr{args.learning_rate}bs{args.batch_size}"
@@ -79,7 +81,8 @@ test_enum = enumerate(test_dataloader, 0)
 
 # set up model
 model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
-                    dim_feedforward=args.d_feedforward, transformer_type=args.transformer_type)
+                    dim_feedforward=args.d_feedforward, transformer_type=args.transformer_type, twosided=False,
+                    n_points=args.n_points)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 

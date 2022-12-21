@@ -123,7 +123,11 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
     S = npoint
     fps_idx = farthest_point_sample(xyz, npoint) # [B, npoint, C]
     new_xyz = index_points(xyz, fps_idx)
-    idx = query_ball_point(radius, nsample, xyz, new_xyz)
+
+    # idx = query_ball_point(radius, nsample, xyz, new_xyz)
+    dists = square_distance(new_xyz, xyz)  # B x npoint x N
+    idx = dists.argsort()[:, :, :nsample]
+
     grouped_xyz = index_points(xyz, idx) # [B, npoint, nsample, C]
     grouped_xyz_norm = grouped_xyz - new_xyz.view(B, S, 1, C)
 
@@ -423,3 +427,42 @@ class PointNetFeaturePropagation(nn.Module):
             new_points = F.relu(bn(conv(new_points)))
         return new_points
 
+
+class PointNetSetAbstractionOriginal(nn.Module):
+    def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all, knn=False):
+        super(PointNetSetAbstractionOriginal, self).__init__()
+        self.npoint = npoint
+        self.radius = radius
+        self.nsample = nsample
+        self.knn = knn
+        self.mlp_convs = nn.ModuleList()
+        self.mlp_bns = nn.ModuleList()
+        last_channel = in_channel
+        for out_channel in mlp:
+            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
+            self.mlp_bns.append(nn.BatchNorm2d(out_channel))
+            last_channel = out_channel
+        self.group_all = group_all
+
+    def forward(self, xyz, points):
+        """
+        Input:
+            xyz: input points position data, [B, N, C]
+            points: input points data, [B, N, C]
+        Return:
+            new_xyz: sampled points position data, [B, S, C]
+            new_points_concat: sample points feature data, [B, S, D']
+        """
+        if self.group_all:
+            new_xyz, new_points = sample_and_group_all(xyz, points)
+        else:
+            new_xyz, new_points = sample_and_group(self.npoint, self.radius, self.nsample, xyz, points)
+        # new_xyz: sampled points position data, [B, npoint, C]
+        # new_points: sampled points data, [B, npoint, nsample, C+D]
+        new_points = new_points.permute(0, 3, 2, 1) # [B, C+D, nsample,npoint]
+        for i, conv in enumerate(self.mlp_convs):
+            bn = self.mlp_bns[i]
+            new_points =  F.relu(bn(conv(new_points)))
+
+        new_points = torch.max(new_points, 2)[0].transpose(1, 2)
+        return new_xyz, new_points

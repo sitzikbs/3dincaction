@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils import cosine_similarity
 from models.point_transformer_pytorch import PointTransformerLayer
-
+from models.point_transformer_repro import PointTransformerSeg
 
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
-                 twosided=True, transformer_type='none'):
+                 twosided=True, transformer_type='none', n_points=1024):
         super(CorreFormer, self).__init__()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
@@ -16,10 +16,13 @@ class CorreFormer(nn.Module):
         self.bn2 = nn.BatchNorm1d(128)
         self.bn3 = nn.BatchNorm1d(d_model)
         self.transformer_type = transformer_type
-        if self.transformer_type == 'point':
+        if self.transformer_type == 'plr':
             # only the 16 nearest neighbors would be attended to for each point
             self.transformer = PointTransformerLayer(dim=dim_feedforward,  pos_mlp_hidden_dim=d_model,
                                                       attn_mlp_hidden_mult=nhead, num_neighbors=16)
+        elif self.transformer_type == 'ptr':
+            self.transformer = PointTransformerSeg(nneighbor=16, npoints=n_points, nblocks=4,
+                                                   n_c=dim_feedforward, d_points=3, transformer_dim=dim_feedforward)
         else:
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
@@ -28,14 +31,19 @@ class CorreFormer(nn.Module):
 
     def single_pass(self, x):
         points = x.permute(0, 2, 1)
-        x = F.relu(self.bn1(self.conv1(points)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = self.bn3(self.conv3(x))
-        x = x.permute(0, 2, 1)
-        if self.transformer_type == 'point':
-
+        if self.transformer_type == 'plr':
+            x = F.relu(self.bn1(self.conv1(points)))
+            x = F.relu(self.bn2(self.conv2(x)))
+            x = self.bn3(self.conv3(x))
+            x = x.permute(0, 2, 1)
             out = self.transformer(x.permute(0, 2, 1), points.permute(0, 2, 1))
+        elif self.transformer_type == 'ptr':
+            out = self.transformer(points.permute(0, 2, 1))
         else:
+            x = F.relu(self.bn1(self.conv1(points)))
+            x = F.relu(self.bn2(self.conv2(x)))
+            x = self.bn3(self.conv3(x))
+            x = x.permute(0, 2, 1)
             out = self.transformer(x, x)
         return out
 

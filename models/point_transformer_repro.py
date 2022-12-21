@@ -1,4 +1,6 @@
-from pointnet2_utils import PointNetFeaturePropagation, PointNetSetAbstraction, index_points, square_distance
+# based on https://github.com/qq456cvb/Point-Transformers
+
+from models.pointnet2_utils import PointNetFeaturePropagation, PointNetSetAbstractionOriginal, index_points, square_distance
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,7 +9,7 @@ import numpy as np
 class TransitionDown(nn.Module):
     def __init__(self, k, nneighbor, channels):
         super().__init__()
-        self.sa = PointNetSetAbstraction(k, 0, nneighbor, channels[0], channels[1:], group_all=False, knn=True)
+        self.sa = PointNetSetAbstractionOriginal(k, 0, nneighbor, channels[0], channels[1:], group_all=False)
 
     def forward(self, xyz, points):
         return self.sa(xyz, points)
@@ -119,6 +121,7 @@ class TransformerBlock(nn.Module):
 class PointTransformerSeg(nn.Module):
     def __init__(self, nneighbor=16, npoints=1024, nblocks=4, n_c=128, d_points=3, transformer_dim=512):
         super().__init__()
+
         self.backbone = Backbone(nneighbor=nneighbor, nblocks=nblocks, npoints=npoints, d_points=d_points,
                                  transformer_dim=transformer_dim)
         self.fc2 = nn.Sequential(
@@ -158,5 +161,22 @@ class PointTransformerSeg(nn.Module):
         return self.fc3(points)
 
 
+class PointTransformerCls(nn.Module):
+    def __init__(self, nneighbor=16, npoints=1024, nblocks=4, n_c=128, d_points=3, transformer_dim=512):
+        super().__init__()
+        self.backbone = Backbone(nneighbor=nneighbor, nblocks=nblocks, npoints=npoints, d_points=d_points,
+                                 transformer_dim=transformer_dim)
+        self.fc2 = nn.Sequential(
+            nn.Linear(32 * 2 ** nblocks, 256),
+            nn.ReLU(),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Linear(64, n_c)
+        )
+        self.nblocks = nblocks
 
+    def forward(self, x):
+        points, _ = self.backbone(x)
+        res = self.fc2(points.mean(1))
+        return res
 

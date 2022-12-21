@@ -90,7 +90,8 @@ test_enum = enumerate(test_dataloader, 0)
 
 # set up model
 model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
-                    dim_feedforward=args.d_feedforward, twosided=False, transformer_type=args.transformer_type)
+                    dim_feedforward=args.d_feedforward, twosided=False, transformer_type=args.transformer_type,
+                    n_points=args.n_points)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 
