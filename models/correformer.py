@@ -1,3 +1,5 @@
+import os.path
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,7 +23,7 @@ class CorreFormer(nn.Module):
             self.transformer = PointTransformerLayer(dim=dim_feedforward,  pos_mlp_hidden_dim=d_model,
                                                       attn_mlp_hidden_mult=nhead, num_neighbors=16)
         elif self.transformer_type == 'ptr':
-            self.transformer = PointTransformerSeg(nneighbor=16, npoints=n_points, nblocks=4,
+            self.transformer = PointTransformerSeg(nneighbor=16, npoints=n_points, nblocks=nhead,
                                                    n_c=dim_feedforward, d_points=3, transformer_dim=dim_feedforward)
         else:
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
@@ -83,13 +85,24 @@ def sort_points(correformer, x):
 
 def get_correformer(correformer_path):
     # load a correformer model from path
-    #TODO change this to load the parameter file instead of parsing the dir name
-    params_str = correformer_path.split("/")[-2].split("_")[2]
-    correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
-    correformer_nheads = int(params_str[params_str.index('h') + 1:])
-    correformer_feedforward = int(params_str[params_str.index('ff') + 2:params_str.index('d')])
+
+    params_file_path = os.path.join(correformer_path, 'params.pt')
+    if os.path.exists(params_file_path):
+        args = torch.load(params_file_path)
+        correformer_type = args.correformer_type
+        correformer_dims = args.dim
+        correformer_nheads = args.n_heads
+        correformer_feedforward = args.d_feedforward
+    else:
+        #support for old logs that did not save params file - delete for publication
+        params_str = correformer_path.split("/")[-2].split("_")[2]
+        correformer_dims = int(params_str[params_str.index('d') + 1:params_str.index('h')])
+        correformer_nheads = int(params_str[params_str.index('h') + 1:])
+        correformer_feedforward = int(params_str[params_str.index('ff') + 2:params_str.index('d')])
+        correformer_type = 'none'
     correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
-                                   num_decoder_layers=1, dim_feedforward=correformer_feedforward).cuda()
+                                   num_decoder_layers=1, dim_feedforward=correformer_feedforward,
+                              correformer_type=correformer_type).cuda()
     correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
     correformer.eval()
     correformer.train(False)

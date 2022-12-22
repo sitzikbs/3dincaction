@@ -8,20 +8,23 @@ import random
 import json
 import pc_transforms as transforms
 import models.correformer as cf
+# from scipy.spatial.distance import cdist
+from scipy.spatial import cKDTree
 import torch
-
+from tqdm import tqdm
 
 DATASET_N_POINTS = 6890
 
 class DfaustActionClipsDataset(Dataset):
     def __init__(self, action_dataset_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
-                 shuffle_points='once', data_augmentation=False, gender='female'):
+                 shuffle_points='once', data_augmentation=False, gender='female', nn_sample_ratio=1):
         self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender)
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
         self.last_op = last_op
         self.data_augmentation = data_augmentation
+        self.nn_sample_ratio = nn_sample_ratio # subsample the points
 
         self.clip_verts = None
         self.clip_labels = None
@@ -42,6 +45,7 @@ class DfaustActionClipsDataset(Dataset):
         """Yield successive n-sized chunks from lst."""
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
+
     def clip_data(self):
 
         for i, seq in enumerate(self.action_dataset.vertices):
@@ -150,26 +154,46 @@ class DfaustActionClipsDataset(Dataset):
             out_points = points
         return out_points
 
+    def nn_sampler(self, points):
+        # sample more points that are not well corresponded using nn
+        if self.nn_sample_ratio < 1:
+            n_final_points = int(self.nn_sample_ratio * DATASET_N_POINTS)
+            # reorder the points to put the informative points first, then clip off points that nn gets well
+            tree = cKDTree(points[0])
+            _, max_ind = tree.query(points[1])
+            nn_idx = max_ind == np.arange(DATASET_N_POINTS)
+            good_points = points[:, nn_idx]
+            bad_points = points[:, np.logical_not(nn_idx)]
+            out_points = np.concatenate([bad_points, good_points], axis=1)
+            out_points = out_points[:, :n_final_points, :]
+        else:
+            out_points = points
+        return out_points
+
     def __len__(self):
         return len(self.clip_verts)
 
     # This returns given an index the i-th sample and label
     def __getitem__(self, idx):
+        points_seq = self.nn_sampler(self.clip_verts[idx])
+        # points_seq = self.clip_verts[idx]
+        n_initial_points = int(DATASET_N_POINTS * self.nn_sample_ratio)
         if self.shuffle_points == 'each':
-            shuffled_idxs = np.arange(DATASET_N_POINTS)
+            shuffled_idxs = np.arange(n_initial_points)
             random.shuffle(shuffled_idxs)
             shuffled_idxs = shuffled_idxs[:self.n_points]
-            points_seq = self.clip_verts[idx][:, shuffled_idxs]
+            points_seq = points_seq[:, shuffled_idxs]
         elif self.shuffle_points == 'each_frame':
-            shuffled_idxs = np.arange(DATASET_N_POINTS)
+            shuffled_idxs = np.arange(n_initial_points)
             random.shuffle(shuffled_idxs)
-            points_seq = self.clip_verts[idx][:, shuffled_idxs[:self.n_points]]
+            points_seq = points_seq[:, shuffled_idxs[:self.n_points]]
             shuffled_idxs = np.array([np.random.permutation(np.arange(self.n_points)) for _ in range(self.frames_per_clip-1)])[:, :, None]
             shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None], axis=0) # make sure thefirst frame indices are unchanged (they are refs)
             points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
         else:
-            shuffled_idxs = np.arange(DATASET_N_POINTS)[:self.n_points] # not shuffled
-            points_seq = self.clip_verts[idx][shuffled_idxs[:self.n_points], :]
+            shuffled_idxs = np.arange(n_initial_points)[:self.n_points] # not shuffled
+            points_seq = points_seq[shuffled_idxs[:self.n_points], :]
+
 
         out_points = self.augment_points(points_seq)
 

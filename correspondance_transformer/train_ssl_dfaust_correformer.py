@@ -49,7 +49,7 @@ def get_frame_pairs_seq(points):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_points", type=int, default=1024)
-parser.add_argument("--learning_rate", type=float, default=1e-6)
+parser.add_argument("--learning_rate", type=float, default=1e-5)
 parser.add_argument("--batch_size", type=int, default=24)
 parser.add_argument("--dim", type=int, default=128)
 parser.add_argument("--d_feedforward", type=int, default=128)
