@@ -58,9 +58,11 @@ parser.add_argument('--transformer_type', type=str,
                     default='none', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
+parser.add_argument('--exp_id', type=str,
+                    default='debug', help='a unique identifier to append to the experiment name')
 point_size = 25
 args = parser.parse_args()
-args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}sr{args.nn_sample_ratio}lr{args.learning_rate}bs{args.batch_size}"
+args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}sr{args.nn_sample_ratio}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
 log_dir = "./log/" + args.exp_name
 model_path = log_dir + "/model"
 writer = SummaryWriter(os.path.join(log_dir, 'train'))

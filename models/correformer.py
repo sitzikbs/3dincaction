@@ -63,6 +63,7 @@ class CorreFormer(nn.Module):
                 max_ind12 = torch.argmax(corr12, dim=-2)
             else:
                 max_ind12 = []
+
         return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 
@@ -113,7 +114,8 @@ def compute_corr_loss(gt_corr, corr):
     # compute correspondance loss
     b, n1, n2 = gt_corr.shape
     l1_loss = (gt_corr - corr).square()
-    l1_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean()))
-    l1_loss = (l1_mask * l1_loss)
+    l1_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
+    # l1_loss = (l1_mask * l1_loss)
+    l1_loss = l1_loss[l1_mask]
     loss = l1_loss.mean()
     return loss
