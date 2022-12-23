@@ -115,7 +115,7 @@ for epoch in range(args.train_epochs):
         avg_acc = correct / (args.n_points*args.batch_size)
         iter = epoch * len(train_dataloader) + batch_idx
 
-        loss_log_dict = {#"acc": avg_acc,
+        loss_log_dict = {"acc": avg_acc,
                          "losses/total_loss": loss.detach().cpu().numpy()}
         log_scalars(writer, loss_log_dict, iter)
 
