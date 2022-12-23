@@ -67,6 +67,8 @@ parser.add_argument('--transformer_type', type=str,
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--exp_id', type=str,
                     default='debug', help='a unique identifier to append to the experiment name')
+parser.add_argument('--aug', type=list, nargs='+',
+                    default=[], help='list of augmentations to apply: scale, rotate, translate, jitter')
 point_size = 25
 args = parser.parse_args()
 
