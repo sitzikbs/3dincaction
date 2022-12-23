@@ -75,18 +75,13 @@ class CorreFormer(nn.Module):
         return sim_mat
 
 
-    def forward(self, x1, x2, point_ids=None):
+    def forward(self, x1, x2):
         out1 = self.single_pass(x1)
         out2 = self.single_pass(x2)
-        if not point_ids == None:
-            sim_scores = self.compute_sim_partial(out1, out2, point_ids)
-            max_ind21, max_ind12, corr21 = [], [], []
-        else:
-            sim_mat, corr21, max_ind12, max_ind21 = self.compute_sim_mat_full(out1, out2)
-            sim_scores = []
 
-        return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21,
-                'sim_scores': sim_scores}
+        sim_mat, corr21, max_ind12, max_ind21 = self.compute_sim_mat_full(out1, out2)
+
+        return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 
 def sort_points(correformer, x):
@@ -140,10 +135,4 @@ def compute_corr_loss(gt_corr, corr):
     # l1_loss = (l1_mask * l1_loss)
     l2_loss = l2_loss[l2_mask]
     loss = l2_loss.mean()
-    return loss
-
-def compute_partial_corr_loss(sim_scores):
-    gt_scores = torch.cat([ torch.ones(int(sim_scores.shape[-1]/2), device=sim_scores.device),
-                           torch.zeros(int(sim_scores.shape[-1]/2), device=sim_scores.device)])
-    loss = (sim_scores - gt_scores).square().mean()
     return loss
