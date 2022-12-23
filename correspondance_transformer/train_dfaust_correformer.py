@@ -49,7 +49,7 @@ parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
-parser.add_argument("--eval_steps", type=int, default=1)
+parser.add_argument("--eval_steps", type=int, default=5)
 parser.add_argument('--gender', type=str,
                     default='all', help='female | male | all indicating which subset of the dataset to use')
 parser.add_argument('--nn_sample_ratio', type=int,
@@ -99,21 +99,23 @@ for epoch in range(args.train_epochs):
 
         points = data['points'].cuda()
         points, points2, point_ids, gt_corr = get_frame_pairs(points)
-        out_dict = model(points, points2)
+        out_dict = model(points, points2, point_ids)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
+        sim_scores = out_dict['sim_scores']
 
-        loss = models.correformer.compute_corr_loss(gt_corr, corr)
+        # loss = models.correformer.compute_corr_loss(gt_corr, corr)
+        loss = models.correformer.compute_partial_corr_loss(sim_scores) # use partial correlation loss for efficiency
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        true_corr = max_ind == point_ids
-        correct = (true_corr).sum().detach().cpu().numpy()
-        avg_acc = correct / (args.n_points*args.batch_size)
+        # true_corr = max_ind == point_ids
+        # correct = (true_corr).sum().detach().cpu().numpy()
+        # avg_acc = correct / (args.n_points*args.batch_size)
         iter = epoch * len(train_dataloader) + batch_idx
 
-        loss_log_dict = {"acc": avg_acc,
+        loss_log_dict = {#"acc": avg_acc,
                          "losses/total_loss": loss.detach().cpu().numpy()}
         log_scalars(writer, loss_log_dict, iter)
 
@@ -149,23 +151,23 @@ for epoch in range(args.train_epochs):
 
     if epoch % 10 == 0:
 
-        max_corr = (max_ind[0].unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(0).repeat([args.batch_size, 1, 1]).cuda()
-        pc1_pv = vis.get_pc_pv_image(points[0].detach().cpu().numpy(), text=None,
-                                     color=np.arange(args.n_points), point_size=point_size).transpose(2, 0, 1)
-        pc2_pv = vis.get_pc_pv_image(points2[0].detach().cpu().numpy(),  text=None,
-                                     color=max_ind[0].detach().cpu().numpy(), point_size=point_size).transpose(2, 0, 1)
-        pc_diff_pv = vis.get_pc_pv_image(points2[0].detach().cpu().numpy(),  text=None,
-                                     color=torch.logical_not(true_corr[0]).detach().cpu().numpy(),
-                                         point_size=point_size, cmap='jet').transpose(2, 0, 1)
-        image_log_dict = {"images/GT": gt_corr[0].unsqueeze(0).detach().cpu().numpy(),
-                          "images/corr": corr[0].unsqueeze(0).detach().cpu().numpy(),
-                          "images/diff": torch.abs(gt_corr[0] - corr[0]).unsqueeze(0).detach().cpu().numpy(),
-                          "images/max": max_corr[0].unsqueeze(0).detach().cpu().numpy(),
-                          "images/max_diff": torch.abs(gt_corr[0] - max_corr[0]).unsqueeze(0).detach().cpu().numpy(),
-                          "3D_corr_images/source": pc1_pv, "3D_corr_images/target": pc2_pv,
-                          "3D_corr_images/diff": pc_diff_pv}
-        log_images(writer, image_log_dict, epoch)
-        print(f"Epoch {epoch}: train loss {loss:.3f}")
+        # max_corr = (max_ind[0].unsqueeze(-1) == torch.arange(args.n_points).cuda().unsqueeze(-2)).float().unsqueeze(0).repeat([args.batch_size, 1, 1]).cuda()
+        # pc1_pv = vis.get_pc_pv_image(points[0].detach().cpu().numpy(), text=None,
+        #                              color=np.arange(args.n_points), point_size=point_size).transpose(2, 0, 1)
+        # pc2_pv = vis.get_pc_pv_image(points2[0].detach().cpu().numpy(),  text=None,
+        #                              color=max_ind[0].detach().cpu().numpy(), point_size=point_size).transpose(2, 0, 1)
+        # pc_diff_pv = vis.get_pc_pv_image(points2[0].detach().cpu().numpy(),  text=None,
+        #                              color=torch.logical_not(true_corr[0]).detach().cpu().numpy(),
+        #                                  point_size=point_size, cmap='jet').transpose(2, 0, 1)
+        # image_log_dict = {"images/GT": gt_corr[0].unsqueeze(0).detach().cpu().numpy(),
+        #                   "images/corr": corr[0].unsqueeze(0).detach().cpu().numpy(),
+        #                   "images/diff": torch.abs(gt_corr[0] - corr[0]).unsqueeze(0).detach().cpu().numpy(),
+        #                   "images/max": max_corr[0].unsqueeze(0).detach().cpu().numpy(),
+        #                   "images/max_diff": torch.abs(gt_corr[0] - max_corr[0]).unsqueeze(0).detach().cpu().numpy(),
+        #                   "3D_corr_images/source": pc1_pv, "3D_corr_images/target": pc2_pv,
+        #                   "3D_corr_images/diff": pc_diff_pv}
+        # log_images(writer, image_log_dict, epoch)
+        # print(f"Epoch {epoch}: train loss {loss:.3f}")
 
 
         # log test images

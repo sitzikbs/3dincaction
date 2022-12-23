@@ -3,6 +3,7 @@ import os.path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from utils import cosine_similarity
 from models.point_transformer_pytorch import PointTransformerLayer
 from models.point_transformer_repro import PointTransformerSeg
@@ -49,10 +50,7 @@ class CorreFormer(nn.Module):
             out = self.transformer(x, x)
         return out
 
-    def forward(self, x1, x2):
-        out1 = self.single_pass(x1)
-        out2 = self.single_pass(x2)
-
+    def compute_sim_mat_full(self, out1, out2):
         sim_mat = cosine_similarity(out2, out1)
         corr21 = F.softmax(sim_mat, dim=-1)
         # _, max_ind = torch.max(corr, dim=-1)
@@ -63,8 +61,32 @@ class CorreFormer(nn.Module):
                 max_ind12 = torch.argmax(corr12, dim=-2)
             else:
                 max_ind12 = []
+        return sim_mat, corr21, max_ind12, max_ind21
 
-        return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
+    def compute_sim_partial(self, out1, out2, point_ids):
+        out1_normalized = out1 / torch.norm(out1, dim=-1, keepdim=True)
+        out_2_normalized = out2 / torch.norm(out2, dim=-1, keepdim=True)
+
+        sim_mat = (out_2_normalized[:, point_ids, :]*out1_normalized).sum(-1)
+
+        bad_ids = torch.roll(point_ids, np.random.randint(1, len(point_ids)-1))
+        bad_mat = (out_2_normalized[:, bad_ids, :] * out1_normalized).sum(-1)
+        sim_mat = torch.cat([sim_mat, bad_mat])
+        return sim_mat
+
+
+    def forward(self, x1, x2, point_ids=None):
+        out1 = self.single_pass(x1)
+        out2 = self.single_pass(x2)
+        if not point_ids == None:
+            sim_scores = self.compute_sim_partial(out1, out2, point_ids)
+            max_ind21, max_ind12, corr21 = [], [], []
+        else:
+            sim_mat, corr21, max_ind12, max_ind21 = self.compute_sim_mat_full(out1, out2)
+            sim_scores = []
+
+        return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21,
+                'sim_scores': sim_scores}
 
 
 def sort_points(correformer, x):
@@ -113,9 +135,15 @@ def get_correformer(correformer_path):
 def compute_corr_loss(gt_corr, corr):
     # compute correspondance loss
     b, n1, n2 = gt_corr.shape
-    l1_loss = (gt_corr - corr).square()
-    l1_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
+    l2_loss = (gt_corr - corr).square()
+    l2_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
     # l1_loss = (l1_mask * l1_loss)
-    l1_loss = l1_loss[l1_mask]
-    loss = l1_loss.mean()
+    l2_loss = l2_loss[l2_mask]
+    loss = l2_loss.mean()
+    return loss
+
+def compute_partial_corr_loss(sim_scores):
+    gt_scores = torch.cat([ torch.ones(int(sim_scores.shape[-1]/2), device=sim_scores.device),
+                           torch.zeros(int(sim_scores.shape[-1]/2), device=sim_scores.device)])
+    loss = (sim_scores - gt_scores).square().mean()
     return loss
