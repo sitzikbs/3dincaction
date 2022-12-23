@@ -120,7 +120,7 @@ def get_correformer(correformer_path):
         correformer_type = 'none'
     correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
                                    num_decoder_layers=1, dim_feedforward=correformer_feedforward,
-                              correformer_type=correformer_type).cuda()
+                              transformer_type=correformer_type).cuda()
     correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
     correformer.eval()
     correformer.train(False)

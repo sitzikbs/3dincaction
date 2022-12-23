@@ -48,8 +48,10 @@ parser.add_argument("--n_heads", type=int, default=16)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
+parser.add_argument('--aug', type=list, nargs='+',
+                    default=[], help='list of augmentations to apply: scale, rotate, translate, jitter')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
-parser.add_argument("--eval_steps", type=int, default=5)
+parser.add_argument("--eval_steps", type=int, default=10)
 parser.add_argument('--gender', type=str,
                     default='all', help='female | male | all indicating which subset of the dataset to use')
 parser.add_argument('--nn_sample_ratio', type=int,
@@ -62,7 +64,7 @@ parser.add_argument('--exp_id', type=str,
                     default='debug', help='a unique identifier to append to the experiment name')
 point_size = 25
 args = parser.parse_args()
-args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}sr{args.nn_sample_ratio}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
+args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
 log_dir = "./log/" + args.exp_name
 model_path = log_dir + "/model"
 writer = SummaryWriter(os.path.join(log_dir, 'train'))
@@ -74,7 +76,7 @@ torch.save(args, params_filename)
 
 # Set up data
 train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='train', n_points=args.n_points,
-                        shuffle_points='each', data_augmentation=False, gender=args.gender, nn_sample_ratio=args.nn_sample_ratio)
+                        shuffle_points='each', data_augmentation=args.aug, gender=args.gender, nn_sample_ratio=args.nn_sample_ratio)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=8,
                                                pin_memory=True, shuffle=True, drop_last=True)
 test_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='test', n_points=args.n_points,

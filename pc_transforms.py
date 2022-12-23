@@ -1,6 +1,7 @@
 # Taken from https://github.com/yanx27/Pointnet_Pointnet2_pytorch/blob/eb64fe0b4c24055559cea26299cb485dcb43d8dd/provider.py#L228
 #adapted for temporal inputs
 import numpy as np
+import torch
 
 #TODO move augmentations to be batch based on the GPU
 def random_scale_point_cloud(batch_data, scale_low=0.8, scale_high=1.25):
@@ -64,6 +65,19 @@ def jitter_point_cloud(batch_data, sigma=0.01, clip=0.05):
     T, N, C = batch_data.shape
     assert(clip > 0)
     jittered_data = np.clip(sigma * np.random.randn(T, N, C), -1*clip, clip).astype(np.float32)
+    jittered_data += batch_data
+    return jittered_data
+
+def jitter_point_cloud_torch(batch_data, sigma=0.01, clip=0.05):
+    """ Randomly jitter points. jittering is per point.
+        Input:
+          TxNx3 array, original temporal point clouds
+        Return:
+          TxNx3 array, jittered temporal point clouds
+    """
+    T, N, C = batch_data.shape
+    assert(clip > 0)
+    jittered_data = torch.clip(sigma * torch.randn(T, N, C, device=batch_data.device), -1*clip, clip)
     jittered_data += batch_data
     return jittered_data
 

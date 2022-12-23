@@ -17,13 +17,15 @@ DATASET_N_POINTS = 6890
 
 class DfaustActionClipsDataset(Dataset):
     def __init__(self, action_dataset_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
-                 shuffle_points='once', data_augmentation=False, gender='female', nn_sample_ratio=1):
+                 shuffle_points='once', data_augmentation=[], aug_params_dict={'sigma': 0.01},
+                 gender='female', nn_sample_ratio=1):
         self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender)
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
         self.last_op = last_op
         self.data_augmentation = data_augmentation
+        self.aug_params_dict = aug_params_dict
         self.nn_sample_ratio = nn_sample_ratio # subsample the points
 
         self.clip_verts = None
@@ -146,10 +148,15 @@ class DfaustActionClipsDataset(Dataset):
     def augment_points(self, points):
         if self.data_augmentation:
             out_points = points
-            out_points = transforms.random_scale_point_cloud(out_points, scale_low=0.8, scale_high=1.25)
-            out_points = transforms.rotate_perturbation_point_cloud(out_points, angle_sigma=0.06, angle_clip=0.18)
-            out_points = transforms.jitter_point_cloud(out_points, sigma=0.01, clip=0.05)
-            out_points = transforms.shift_point_cloud(out_points, shift_range=0.1)
+            if 'scale' in self.data_augmentation:
+                out_points = transforms.random_scale_point_cloud(out_points, scale_low=0.8, scale_high=1.25)
+            if 'rotate' in self.data_augmentation:
+                out_points = transforms.rotate_perturbation_point_cloud(out_points, angle_sigma=0.06, angle_clip=0.18)
+            if 'jitter' in self.data_augmentation:
+                out_points = transforms.jitter_point_cloud(out_points, sigma=self.aug_params_dict['sigma'],
+                                                           clip= 5 * self.aug_params_dict['sigma'])
+            if 'translate' in self.data_augmentation:
+                out_points = transforms.shift_point_cloud(out_points, shift_range=0.1)
         else:
             out_points = points
         return out_points
