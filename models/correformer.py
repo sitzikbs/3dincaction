@@ -104,10 +104,10 @@ def sort_points(correformer, x):
 def get_correformer(correformer_path):
     # load a correformer model from path
 
-    params_file_path = os.path.join(correformer_path, 'params.pt')
+    params_file_path = os.path.join(os.path.split(correformer_path)[0], 'params.pth')
     if os.path.exists(params_file_path):
         args = torch.load(params_file_path)
-        correformer_type = args.correformer_type
+        correformer_type = args.transformer_type
         correformer_dims = args.dim
         correformer_nheads = args.n_heads
         correformer_feedforward = args.d_feedforward

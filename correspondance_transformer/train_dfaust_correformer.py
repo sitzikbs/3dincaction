@@ -76,7 +76,8 @@ torch.save(args, params_filename)
 
 # Set up data
 train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='train', n_points=args.n_points,
-                        shuffle_points='each', data_augmentation=args.aug, gender=args.gender, nn_sample_ratio=args.nn_sample_ratio)
+                        shuffle_points='each', data_augmentation=args.aug, gender=args.gender,
+                        nn_sample_ratio=args.nn_sample_ratio)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=8,
                                                pin_memory=True, shuffle=True, drop_last=True)
 test_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='test', n_points=args.n_points,
@@ -190,7 +191,7 @@ for epoch in range(args.train_epochs):
 
 
         # save model every 100 epochs
-        if epoch % 100 == 0:
+        if epoch % 25 == 0:
             print("Saving model ...")
             torch.save({"model_state_dict": model.module.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict()},
