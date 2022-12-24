@@ -17,7 +17,7 @@ DATASET_N_POINTS = 6890
 
 class DfaustActionClipsDataset(Dataset):
     def __init__(self, action_dataset_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
-                 shuffle_points='once', data_augmentation=[], aug_params_dict={'sigma': 0.01},
+                 shuffle_points='once', data_augmentation=[], aug_params_dict={'sigma': 0.005},
                  gender='female', nn_sample_ratio=1):
         self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender)
         self.frames_per_clip = frames_per_clip

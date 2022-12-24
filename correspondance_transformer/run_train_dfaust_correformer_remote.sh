@@ -9,7 +9,7 @@ NHEADS=8
 DIM=1024
 DFF=1024
 DATASET_PATH='/data1/datasets/dfaust/'
-EXP_ID='fixjitter0.01NoSampler'
+EXP_ID='fixjitter0.005NoSampler'
 AUG='jitter'
 
 taskset -c 128-160 python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS --d_feedforward $DFF --exp_id $EXP_ID --aug $AUG
