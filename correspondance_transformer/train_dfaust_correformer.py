@@ -48,8 +48,8 @@ parser.add_argument("--n_heads", type=int, default=8)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
-parser.add_argument('--aug', type=list, nargs='+',
-                    default=['jitter'], help='list of augmentations to apply: scale, rotate, translate, jitter')
+parser.add_argument('--aug', type=str, nargs='+',
+                    default=[], help='list of augmentations to apply: scale, rotate, translate, jitter')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=10)
 parser.add_argument('--gender', type=str,

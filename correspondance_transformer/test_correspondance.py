@@ -3,6 +3,7 @@ import argparse
 import torch
 import torch.nn as nn
 from DfaustDataset import DfaustActionDataset as Dataset
+from DfaustDataset import DfaustActionClipsDataset
 import models.correformer as cf
 from models.NNCorr import NNCorr
 from models.sinkhorn import SinkhornCorr
@@ -19,9 +20,9 @@ parser.add_argument('--method', type=str, default='transformer', help='nn  | sin
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=1, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs40jitter0.01/',
+parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs40jitter0.01NoSampler/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000100.pt', help='path to model save dir')
+parser.add_argument('--model', type=str, default='000050.pt', help='path to model save dir')
 parser.add_argument('--jitter', type=float, default=0.01, help='if larger than 0 : adds random jitter to test points')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
@@ -32,6 +33,8 @@ args = parser.parse_args()
 
 test_dataset = Dataset(args.dataset_path,  set='test', n_points=args.n_points, shuffle_points='each',
                        gender=args.gender)
+# test_dataset = DfaustActionClipsDataset(args.dataset_path, frames_per_clip=2, set='test', n_points=args.n_points,
+#                         shuffle_points='each', data_augmentation=['jitter'], gender=args.gender)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8,
                                               pin_memory=True, drop_last=False)
 
@@ -53,6 +56,7 @@ correct, total = 0, 0
 for test_batchind, data in enumerate(test_dataloader):
     model.train(False)
     model.eval()
+
 
     points, point_ids = data['points'].cuda(), data['corr_gt'].cuda()
     points2 = torch.roll(points, -1, dims=1).detach().clone()

@@ -87,11 +87,11 @@ torch.save(args, params_filename)
 # train_dataset = NoiseGenerator(args.n_points, radius=0.5, n_samples=8192, sigma=0.3)
 train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip, set='test', n_points=args.n_points,
                        shuffle_points='each', data_augmentation=args.aug, gender=args.gender) # in SSL you can train on the test set
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0,
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=8,
                                                pin_memory=True, shuffle=True, drop_last=True)
 test_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='test', n_points=args.n_points,
                        shuffle_points='each', gender=args.gender)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0,
+test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8,
                                               pin_memory=True, drop_last=True)
 test_enum = enumerate(test_dataloader, 0)
 

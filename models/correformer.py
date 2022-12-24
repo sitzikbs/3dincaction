@@ -123,7 +123,7 @@ def get_correformer(correformer_path):
                               transformer_type=correformer_type).cuda()
     correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
     correformer.eval()
-    correformer.train(False)
+    # correformer.train(False)
     return correformer
 
 
