@@ -11,7 +11,7 @@ class SinkhornCorr(torch.nn.Module):
         super(SinkhornCorr, self).__init__()
 
     def forward(self, x1, x2):
-        corr_mat, max_ind12, max_ind21 = sinkhorn(x1.squeeze(), x2.squeeze())
+        corr_mat, max_ind12, max_ind21 = sinkhorn(x2.squeeze(), x1.squeeze())
         return {'out1': x1, 'out2': x2, 'corr_mat': corr_mat, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,

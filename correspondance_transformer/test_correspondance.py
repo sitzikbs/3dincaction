@@ -3,12 +3,13 @@ import argparse
 import torch
 import torch.nn as nn
 from DfaustDataset import DfaustActionDataset as Dataset
-from models.correformer import CorreFormer
 import models.correformer as cf
 from models.NNCorr import NNCorr
 from models.sinkhorn import SinkhornCorr
 import pc_transforms as transforms
 import numpy as np
+import visualization as vis
+
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -29,9 +30,9 @@ parser.add_argument('--gender', type=str,
                     default='all', help='female | male | all indicating which subset of the dataset to use')
 args = parser.parse_args()
 
-test_dataset = Dataset(args.dataset_path,  set='test', n_points=args.n_points, shuffle_points='none',
+test_dataset = Dataset(args.dataset_path,  set='test', n_points=args.n_points, shuffle_points='each',
                        gender=args.gender)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0,
+test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8,
                                               pin_memory=True, drop_last=False)
 
 
@@ -51,20 +52,24 @@ model = nn.DataParallel(model)
 correct, total = 0, 0
 for test_batchind, data in enumerate(test_dataloader):
     model.train(False)
+    model.eval()
 
     points, point_ids = data['points'].cuda(), data['corr_gt'].cuda()
-    points2 = torch.roll(points, -1, dims=1).clone().detach()
+    points2 = torch.roll(points, -1, dims=1).detach().clone()
     points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3)  # remove first frame pair
     points2 = points2[:, 0:-1, :, :].reshape(-1, args.n_points, 3)  # remove first frame pair
 
-    if args.jitter > 0:
+    if args.jitter > 0.0:
+        points = transforms.jitter_point_cloud_torch(points, sigma=args.jitter, clip=0.05)
         points2 = transforms.jitter_point_cloud_torch(points2, sigma=args.jitter, clip=0.05)
 
     for i, frame in enumerate(points):
-        out_dict = model(frame.unsqueeze(0), points2[i].unsqueeze(0))
+        point_ids = torch.randperm(args.n_points).cuda()
+        target_points = points2[i, point_ids, :].unsqueeze(0)
+        out_dict = model(frame.unsqueeze(0), target_points)
+        # out_dict = model(frame.unsqueeze(0), points2[i].unsqueeze(0))
         max_ind = out_dict['corr_idx21']
         true_corr = max_ind == point_ids
-
         correct += (true_corr).sum().detach().cpu().numpy()
         total += args.n_points
 

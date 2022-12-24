@@ -39,29 +39,29 @@ def get_frame_pairs(points):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=128)
+parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
-parser.add_argument("--batch_size", type=int, default=32)
+parser.add_argument("--batch_size", type=int, default=10)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--d_feedforward", type=int, default=1024)
-parser.add_argument("--n_heads", type=int, default=16)
+parser.add_argument("--n_heads", type=int, default=8)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--aug', type=list, nargs='+',
-                    default=[], help='list of augmentations to apply: scale, rotate, translate, jitter')
+                    default=['jitter'], help='list of augmentations to apply: scale, rotate, translate, jitter')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=10)
 parser.add_argument('--gender', type=str,
                     default='all', help='female | male | all indicating which subset of the dataset to use')
 parser.add_argument('--nn_sample_ratio', type=int,
-                    default=0.5, help='sample nearest neighbor correct corresondences, if 1 takes all points')
+                    default=1.0, help='sample nearest neighbor correct corresondences, if 1 takes all points')
 parser.add_argument('--transformer_type', type=str,
                     default='none', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--exp_id', type=str,
-                    default='debug', help='a unique identifier to append to the experiment name')
+                    default='debug_jitter_no_sr', help='a unique identifier to append to the experiment name')
 point_size = 25
 args = parser.parse_args()
 args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
