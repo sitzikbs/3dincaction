@@ -132,7 +132,7 @@ def compute_corr_loss(gt_corr, corr):
     b, n1, n2 = gt_corr.shape
     l2_loss = (gt_corr - corr).square()
     l2_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
-    l2_loss = (l2_mask * l2_loss)
-    # l2_loss = l2_loss[l2_mask]
+    # l2_loss = (l2_mask * l2_loss)
+    l2_loss = l2_loss[l2_mask]
     loss = l2_loss.mean()
     return loss

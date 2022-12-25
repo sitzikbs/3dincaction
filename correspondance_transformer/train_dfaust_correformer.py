@@ -105,7 +105,7 @@ for epoch in range(args.train_epochs):
 
         points = data['points'].cuda()
         points, points2, point_ids, gt_corr = get_frame_pairs(points)
-        if 'jitter' in args.aug:
+        if 'jitter' in args.aug and sigma.value() > 0:
             points = transforms.jitter_point_cloud_torch(points, sigma=sigma.value(), clip=5*sigma.value())
             points2 = transforms.jitter_point_cloud_torch(points2, sigma=sigma.value(), clip=5*sigma.value())
 
