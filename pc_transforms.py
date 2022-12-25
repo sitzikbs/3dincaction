@@ -76,7 +76,8 @@ def jitter_point_cloud_torch(batch_data, sigma=0.01, clip=0.05):
           TxNx3 array, jittered temporal point clouds
     """
     T, N, C = batch_data.shape
-    assert(clip > 0)
+    if clip == 0:
+        clip = 1
     jittered_data = torch.clip(sigma * torch.randn(T, N, C, device=batch_data.device), -1*clip, clip)
     jittered_data += batch_data
     return jittered_data
