@@ -66,8 +66,7 @@ parser.add_argument('--exp_id', type=str,
 parser.add_argument('--loss_type', type=str,
                     default='ce', help='ce | l2 indicating the loss type ')
 point_size = 25
-# sigma = ScalarScheduler(init_value=0.0, steps=5, increment=0.001)
-sigma = 0.005
+sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
 args = parser.parse_args()
 args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
 log_dir = "./log/" + args.exp_name
