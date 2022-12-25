@@ -64,7 +64,7 @@ parser.add_argument('--transformer_type', type=str,
 parser.add_argument('--exp_id', type=str,
                     default='debug_jitter_no_sr', help='a unique identifier to append to the experiment name')
 point_size = 25
-sigma = ScalarScheduler(init_value=0.001, steps=5, factor=1.5)
+sigma = ScalarScheduler(init_value=0.0, steps=5, increment=0.001)
 args = parser.parse_args()
 args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
 log_dir = "./log/" + args.exp_name
