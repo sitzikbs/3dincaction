@@ -10,7 +10,7 @@ from models.point_transformer_repro import PointTransformerSeg
 
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
-                 twosided=True, transformer_type='none', n_points=1024):
+                 twosided=True, transformer_type='none', n_points=1024, loss_type='l2'):
         super(CorreFormer, self).__init__()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
@@ -19,6 +19,9 @@ class CorreFormer(nn.Module):
         self.bn2 = nn.BatchNorm1d(128)
         self.bn3 = nn.BatchNorm1d(d_model)
         self.transformer_type = transformer_type
+        self.loss_type = loss_type
+        if loss_type == 'ce':
+            self.criterion = torch.nn.CrossEntropyLoss()
         if self.transformer_type == 'plr':
             # only the 16 nearest neighbors would be attended to for each point
             self.transformer = PointTransformerLayer(dim=dim_feedforward,  pos_mlp_hidden_dim=d_model,
@@ -74,6 +77,19 @@ class CorreFormer(nn.Module):
         sim_mat = torch.cat([sim_mat, bad_mat])
         return sim_mat
 
+    def compute_corr_loss(self, gt_corr, corr):
+        # compute correspondance loss
+        b, n1, n2 = gt_corr.shape
+        if self.loss_type == 'l2':
+            l2_loss = (gt_corr - corr).square()
+            l2_mask = torch.max(gt_corr, 1.0 * (torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
+            # l2_loss = (l2_mask * l2_loss)
+            l2_loss = l2_loss[l2_mask]
+            loss = l2_loss.mean()
+        elif self.loss_type == 'ce':
+            ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), gt_corr.reshape(-1, gt_corr.shape[-1]))
+            loss = ce_loss
+        return loss
 
     def forward(self, x1, x2):
         out1 = self.single_pass(x1)
@@ -127,16 +143,4 @@ def get_correformer(correformer_path):
     return correformer
 
 
-def compute_corr_loss(gt_corr, corr, loss_type='l2'):
-    # compute correspondance loss
-    b, n1, n2 = gt_corr.shape
-    if loss_type == 'l2':
-        l2_loss = (gt_corr - corr).square()
-        l2_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
-        # l2_loss = (l2_mask * l2_loss)
-        l2_loss = l2_loss[l2_mask]
-        loss = l2_loss.mean()
-    elif loss_type == 'ce':
-        ce_loss = F.cross_entropy(corr.view(-1, corr.shape[2]), gt_corr.type(torch.LongTensor).view(-1, gt_corr.shape[2]))
-        loss = ce_loss
-    return loss
+

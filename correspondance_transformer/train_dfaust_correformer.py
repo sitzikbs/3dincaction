@@ -93,7 +93,7 @@ test_enum = enumerate(test_dataloader, 0)
 # set up model
 model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
                     dim_feedforward=args.d_feedforward, transformer_type=args.transformer_type, twosided=False,
-                    n_points=args.n_points)
+                    n_points=args.n_points, loss_type=args.loss_type)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 
@@ -114,7 +114,7 @@ for epoch in range(args.train_epochs):
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
-        loss = models.correformer.compute_corr_loss(gt_corr, corr, loss_type=args.loss_type)
+        loss = model.module.compute_corr_loss(gt_corr, corr)
 
         optimizer.zero_grad()
         loss.backward()
@@ -148,7 +148,7 @@ for epoch in range(args.train_epochs):
                 test_out1, test_out2, test_corr, test_max_ind = test_out_dict['out1'], test_out_dict['out2'], \
                     test_out_dict['corr_mat'], test_out_dict['corr_idx21']
 
-                test_loss = models.correformer.compute_corr_loss(test_gt_corr, test_corr, loss_type=args.loss_type)
+                test_loss = model.module.compute_corr_loss(test_gt_corr, test_corr)
                 print(f"Epoch {epoch} batch {batch_idx}: test loss {test_loss:.3f}")
 
                 test_true_corr = test_max_ind == test_point_ids
