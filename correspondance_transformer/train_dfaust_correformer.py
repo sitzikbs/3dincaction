@@ -42,7 +42,7 @@ def get_frame_pairs(points):
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
-parser.add_argument("--batch_size", type=int, default=10)
+parser.add_argument("--batch_size", type=int, default=8)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--d_feedforward", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=8)
@@ -62,9 +62,12 @@ parser.add_argument('--transformer_type', type=str,
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--exp_id', type=str,
-                    default='debug_jitter_no_sr', help='a unique identifier to append to the experiment name')
+                    default='debug_ce', help='a unique identifier to append to the experiment name')
+parser.add_argument('--loss_type', type=str,
+                    default='ce', help='ce | l2 indicating the loss type ')
 point_size = 25
-sigma = ScalarScheduler(init_value=0.0, steps=5, increment=0.001)
+# sigma = ScalarScheduler(init_value=0.0, steps=5, increment=0.001)
+sigma = 0.005
 args = parser.parse_args()
 args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
 log_dir = "./log/" + args.exp_name
@@ -112,7 +115,7 @@ for epoch in range(args.train_epochs):
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
-        loss = models.correformer.compute_corr_loss(gt_corr, corr)
+        loss = models.correformer.compute_corr_loss(gt_corr, corr, loss_type=args.loss_type)
 
         optimizer.zero_grad()
         loss.backward()
@@ -146,7 +149,7 @@ for epoch in range(args.train_epochs):
                 test_out1, test_out2, test_corr, test_max_ind = test_out_dict['out1'], test_out_dict['out2'], \
                     test_out_dict['corr_mat'], test_out_dict['corr_idx21']
 
-                test_loss = models.correformer.compute_corr_loss(test_gt_corr, test_corr)
+                test_loss = models.correformer.compute_corr_loss(test_gt_corr, test_corr, loss_type=args.loss_type)
                 print(f"Epoch {epoch} batch {batch_idx}: test loss {test_loss:.3f}")
 
                 test_true_corr = test_max_ind == test_point_ids

@@ -127,12 +127,16 @@ def get_correformer(correformer_path):
     return correformer
 
 
-def compute_corr_loss(gt_corr, corr):
+def compute_corr_loss(gt_corr, corr, loss_type='l2'):
     # compute correspondance loss
     b, n1, n2 = gt_corr.shape
-    l2_loss = (gt_corr - corr).square()
-    l2_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
-    # l2_loss = (l2_mask * l2_loss)
-    l2_loss = l2_loss[l2_mask]
-    loss = l2_loss.mean()
+    if loss_type == 'l2':
+        l2_loss = (gt_corr - corr).square()
+        l2_mask = torch.max(gt_corr, 1.0*(torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
+        # l2_loss = (l2_mask * l2_loss)
+        l2_loss = l2_loss[l2_mask]
+        loss = l2_loss.mean()
+    elif loss_type == 'ce':
+        ce_loss = F.cross_entropy(corr.view(-1, corr.shape[2]), gt_corr.view(-1, gt_corr.shape[2]))
+        loss = ce_loss
     return loss
