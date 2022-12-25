@@ -87,7 +87,7 @@ class CorreFormer(nn.Module):
             l2_loss = l2_loss[l2_mask]
             loss = l2_loss.mean()
         elif self.loss_type == 'ce':
-            ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), gt_corr.reshape(-1, gt_corr.shape[-1]))
+            ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), torch.argmax(gt_corr.reshape(-1, gt_corr.shape[-1]), -1))
             loss = ce_loss
         return loss
 
