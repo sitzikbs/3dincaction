@@ -139,6 +139,6 @@ def compute_corr_loss(gt_corr, corr, loss_type='l2'):
     elif loss_type == 'ce':
         print(corr)
         print(gt_corr)
-        ce_loss = F.cross_entropy(corr.view(-1, corr.shape[2]), gt_corr.view(-1, gt_corr.shape[2]))
+        ce_loss = F.cross_entropy(corr.view(-1, corr.shape[2]), gt_corr.type(torch.float32).view(-1, gt_corr.shape[2]))
         loss = ce_loss
     return loss
