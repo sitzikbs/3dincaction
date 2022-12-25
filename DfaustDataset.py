@@ -152,9 +152,10 @@ class DfaustActionClipsDataset(Dataset):
                 out_points = transforms.random_scale_point_cloud(out_points, scale_low=0.8, scale_high=1.25)
             if 'rotate' in self.data_augmentation:
                 out_points = transforms.rotate_perturbation_point_cloud(out_points, angle_sigma=0.06, angle_clip=0.18)
-            if 'jitter' in self.data_augmentation:
-                out_points = transforms.jitter_point_cloud(out_points, sigma=self.aug_params_dict['sigma'],
-                                                           clip=5 * self.aug_params_dict['sigma'])
+            # jitter is handled externally
+            # if 'jitter' in self.data_augmentation:
+            #     out_points = transforms.jitter_point_cloud(out_points, sigma=self.aug_params_dict['sigma'],
+            #                                                clip=5 * self.aug_params_dict['sigma'])
             if 'translate' in self.data_augmentation:
                 out_points = transforms.shift_point_cloud(out_points, shift_range=0.1)
         else:

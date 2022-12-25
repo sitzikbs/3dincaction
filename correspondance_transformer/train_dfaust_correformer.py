@@ -12,7 +12,8 @@ from DfaustDataset import DfaustActionClipsDataset as Dataset
 import visualization as vis
 from models.correformer import CorreFormer
 import models.correformer
-
+import pc_transforms as transforms
+from utils import ScalarScheduler
 
 def log_images(writer,
                log_dict, iter):
@@ -63,6 +64,7 @@ parser.add_argument('--transformer_type', type=str,
 parser.add_argument('--exp_id', type=str,
                     default='debug_jitter_no_sr', help='a unique identifier to append to the experiment name')
 point_size = 25
+sigma = ScalarScheduler(init_value=0.001, steps=5, factor=1.5)
 args = parser.parse_args()
 args.exp_name = f"dfaust_N{args.n_points}ff{args.d_feedforward}_d{args.dim}h{args.n_heads}_ttype{args.transformer_type}lr{args.learning_rate}bs{args.batch_size}{args.exp_id}"
 log_dir = "./log/" + args.exp_name
@@ -96,12 +98,17 @@ model = nn.DataParallel(model).cuda()
 eval_steps = 0
 
 for epoch in range(args.train_epochs):
+    sigma.step()
     model.train()
     losses = []
     for batch_idx, data in enumerate(train_dataloader):
 
         points = data['points'].cuda()
         points, points2, point_ids, gt_corr = get_frame_pairs(points)
+        if 'jitter' in args.aug:
+            points = transforms.jitter_point_cloud_torch(points, sigma=sigma.value(), clip=5*sigma.value())
+            points2 = transforms.jitter_point_cloud_torch(points2, sigma=sigma.value(), clip=5*sigma.value())
+
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
