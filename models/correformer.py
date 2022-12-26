@@ -16,10 +16,10 @@ class CorreFormer(nn.Module):
         super(CorreFormer, self).__init__()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, d_model, 1)
+        self.conv3 = torch.nn.Conv1d(128, int(d_model/2), 1)
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(128)
-        self.bn3 = nn.BatchNorm1d(d_model)
+        self.bn3 = nn.BatchNorm1d(int(d_model/2))
         self.transformer_type = transformer_type
         self.loss_type = loss_type
         if loss_type == 'ce':
@@ -54,7 +54,9 @@ class CorreFormer(nn.Module):
         else:
             x = F.relu(self.bn1(self.conv1(points)))
             x = F.relu(self.bn2(self.conv2(x)))
-            x = self.bn3(self.conv3(x))
+            x = F.relu(self.bn3(self.conv3(x)))
+            global_feat = torch.max(x, -1)[0]
+            x = torch.cat([x, global_feat[:, :, None].repeat(1, 1, points.shape[-1])], -2)
             x = x.permute(0, 2, 1)
             out = self.transformer(x, x)
         return out

@@ -43,7 +43,7 @@ def get_frame_pairs(points):
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
-parser.add_argument("--batch_size", type=int, default=4)
+parser.add_argument("--batch_size", type=int, default=8)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--d_feedforward", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=8)
@@ -59,13 +59,13 @@ parser.add_argument('--gender', type=str,
 parser.add_argument('--nn_sample_ratio', type=int,
                     default=1.0, help='sample nearest neighbor correct corresondences, if 1 takes all points')
 parser.add_argument('--transformer_type', type=str,
-                    default='pnseg', help='plr | ptr | none - use point transformer layer (plr)'
+                    default='none', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
                     default='ce', help='ce | l2 indicating the loss type ')
 parser.add_argument('--exp_id', type=str,
-                    default='debug_pnseg', help='a unique identifier to append to the experiment name')
+                    default='debug_maxagg', help='a unique identifier to append to the experiment name')
 point_size = 25
 sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
 args = parser.parse_args()
