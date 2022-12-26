@@ -7,6 +7,8 @@ import numpy as np
 from utils import cosine_similarity
 from models.point_transformer_pytorch import PointTransformerLayer
 from models.point_transformer_repro import PointTransformerSeg
+from models.pointnet_sem_seg import PNSeg
+
 
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
@@ -25,10 +27,12 @@ class CorreFormer(nn.Module):
         if self.transformer_type == 'plr':
             # only the 16 nearest neighbors would be attended to for each point
             self.transformer = PointTransformerLayer(dim=dim_feedforward,  pos_mlp_hidden_dim=d_model,
-                                                      attn_mlp_hidden_mult=nhead, num_neighbors=16)
+                                                      attn_mlp_hidden_mult=nhead, num_neighbors=64)
         elif self.transformer_type == 'ptr':
-            self.transformer = PointTransformerSeg(nneighbor=16, npoints=n_points, nblocks=4,
+            self.transformer = PointTransformerSeg(nneighbor=32, npoints=n_points, nblocks=4,
                                                    n_c=dim_feedforward, d_points=3, transformer_dim=dim_feedforward)
+        elif self.transformer_type == 'pnseg':
+            self.transformer = PNSeg(n_points)
         else:
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
@@ -45,6 +49,8 @@ class CorreFormer(nn.Module):
             out = self.transformer(x.permute(0, 2, 1), points.permute(0, 2, 1))
         elif self.transformer_type == 'ptr':
             out = self.transformer(points.permute(0, 2, 1))
+        elif self.transformer_type == 'pnseg':
+            out, _ = self.transformer(points)
         else:
             x = F.relu(self.bn1(self.conv1(points)))
             x = F.relu(self.bn2(self.conv2(x)))
@@ -87,9 +93,9 @@ class CorreFormer(nn.Module):
             l2_loss = l2_loss[l2_mask]
             loss = l2_loss.mean()
         elif self.loss_type == 'ce':
-            l2_features = (out1[:, point_ids] - out2).square().mean()
+            # l2_features = (out1[:, point_ids] - out2).square().mean()
             ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
-            loss = ce_loss + l2_features
+            loss = ce_loss #+ l2_features
         return loss
 
     def forward(self, x1, x2):

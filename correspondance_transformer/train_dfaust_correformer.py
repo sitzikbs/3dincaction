@@ -11,6 +11,7 @@ import argparse
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 import visualization as vis
 from models.correformer import CorreFormer
+
 import models.correformer
 import pc_transforms as transforms
 from utils import ScalarScheduler
@@ -58,13 +59,13 @@ parser.add_argument('--gender', type=str,
 parser.add_argument('--nn_sample_ratio', type=int,
                     default=1.0, help='sample nearest neighbor correct corresondences, if 1 takes all points')
 parser.add_argument('--transformer_type', type=str,
-                    default='ptr', help='plr | ptr | none - use point transformer layer (plr)'
+                    default='pnseg', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
                     default='ce', help='ce | l2 indicating the loss type ')
 parser.add_argument('--exp_id', type=str,
-                    default='debug_celf_ptr', help='a unique identifier to append to the experiment name')
+                    default='debug_pnseg', help='a unique identifier to append to the experiment name')
 point_size = 25
 sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
 args = parser.parse_args()

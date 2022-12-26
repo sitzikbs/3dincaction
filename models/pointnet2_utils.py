@@ -453,6 +453,7 @@ class PointNetSetAbstractionOriginal(nn.Module):
             new_xyz: sampled points position data, [B, S, C]
             new_points_concat: sample points feature data, [B, S, D']
         """
+        xyz = xyz.permute(0, 2, 1)
         if self.group_all:
             new_xyz, new_points = sample_and_group_all(xyz, points)
         else:
