@@ -61,10 +61,10 @@ parser.add_argument('--transformer_type', type=str,
                     default='none', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
-parser.add_argument('--exp_id', type=str,
-                    default='debug_ce2', help='a unique identifier to append to the experiment name')
 parser.add_argument('--loss_type', type=str,
                     default='ce', help='ce | l2 indicating the loss type ')
+parser.add_argument('--exp_id', type=str,
+                    default='debug_celf', help='a unique identifier to append to the experiment name')
 point_size = 25
 sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
 args = parser.parse_args()

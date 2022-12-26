@@ -87,7 +87,7 @@ class CorreFormer(nn.Module):
             l2_loss = l2_loss[l2_mask]
             loss = l2_loss.mean()
         elif self.loss_type == 'ce':
-            l2_features = (out1 - out2[:, point_ids]).square().mean()
+            l2_features = (out1[:, point_ids] - out2).square().mean()
             ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
             loss = ce_loss + l2_features
         return loss

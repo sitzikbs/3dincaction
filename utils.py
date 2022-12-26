@@ -556,16 +556,18 @@ def local_distort(points, r=0.1, ratio=0.15, sigma=0.05):
     return torch.tensor(points)
 
 class ScalarScheduler():
-    def __init__(self, init_value=0.0, steps=5, increment=0.001):
+    def __init__(self, init_value=0.0, steps=5, increment=0.001, max_value=0.01):
         self.current_value = init_value
         self.steps = steps
         self.increment = increment
         self.current_step = 0
+        self.max_value = max_value
 
     def step(self):
         if self.current_step > self.steps:
-            self.current_value = self.current_value + self.increment
-            self.current_step = 0
+            if self.current_value < self.max_value:
+                self.current_value = self.current_value + self.increment
+                self.current_step = 0
         else:
             self.current_step += 1
     def value(self):
