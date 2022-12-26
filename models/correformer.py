@@ -77,7 +77,7 @@ class CorreFormer(nn.Module):
         sim_mat = torch.cat([sim_mat, bad_mat])
         return sim_mat
 
-    def compute_corr_loss(self, gt_corr, corr):
+    def compute_corr_loss(self, gt_corr, corr, point_ids, out1, out2):
         # compute correspondance loss
         b, n1, n2 = gt_corr.shape
         if self.loss_type == 'l2':
@@ -87,8 +87,9 @@ class CorreFormer(nn.Module):
             l2_loss = l2_loss[l2_mask]
             loss = l2_loss.mean()
         elif self.loss_type == 'ce':
-            ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), torch.argmax(gt_corr.reshape(-1, gt_corr.shape[-1]), -1))
-            loss = ce_loss
+            l2_features = (out2 - out2[:, point_ids]).square().mean()
+            ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids)
+            loss = ce_loss + l2_features
         return loss
 
     def forward(self, x1, x2):

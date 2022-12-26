@@ -114,7 +114,7 @@ for epoch in range(args.train_epochs):
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
 
-        loss = model.module.compute_corr_loss(gt_corr, corr)
+        loss = model.module.compute_corr_loss(gt_corr, corr, point_ids, out1, out2)
 
         optimizer.zero_grad()
         loss.backward()
@@ -148,7 +148,8 @@ for epoch in range(args.train_epochs):
                 test_out1, test_out2, test_corr, test_max_ind = test_out_dict['out1'], test_out_dict['out2'], \
                     test_out_dict['corr_mat'], test_out_dict['corr_idx21']
 
-                test_loss = model.module.compute_corr_loss(test_gt_corr, test_corr)
+                test_loss = model.module.compute_corr_loss(test_gt_corr, test_corr,
+                                                           test_point_ids, test_out1, test_out2)
                 print(f"Epoch {epoch} batch {batch_idx}: test loss {test_loss:.3f}")
 
                 test_true_corr = test_max_ind == test_point_ids
