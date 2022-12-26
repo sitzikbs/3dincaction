@@ -11,5 +11,6 @@ DFF=1024
 DATASET_PATH='/data1/datasets/dfaust/'
 AUG='jitter'
 LOSS='ce'
-EXP_ID='jitter0.005CE_FL_NoSampler'
-taskset -c 128-160 python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS --d_feedforward $DFF --exp_id $EXP_ID --aug $AUG --loss_type $LOSS
+EXP_ID='jitter0.005CE_FL_NoSampler_ptr'
+TTYPE='ptr'
+taskset -c 128-160 python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS --d_feedforward $DFF --exp_id $EXP_ID --aug $AUG --loss_type $LOSS --transformer_type $TTYPE

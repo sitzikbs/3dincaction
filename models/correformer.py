@@ -27,7 +27,7 @@ class CorreFormer(nn.Module):
             self.transformer = PointTransformerLayer(dim=dim_feedforward,  pos_mlp_hidden_dim=d_model,
                                                       attn_mlp_hidden_mult=nhead, num_neighbors=16)
         elif self.transformer_type == 'ptr':
-            self.transformer = PointTransformerSeg(nneighbor=16, npoints=n_points, nblocks=nhead,
+            self.transformer = PointTransformerSeg(nneighbor=16, npoints=n_points, nblocks=4,
                                                    n_c=dim_feedforward, d_points=3, transformer_dim=dim_feedforward)
         else:
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
