@@ -16,13 +16,15 @@ class CorreFormer(nn.Module):
         super(CorreFormer, self).__init__()
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, int(d_model/2), 1)
+        # self.conv3 = torch.nn.Conv1d(128, int(d_model/2), 1)
+        self.conv3 = torch.nn.Conv1d(128, d_model, 1)
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(128)
-        self.bn3 = nn.BatchNorm1d(int(d_model/2))
+        self.bn3 = nn.BatchNorm1d(d_model)
+        # self.bn3 = nn.BatchNorm1d(int(d_model / 2))
         self.transformer_type = transformer_type
         self.loss_type = loss_type
-        if loss_type == 'ce':
+        if 'ce' in loss_type:
             self.criterion = torch.nn.CrossEntropyLoss()
         if self.transformer_type == 'plr':
             # only the 16 nearest neighbors would be attended to for each point
@@ -55,8 +57,8 @@ class CorreFormer(nn.Module):
             x = F.relu(self.bn1(self.conv1(points)))
             x = F.relu(self.bn2(self.conv2(x)))
             x = F.relu(self.bn3(self.conv3(x)))
-            global_feat = torch.max(x, -1)[0]
-            x = torch.cat([x, global_feat[:, :, None].repeat(1, 1, points.shape[-1])], -2)
+            # global_feat = torch.max(x, -1)[0]
+            # x = torch.cat([x, global_feat[:, :, None].repeat(1, 1, points.shape[-1])], -2)
             x = x.permute(0, 2, 1)
             out = self.transformer(x, x)
         return out
@@ -85,7 +87,7 @@ class CorreFormer(nn.Module):
         sim_mat = torch.cat([sim_mat, bad_mat])
         return sim_mat
 
-    def compute_corr_loss(self, gt_corr, corr, point_ids, out1, out2):
+    def compute_corr_loss(self, gt_corr, corr, point_ids, out1, out2, sim_mat):
         # compute correspondance loss
         b, n1, n2 = gt_corr.shape
         if self.loss_type == 'l2':
@@ -98,7 +100,28 @@ class CorreFormer(nn.Module):
             # l2_features = (out1[:, point_ids] - out2).square().mean()
             ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
             loss = ce_loss #+ l2_features
+        elif self.loss_type == 'ce2':
+            ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+            ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
+                                       torch.arange(n1, device=sim_mat.device).repeat(b))
+            loss = ce_loss1 + ce_loss2
+        elif self.loss_type == 'ce_bbl':
+            ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+            ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
+                                       torch.arange(n1, device=sim_mat.device).repeat(b))
+            bbl_loss = self.BBL_loss(sim_mat, thresh=0.95)
+            loss = ce_loss1 + ce_loss2 + bbl_loss
+
         return loss
+
+    def BBL_loss(self, sim_mat, thresh=0.1):
+        # compute best buddy loss
+        buddy_pair_mat = sim_mat > thresh
+        BBM = buddy_pair_mat*buddy_pair_mat.permute(0, 2, 1)  # best buddy matrix
+        sym_loss = (BBM - BBM.permute(0, 2, 1)).square().mean()
+        ort_loss = BBM*BBM.permute(0, 2, 1) - torch.eye(BBM.shape[-1],device=BBM.device)
+        bbl_loss = sym_loss + ort_loss
+        return bbl_loss
 
     def forward(self, x1, x2):
         out1 = self.single_pass(x1)
@@ -106,7 +129,8 @@ class CorreFormer(nn.Module):
 
         sim_mat, corr21, max_ind12, max_ind21 = self.compute_sim_mat_full(out1, out2)
 
-        return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
+        return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21,
+                'sim_mat': sim_mat}
 
 
 def sort_points(correformer, x):
