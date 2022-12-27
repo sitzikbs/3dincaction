@@ -51,7 +51,7 @@ parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--aug', type=str, nargs='+',
-                    default=['none'], help='list of augmentations to apply: scale, rotate, translate, jitter')
+                    default=['jitter'], help='list of augmentations to apply: scale, rotate, translate, jitter')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=10)
 parser.add_argument('--gender', type=str,
@@ -63,9 +63,9 @@ parser.add_argument('--transformer_type', type=str,
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
-                    default='ce', help='ce | l2 indicating the loss type ')
+                    default='ce2', help='ce | l2 indicating the loss type ')
 parser.add_argument('--exp_id', type=str,
-                    default='debug_maxagg', help='a unique identifier to append to the experiment name')
+                    default='debug_ce2', help='a unique identifier to append to the experiment name')
 point_size = 25
 sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
 args = parser.parse_args()
@@ -114,8 +114,9 @@ for epoch in range(args.train_epochs):
 
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
+        sim_mat = out_dict['sim_mat']
 
-        loss = model.module.compute_corr_loss(gt_corr, corr, point_ids, out1, out2)
+        loss = model.module.compute_corr_loss(gt_corr, corr, point_ids, out1, out2, sim_mat)
 
         optimizer.zero_grad()
         loss.backward()
@@ -148,9 +149,9 @@ for epoch in range(args.train_epochs):
                 test_out_dict = model(test_points, test_points2)
                 test_out1, test_out2, test_corr, test_max_ind = test_out_dict['out1'], test_out_dict['out2'], \
                     test_out_dict['corr_mat'], test_out_dict['corr_idx21']
-
+                test_sim_mat = out_dict['sim_mat']
                 test_loss = model.module.compute_corr_loss(test_gt_corr, test_corr,
-                                                           test_point_ids, test_out1, test_out2)
+                                                           test_point_ids, test_out1, test_out2, test_sim_mat)
                 print(f"Epoch {epoch} batch {batch_idx}: test loss {test_loss:.3f}")
 
                 test_true_corr = test_max_ind == test_point_ids

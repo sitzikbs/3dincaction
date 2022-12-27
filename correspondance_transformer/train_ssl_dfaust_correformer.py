@@ -53,7 +53,7 @@ parser.add_argument("--learning_rate", type=float, default=1e-4)
 parser.add_argument("--batch_size", type=int, default=32)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--d_feedforward", type=int, default=1024)
-parser.add_argument("--n_heads", type=int, default=16)
+parser.add_argument("--n_heads", type=int, default=8)
 parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
