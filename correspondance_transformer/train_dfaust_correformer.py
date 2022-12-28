@@ -63,7 +63,7 @@ parser.add_argument('--transformer_type', type=str,
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
-                    default='ce2', help='ce | l2 indicating the loss type ')
+                    default='ce2', help='ce | l2 | ce_bbl indicating the loss type ')
 parser.add_argument('--exp_id', type=str,
                     default='debug_ce2', help='a unique identifier to append to the experiment name')
 point_size = 25
