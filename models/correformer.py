@@ -119,7 +119,7 @@ class CorreFormer(nn.Module):
         buddy_pair_mat = sim_mat > thresh
         BBM = buddy_pair_mat*buddy_pair_mat.permute(0, 2, 1)  # best buddy matrix
         sym_loss = (BBM - BBM.permute(0, 2, 1)).square().mean()
-        ort_loss = BBM*BBM.permute(0, 2, 1) - torch.eye(BBM.shape[-1],device=BBM.device)
+        ort_loss = torch.bmm(BBM, BBM.permute(0, 2, 1)) - torch.eye(BBM.shape[-1], device=BBM.device)
         bbl_loss = sym_loss + ort_loss
         return bbl_loss
 

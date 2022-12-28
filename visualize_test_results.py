@@ -44,7 +44,6 @@ model.cuda()
 model = nn.DataParallel(model)
 
 
-
 # Iterate over data.
 for test_batchind, data in enumerate(test_dataloader):
     model.train(False)
@@ -70,7 +69,6 @@ for test_batchind, data in enumerate(test_dataloader):
 
     vis_txt = ['GT = ' + test_dataset.action_dataset.actions[int(labels_int[0][j].detach().cpu().numpy())] + ', Pred = '
     + test_dataset.action_dataset.actions[int(pred_labels.reshape(-1, args.frames_per_clip)[0][j])] for j in  range(args.frames_per_clip)]
-
     # visualization.pc_seq_vis(inputs[0].permute(0, 2,1).detach().cpu().numpy(), text=vis_txt, color=grad_mag[0])
     visualization.mesh_seq_vis(inputs[0].permute(0, 2, 1).detach().cpu().numpy(), test_dataset.action_dataset.faces,
                                text=vis_txt, color=grad_mag[0])
