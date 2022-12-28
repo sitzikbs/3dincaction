@@ -109,7 +109,7 @@ class CorreFormer(nn.Module):
             ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
             ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
                                        torch.arange(n1, device=sim_mat.device).repeat(b))
-            bbl_loss = self.BBL_loss(sim_mat, thresh=0.95)
+            bbl_loss = self.BBL_loss(sim_mat, thresh=0.8)
             loss = ce_loss1 + ce_loss2 + bbl_loss
 
         return loss
@@ -117,10 +117,10 @@ class CorreFormer(nn.Module):
     def BBL_loss(self, sim_mat, thresh=0.1):
         # compute best buddy loss
         buddy_pair_mat = sim_mat > thresh
-        BBM = buddy_pair_mat*buddy_pair_mat.permute(0, 2, 1)  # best buddy matrix
-        sym_loss = (BBM - BBM.permute(0, 2, 1)).square().mean()
-        ort_loss = torch.bmm(BBM, BBM.permute(0, 2, 1)) - torch.eye(BBM.shape[-1], device=BBM.device)
-        bbl_loss = sym_loss + ort_loss
+        BBM = (buddy_pair_mat*buddy_pair_mat.permute(0, 2, 1)).float()  # best buddy matrix
+        #sym_loss = (BBM - BBM.permute(0, 2, 1)).square().mean()
+        ort_loss = (torch.bmm(BBM, BBM.permute(0, 2, 1)) - torch.eye(BBM.shape[-1], device=BBM.device)).square().mean()
+        bbl_loss =  ort_loss #+ sym_loss
         return bbl_loss
 
     def forward(self, x1, x2):
