@@ -10,10 +10,40 @@ import pc_transforms as transforms
 import visualization as vis
 from models.NNCorr import NNCorr
 import matplotlib.pyplot as plt
+np.random.seed(0)
+torch.manual_seed(0)
 
 title_dict = {'sim_mat': 'Similarity matrix', 'corr21': 'softmax cols', 'corr12': 'softmax rows',
               'best_buddies_mat': 'best buddies', 'max_corr21_mat': 'max_corr21', 'max_corr12_mat': 'max_corr12',
               'err_mat': 'Error mat', 'GT': 'GT', '3Dpc_diff': 'diff overlay'}
+
+def extract_selfattention_maps(model, points):
+    mask = torch.zeros((args.n_points, args.n_points)).bool().cuda()
+    src_key_padding_mask = torch.zeros((1, args.n_points)).bool().cuda()
+
+    x = F.relu(model.bn1(model.conv1(points.permute(0, 2, 1))))
+    x = F.relu(model.bn2(model.conv2(x)))
+    x = F.relu(model.bn3(model.conv3(x)))
+    x = x.permute(0, 2, 1)
+    transformer_encoder = model.transformer.encoder
+
+    attention_maps = []
+    num_layers = transformer_encoder.num_layers
+    num_heads = transformer_encoder.layers[0].self_attn.num_heads
+    norm_first = transformer_encoder.layers[0].norm_first
+    with torch.no_grad():
+        for i in range(num_layers):
+            # compute attention of layer i
+            h = x.clone()
+            if norm_first:
+                h = transformer_encoder.layers[i].norm1(h)
+            attn = transformer_encoder.layers[i].self_attn(h, h, h, attn_mask=mask,
+                                                           key_padding_mask=src_key_padding_mask, need_weights=True)[1]
+            attention_maps.append(attn.detach().cpu().numpy())
+            # forward of layer i
+            x = transformer_encoder.layers[i](x, src_mask=mask, src_key_padding_mask=src_key_padding_mask)
+    return attention_maps
+
 def get_result_matrices(out_dict, points2, point_ids):
     max_ind21, max_ind12 = out_dict['corr_idx21'], out_dict['corr_idx12']
     sim_mat = out_dict['sim_mat'].squeeze().detach().cpu().numpy()
@@ -38,10 +68,10 @@ parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
 parser.add_argument('--model_path', type=str,
-                    default='../log/jitter/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs8debug_bbl/',
+                    default='../log/jitter/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs32jitter0.005CE_NoSampler_bbl_fix/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000050.pt', help='path to model save dir')
-parser.add_argument('--jitter', type=float, default=0.005,
+parser.add_argument('--model', type=str, default='000100.pt', help='path to model save dir')
+parser.add_argument('--jitter', type=float, default=0.00,
                     help='if larger than 0 : adds random jitter to test points')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in each model')
 args = parser.parse_args()
@@ -83,6 +113,10 @@ for test_batchind, data in enumerate(test_dataloader):
         # nn_out_dict = NN_model(frame.unsqueeze(0), target_points)
         # sim_mat = out_dict['sim_mat'].squeeze().detach().cpu().numpy()
 
+
+        # attention_maps = extract_selfattention_maps(model, frame.unsqueeze(0))
+        attention_maps = extract_selfattention_maps(model, target_points)
+
         # print and visualize
         true_corr = max_ind21 == point_ids
         correct += (true_corr).sum().detach().cpu().numpy()
@@ -92,7 +126,15 @@ for test_batchind, data in enumerate(test_dataloader):
 
         # vis.plot_correformer_outputs(mat_dict_corr, title_dict, title_text='Correformer results')
         # vis.pc_seq_vis(target_points.squeeze().cpu().detach().numpy())
-        diff_colors = torch.logical_not(max_ind21[0] == point_ids).unsqueeze(0).cpu().detach().numpy()
-        vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=diff_colors, cmap='jet', point_size=25)
+        # diff_colors = torch.logical_not(max_ind21[0] == point_ids).unsqueeze(0).cpu().detach().numpy()
+        # vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=diff_colors, cmap='jet', point_size=25)
+
+        # att_point_idx = 1
+        # att_color = attention_map[-1][:, att_point_idx].cpu().detach().numpy()
+        # vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=att_color, cmap='jet', point_size=25)
+
+        # vis.plot_attention_maps(attention_maps, frame.unsqueeze(0), point_idx=500, title_text='', point_size=25)
+        vis.pc_attn_vis(target_points.squeeze().detach().cpu().numpy(), attention_maps, text=None)
+
         plt.close()
     acc = correct/total
