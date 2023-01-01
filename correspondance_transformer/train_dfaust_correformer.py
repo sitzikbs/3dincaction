@@ -51,7 +51,7 @@ parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--aug', type=str, nargs='+',
-                    default=['jitter'], help='list of augmentations to apply: scale, rotate, translate, jitter')
+                    default=['none'], help='list of augmentations to apply: scale, rotate, translate, jitter')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=10)
 parser.add_argument('--gender', type=str,
@@ -63,9 +63,9 @@ parser.add_argument('--transformer_type', type=str,
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
-                    default='ce_bbl', help='ce | l2 | ce_bbl indicating the loss type ')
+                    default='ce', help='ce | l2 | ce_bbl indicating the loss type ')
 parser.add_argument('--exp_id', type=str,
-                    default='debug_bbl', help='a unique identifier to append to the experiment name')
+                    default='debug', help='a unique identifier to append to the experiment name')
 
 point_size = 25
 sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
@@ -115,9 +115,11 @@ for epoch in range(args.train_epochs):
 
         out_dict = model(points, points2)
         out1, out2, corr, max_ind = out_dict['out1'], out_dict['out2'], out_dict['corr_mat'], out_dict['corr_idx21']
+        point_features1, point_features2 = out_dict['point_features1'], out_dict['point_features2']
         sim_mat = out_dict['sim_mat']
 
-        loss = model.module.compute_corr_loss(gt_corr, corr, point_ids, out1, out2, sim_mat)
+        loss, loss_dict = model.module.compute_corr_loss(gt_corr, corr, point_ids, out1, out2, sim_mat,
+                                              point_features1, point_features2)
 
         optimizer.zero_grad()
         loss.backward()
@@ -128,8 +130,10 @@ for epoch in range(args.train_epochs):
         avg_acc = correct / (args.n_points*args.batch_size)
         iter = epoch * len(train_dataloader) + batch_idx
 
-        loss_log_dict = {"acc": avg_acc,
-                         "losses/total_loss": loss.detach().cpu().numpy()}
+        loss_log_dict = loss_dict
+        loss_log_dict['acc'] = avg_acc
+        # loss_log_dict = {"acc": avg_acc,
+        #                  "losses/total_loss": loss.detach().cpu().numpy()}
         log_scalars(writer, loss_log_dict, iter)
 
         print(f"Epoch {epoch} batch {batch_idx}: train loss {loss:.3f}")
@@ -151,15 +155,20 @@ for epoch in range(args.train_epochs):
                 test_out1, test_out2, test_corr, test_max_ind = test_out_dict['out1'], test_out_dict['out2'], \
                     test_out_dict['corr_mat'], test_out_dict['corr_idx21']
                 test_sim_mat = out_dict['sim_mat']
-                test_loss = model.module.compute_corr_loss(test_gt_corr, test_corr,
-                                                           test_point_ids, test_out1, test_out2, test_sim_mat)
+                test_point_features1, test_point_features2 = out_dict['point_features1'], out_dict['point_features2']
+                test_loss, test_loss_dict = model.module.compute_corr_loss(test_gt_corr, test_corr,
+                                                           test_point_ids, test_out1, test_out2, test_sim_mat,
+                                                           test_point_features1, test_point_features2)
                 print(f"Epoch {epoch} batch {batch_idx}: test loss {test_loss:.3f}")
 
                 test_true_corr = test_max_ind == test_point_ids
                 test_correct = (test_true_corr).sum().detach().cpu().numpy()
                 test_avg_acc = test_correct / (args.n_points * args.batch_size)
-                test_loss_log_dict = {"acc": test_avg_acc,
-                                      "losses/total_loss": test_loss.detach().cpu().numpy()}
+
+                test_loss_log_dict = test_loss_dict
+                test_loss_log_dict['acc'] = test_avg_acc
+                # test_loss_log_dict = {"acc": test_avg_acc,
+                #                       "losses/total_loss": test_loss.detach().cpu().numpy()}
                 log_scalars(test_writer, test_loss_log_dict, iter)
                 model.train()
 
