@@ -5,7 +5,7 @@ export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
 DATASET_PATH='/data1/datasets/ANU_ikea_dataset_smaller/' # on remote
-#DATASET_PATH='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/' # on local
+#DATASET_PATH='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/' # on local
 INPUT_TYPE='pc'
 CAMERA='dev3'
 #PT_MODEL='charades' # when using images
