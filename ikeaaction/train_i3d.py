@@ -19,6 +19,7 @@ from models.pytorch_i3d import InceptionI3d
 from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1, PointNet1Basic
 from models.pointnet2_cls_ssg import PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
+import models.correformer as cf
 
 
 parser = argparse.ArgumentParser()
@@ -47,6 +48,9 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
                                                                    ' to sort the points temporally')
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
+parser.add_argument('--correformer', type=str,
+                    default='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt',
+                    help='None or path to correformer model')
 args = parser.parse_args()
 
 
@@ -64,6 +68,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     os.system('cp %s %s' % ('../models/pointnet.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('./models/correformer.py', logdir))  # backup the models files
+
     # setup dataset
     # train_transforms = transforms.Compose([videotransforms.RandomCrop(224),
     #                                        videotransforms.RandomHorizontalFlip(),
@@ -122,6 +128,11 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             ValueError("point cloud architecture not supported. Check the pc_model input")
     else:
         ValueError("Unsupported input type")
+
+    # Load correspondance transformer
+    if not args.correformer == 'none':
+        correformer = cf.get_correformer(args.correformer)
+
 
     if pretrained_model is not None:
         checkpoints = torch.load(pretrained_model)
@@ -204,6 +215,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             num_iter += 1
             # get the inputs
             inputs, labels, vid_idx, frame_pad = data
+            if not args.correformer == 'none':
+                with torch.no_grad():
+                    inputs, _ = cf.sort_points(correformer, inputs)
             inputs = inputs.cuda().requires_grad_().contiguous()
             labels = labels.cuda()
 
@@ -262,6 +276,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels, vid_idx, frame_pad = data
+                if not args.correformer == 'none':
+                    with torch.no_grad():
+                        inputs, _ = cf.sort_points(correformer, inputs)
                 inputs = inputs.cuda().requires_grad_().contiguous()
                 labels = labels.cuda()
 

@@ -16,6 +16,8 @@ import numpy as np
 # from pytorch_i3d import InceptionI3d
 from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
 import importlib.util
+import models.correformer as cf
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_type', type=str, default='pc', help='rgb | depth, indicating which data to load')
@@ -37,6 +39,9 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
                                                                    ' to sort the points temporally')
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
+parser.add_argument('--correformer', type=str,
+                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
+                    help='None or path to correformer model')
 args = parser.parse_args()
 
 
@@ -87,6 +92,18 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
             sys.modules["PointNet1"] = pointnet
             spec.loader.exec_module(pointnet)
             model = pointnet.PointNet1(k=num_classes, feature_transform=True)
+        elif pc_model == 'pn1_basic':
+            spec = importlib.util.spec_from_file_location("PointNet1Basic", os.path.join(args.model_path, "pointnet.py"))
+            pointnet = importlib.util.module_from_spec(spec)
+            sys.modules["PointNet1Basic"] = pointnet
+            spec.loader.exec_module(pointnet)
+            model = pointnet.PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+        elif pc_model == 'pn1_4d':
+            spec = importlib.util.spec_from_file_location("PointNet4D", os.path.join(args.model_path, "pointnet.py"))
+            pointnet = importlib.util.module_from_spec(spec)
+            sys.modules["PointNet4D"] = pointnet
+            spec.loader.exec_module(pointnet)
+            model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
         elif pc_model == 'pn2':
                 spec = importlib.util.spec_from_file_location("PointNetPP4D",
                                                               os.path.join(args.model_path, "pointnet2_cls_ssg.py"))
@@ -108,6 +125,10 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
     model.cuda()
     model = nn.DataParallel(model)
 
+    # Load correspondance transformer
+    if not args.correformer =='none':
+        correformer = cf.get_correformer(args.correformer)
+
     n_examples = 0
 
     # Iterate over data.
@@ -119,7 +140,9 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
         model.train(False)
         # get the inputs
         inputs, labels, vid_idx, frame_pad = data
-
+        if not args.correformer == 'none':
+            with torch.no_grad():
+                inputs, _ = cf.sort_points(correformer, inputs)
         # wrap them in Variable
         inputs = inputs.cuda().requires_grad_().contiguous()
         labels = labels.cuda()
