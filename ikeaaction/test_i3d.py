@@ -92,7 +92,7 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
             sys.modules["PointNet1"] = pointnet
             spec.loader.exec_module(pointnet)
             model = pointnet.PointNet1(k=num_classes, feature_transform=True)
-        elif pc_model == 'pn1_basic':
+        elif pc_model == 'pn1_4d_basic':
             spec = importlib.util.spec_from_file_location("PointNet1Basic", os.path.join(args.model_path, "pointnet.py"))
             pointnet = importlib.util.module_from_spec(spec)
             sys.modules["PointNet1Basic"] = pointnet
