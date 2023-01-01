@@ -2,6 +2,8 @@
 # train action recognition on the ikea ASM dataset
 
 import os
+import sys
+sys.path.append('../')
 # import sys
 import argparse
 import i3d_utils as utils

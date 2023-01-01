@@ -2,6 +2,8 @@
 # test I3D on the ikea ASM dataset
 
 import os
+import sys
+sys.path.append('../')
 import argparse
 import i3d_utils
 import sys
