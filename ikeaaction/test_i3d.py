@@ -27,14 +27,14 @@ parser.add_argument('--frames_per_clip', type=int, default=64, help='number of f
 parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=2048, help='number of points in a point cloud')
 parser.add_argument('--db_filename', type=str,
-                    default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/ikea_annotation_db_full',
+                    default='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/ikea_annotation_db_full',
                     help='database file')
 parser.add_argument('--model_path', type=str, default='./log/debug/',
                     help='path to model save dir')
 parser.add_argument('--device', default='dev3', help='which camera to load')
 parser.add_argument('--model', type=str, default='000000.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
-                    default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
+                    default='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
 parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to use pointlettes in the data loader'
                                                                    ' to sort the points temporally')
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
