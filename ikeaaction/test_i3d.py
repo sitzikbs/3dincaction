@@ -21,7 +21,7 @@ import models.correformer as cf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_type', type=str, default='pc', help='rgb | depth, indicating which data to load')
-parser.add_argument('--pc_model', type=str, default='3dmfv', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skipping frames')
 parser.add_argument('--frames_per_clip', type=int, default=64, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
@@ -39,9 +39,7 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
                                                                    ' to sort the points temporally')
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--correformer', type=str,
-                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
-                    help='None or path to correformer model')
+parser.add_argument('--correformer', type=str, default='none',  help='None or path to correformer model')
 args = parser.parse_args()
 
 
