@@ -20,12 +20,12 @@ class CorreFormer(nn.Module):
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(128)
 
-        # self.conv3 = torch.nn.Conv1d(128, d_model-3, 1)
-        # self.bn3 = nn.BatchNorm1d(d_model-3)
+        self.conv3 = torch.nn.Conv1d(128, d_model-3, 1)
+        self.bn3 = nn.BatchNorm1d(d_model-3)
         # self.conv3 = torch.nn.Conv1d(128, d_model, 1)
         # self.bn3 = nn.BatchNorm1d(d_model)
-        self.conv3 = torch.nn.Conv1d(128, int(d_model/2), 1)
-        self.bn3 = nn.BatchNorm1d(int(d_model / 2))
+        # self.conv3 = torch.nn.Conv1d(128, int(d_model/2), 1)
+        # self.bn3 = nn.BatchNorm1d(int(d_model / 2))
         self.transformer_type = transformer_type
         self.loss_type = loss_type
 
