@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add utils dir
 import utils
 import eval_utils
-from IKEAActionDataset import IKEAActionDataset as Dataset
+from ikeaaction.IKEAActionDataset import IKEAActionDataset as Dataset
 import matplotlib.pyplot as plt
 sys.path.append('evaluation')
 from eval_detection import ANETdetection
