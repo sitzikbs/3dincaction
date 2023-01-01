@@ -82,11 +82,11 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
         model.replace_logits(num_classes)
     elif input_type == 'pc':
         if pc_model == 'pn1':
-            spec = importlib.util.spec_from_file_location("PointNet4D", os.path.join(args.model_path, "pointnet.py"))
+            spec = importlib.util.spec_from_file_location("PointNet1", os.path.join(args.model_path, "pointnet.py"))
             pointnet = importlib.util.module_from_spec(spec)
-            sys.modules["PointNet4D"] = pointnet
+            sys.modules["PointNet1"] = pointnet
             spec.loader.exec_module(pointnet)
-            model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+            model = pointnet.PointNet1(k=num_classes, feature_transform=True)
         elif pc_model == 'pn2':
                 spec = importlib.util.spec_from_file_location("PointNetPP4D",
                                                               os.path.join(args.model_path, "pointnet2_cls_ssg.py"))

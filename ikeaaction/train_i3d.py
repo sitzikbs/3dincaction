@@ -34,7 +34,7 @@ parser.add_argument('--db_filename', type=str, default='ikea_annotation_db_full'
                     help='database file name within dataset path')
 parser.add_argument('--logdir', type=str, default='./log/debug/', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
-                    default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
+                    default='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
 parser.add_argument('--load_mode', type=str, default='img', help='dataset loader mode to load videos or images: '
                                                                  'vid | img')
 parser.add_argument('--camera', type=str, default='dev3', help='dataset camera view: dev1 | dev2 | dev3 ')
