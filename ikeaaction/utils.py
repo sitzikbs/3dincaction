@@ -2,6 +2,8 @@
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+import torch
+
 
 def squeeze_class_names(class_names):
     """
@@ -450,3 +452,16 @@ def accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logi
 
     return pred_labels_per_video, logits_per_video
 
+def cosine_similarity(x, y):
+  # Compute the dot product between the two batches
+  dot = torch.bmm(x, y.transpose(2, 1))
+
+  # Compute the norms of the two batches
+  norm1 = torch.norm(x, dim=-1)
+  norm2 = torch.norm(y, dim=-1)
+
+  # Compute the cosine similarity
+  sim = dot.abs() / (norm1.unsqueeze(-1) * norm2.unsqueeze(-2))
+
+  # Return the cosine similarity
+  return sim
