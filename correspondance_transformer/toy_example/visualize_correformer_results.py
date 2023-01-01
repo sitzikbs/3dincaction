@@ -90,9 +90,9 @@ for test_batchind, data in enumerate(test_dataloader):
         instance_acc = correct / total
         print("Pair correspondance accuracy: {}".format(instance_acc))
 
-        # vis.plot_correformer_outputs(mat_dict_corr, title_dict, title_text='Correformer results')
+        vis.plot_correformer_outputs(mat_dict_corr, title_dict, title_text='Correformer results')
         # vis.pc_seq_vis(target_points.squeeze().cpu().detach().numpy())
-        diff_colors = torch.logical_not(max_ind21[0] == point_ids).unsqueeze(0).cpu().detach().numpy()
-        vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=diff_colors, cmap='jet', point_size=25)
+        # diff_colors = torch.logical_not(max_ind21[0] == point_ids).unsqueeze(0).cpu().detach().numpy()
+        # vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=diff_colors, cmap='jet', point_size=25)
         plt.close()
     acc = correct/total
