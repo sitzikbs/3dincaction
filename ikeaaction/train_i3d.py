@@ -48,9 +48,7 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
                                                                    ' to sort the points temporally')
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--correformer', type=str,
-                    default='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt',
-                    help='None or path to correformer model')
+parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
 args = parser.parse_args()
 
 
