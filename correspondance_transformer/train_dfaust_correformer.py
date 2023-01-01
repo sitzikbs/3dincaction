@@ -66,6 +66,7 @@ parser.add_argument('--loss_type', type=str,
                     default='ce_bbl', help='ce | l2 | ce_bbl indicating the loss type ')
 parser.add_argument('--exp_id', type=str,
                     default='debug_bbl', help='a unique identifier to append to the experiment name')
+
 point_size = 25
 sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
 args = parser.parse_args()

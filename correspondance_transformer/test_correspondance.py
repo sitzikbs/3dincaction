@@ -10,7 +10,7 @@ from models.sinkhorn import SinkhornCorr
 import pc_transforms as transforms
 import numpy as np
 import visualization as vis
-
+import importlib
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -20,10 +20,10 @@ parser.add_argument('--method', type=str, default='transformer', help='nn  | sin
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=1, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs40jitter0.005CENoSampler/',
+parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000100.pt', help='path to model save dir')
-parser.add_argument('--jitter', type=float, default=0.005, help='if larger than 0 : adds random jitter to test points')
+parser.add_argument('--model', type=str, default='000840.pt', help='path to model save dir')
+parser.add_argument('--jitter', type=float, default=0.01, help='if larger than 0 : adds random jitter to test points')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
@@ -44,6 +44,7 @@ if args.method == 'nn':
 elif args.method == 'sinkhorn':
     model = SinkhornCorr()
 elif args.method == 'transformer':
+    #TODO load correformer.py file from model_path directory using importlib
     checkpoints = os.path.join(args.model_path, args.model)
     model = cf.get_correformer(checkpoints)
 else:

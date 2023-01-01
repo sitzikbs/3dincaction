@@ -1,5 +1,6 @@
 import os.path
-
+import sys
+import importlib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -59,6 +60,7 @@ class CorreFormer(nn.Module):
             x = F.relu(self.bn3(self.conv3(x)))
             # global_feat = torch.max(x, -1)[0]
             # x = torch.cat([x, global_feat[:, :, None].repeat(1, 1, points.shape[-1])], -2)
+            # x = torch.cat([x, points])
             x = x.permute(0, 2, 1)
             out = self.transformer(x, x)
         return out
