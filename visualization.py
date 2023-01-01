@@ -55,6 +55,75 @@ class PCCustomRoutine:
         self.output.overwrite(pc)
         return
 
+class PCAttnRoutine:
+    def __init__(self, vertices, point_obj, text, pl, attn_maps):
+
+        self.vertices = vertices
+        self.text = text
+        self.pl = pl
+        self.color = attn_maps
+        self.n_maps = len(attn_maps)
+        self.point_id = 0
+        # default parameters
+        self.kwargs = {'map_id': 0, 'point_id': 0 }
+        self.output = point_obj
+
+    def __call__(self, param, value):
+        self.kwargs[param] = value
+        self.update()
+
+    def update(self):
+        # This is where you call your simulation
+        pc = pv.PolyData(self.vertices)
+        if self.kwargs['map_id'] < self.n_maps:
+            pc['scalars'] = self.color[int(self.kwargs['map_id'])][0, int(self.kwargs['point_id']) ]
+        else:
+            color = np.zeros(len(self.vertices))
+            color[int(self.kwargs['point_id'])] = 1
+            pc['scalars'] = color
+
+        self.output.overwrite(pc)
+        return
+
+
+def pc_attn_vis(verts, attn_maps, text=None):
+    n_maps = len(attn_maps)
+    n_points = len(verts)
+    pc = pv.PolyData(verts)
+    pc['scalars'] = attn_maps[0][0][0]
+
+    pl = pv.Plotter()
+    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=25)
+    engine = PCAttnRoutine(verts, pc, text, pl, attn_maps)
+    pl.add_slider_widget(
+        callback=lambda value: engine('map_id', value),
+        rng=[0, n_maps],
+        value=0,
+        title="map_id",
+        pointa=(0.025, 0.1),
+        pointb=(0.31, 0.1),
+        style='modern',
+        event_type='always'
+    )
+    pl.add_slider_widget(
+        callback=lambda value: engine('point_id', value),
+        rng=[0, n_points-1],
+        value=0,
+        title="point_id",
+        pointa=(0.025, 0.2),
+        pointb=(0.31, 0.2),
+        style='modern',
+        event_type='always'
+    )
+    if text is not None:
+        pl.add_title(text[0])
+
+    pl.camera.position = (1, 1, 1)
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
+    pl.show()
+
 
 def mesh_seq_vis(verts, faces, text=None, color=None):
     faces = np.concatenate([3 * np.ones([faces.shape[0], 1], dtype=np.int16), faces], axis=1)
@@ -119,6 +188,7 @@ def pc_seq_vis(verts, text=None, color=None):
     pl.show()
 
 
+
 def plot_pc_pv(verts, text=None, color=None, cmap=None, point_size=50, ):
     if cmap is not None:
         pv.global_theme.cmap = cmap
@@ -172,6 +242,39 @@ def plot_correformer_outputs(mat_dict, titles_dict, title_text=''):
         if col == ncols :
             row += 1
             col = 0
+
+    fig.suptitle(title_text)
+
+    plt.show()
+
+def plot_attention_maps(attention_maps, points, point_idx=0, title_text='', point_size=25):
+    n_points = points.shape[1]
+    n_heads = len(attention_maps)
+    nrows = 2
+    ncols = int(np.ceil((n_heads + 1) / 2))
+    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 20))
+
+    row = 0
+    col = 0
+    # plot attention maps
+    for i in range(n_heads):
+        att_color = attention_maps[i][:, point_idx].squeeze().cpu().detach().numpy()
+        pc_atten_img = get_pc_pv_image(points.squeeze().detach().cpu().numpy(), text=None,
+                                         color=att_color, point_size=point_size, cmap='jet')#.transpose(2, 0, 1)
+        ax[row, col].matshow(pc_atten_img, interpolation='nearest')
+        ax[row, col].title.set_text('Attention map {}'.format(ncols*row + col))
+        col += 1
+        if col == 3:
+            row += 1
+            col = 0
+
+    # plot point id
+    point_id_color = np.zeros(n_points)
+    point_id_color[point_idx] = 1
+    pc_atten1_img = get_pc_pv_image(points.squeeze().detach().cpu().numpy(), text=None,
+                                    color=point_id_color, point_size=point_size, cmap='jet')  # .transpose(2, 0, 1)
+    ax[1, -1].matshow(pc_atten1_img, interpolation='nearest')
+    ax[1, -1].title.set_text('point ID'.format(col + 1))
 
     fig.suptitle(title_text)
 
