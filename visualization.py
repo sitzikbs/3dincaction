@@ -56,9 +56,13 @@ class PCCustomRoutine:
         return
 
 class PCAttnRoutine:
-    def __init__(self, vertices, point_obj, text, pl, attn_maps):
+    def __init__(self, vertices1, vertices2, self_corr, gt_corr, point_ids, point_obj1, point_obj2, text, pl, attn_maps):
 
-        self.vertices = vertices
+        self.vertices1 = vertices1
+        self.vertices2 = vertices2
+        self.self_corr = self_corr
+        self.gt_corr = gt_corr
+        self.point_ids = point_ids
         self.text = text
         self.pl = pl
         self.color = attn_maps
@@ -66,7 +70,8 @@ class PCAttnRoutine:
         self.point_id = 0
         # default parameters
         self.kwargs = {'map_id': 0, 'point_id': 0 }
-        self.output = point_obj
+        self.output1 = point_obj1
+        self.output2 = point_obj2
 
     def __call__(self, param, value):
         self.kwargs[param] = value
@@ -74,27 +79,36 @@ class PCAttnRoutine:
 
     def update(self):
         # This is where you call your simulation
-        pc = pv.PolyData(self.vertices)
-        if self.kwargs['map_id'] < self.n_maps:
-            pc['scalars'] = self.color[int(self.kwargs['map_id'])][0, int(self.kwargs['point_id']) ]
-        else:
-            color = np.zeros(len(self.vertices))
-            color[int(self.kwargs['point_id'])] = 1
-            pc['scalars'] = color
+        pc1 = pv.PolyData(self.vertices1)
+        pc2 = pv.PolyData(self.vertices2)
 
-        self.output.overwrite(pc)
+        point_idx = int(self.kwargs['point_id'])
+        if self.kwargs['map_id'] < self.n_maps:
+            pc1['scalars'] = self.color[int(self.kwargs['map_id'])][0, point_idx]
+            pc2['scalars'] = self.self_corr[point_idx]
+            # pc1['scalars'] = self.gt_corr[point_idx]
+        else:
+            pc1['scalars'] = self.gt_corr[point_idx]
+            pc2['scalars'] = self.self_corr[point_idx]
+
+        self.output1.overwrite(pc1)
+        self.output2.overwrite(pc2)
         return
 
 
-def pc_attn_vis(verts, attn_maps, text=None):
+def pc_attn_vis(verts1, verts2, self_corr, gt_corr, point_ids, attn_maps, text=None,color_rng=0.00175):
+    verts2 = verts2 + (1, 0, 0)
     n_maps = len(attn_maps)
-    n_points = len(verts)
-    pc = pv.PolyData(verts)
-    pc['scalars'] = attn_maps[0][0][0]
+    n_points = len(verts1)
+    pc1 = pv.PolyData(verts1)
+    pc2 = pv.PolyData(verts2)
+    pc1['scalars'] = gt_corr[0]
+    pc2['scalars'] = self_corr[0]
 
     pl = pv.Plotter()
-    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=25)
-    engine = PCAttnRoutine(verts, pc, text, pl, attn_maps)
+    pl.add_mesh(pc1, render_points_as_spheres=True, scalars=pc1['scalars'], point_size=25, clim=[0, color_rng])
+    pl.add_mesh(pc2, render_points_as_spheres=True, scalars=pc2['scalars'], point_size=25, clim=[0, color_rng])
+    engine = PCAttnRoutine(verts1, verts2, self_corr, gt_corr, point_ids, pc1, pc2, text, pl, attn_maps)
     pl.add_slider_widget(
         callback=lambda value: engine('map_id', value),
         rng=[0, n_maps],
@@ -119,7 +133,7 @@ def pc_attn_vis(verts, attn_maps, text=None):
         pl.add_title(text[0])
 
     pl.camera.position = (1, 1, 1)
-    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.focal_point = (0.5, 0, 0)
     pl.camera.up = (0.0, 1.0, 0.0)
     pl.camera.zoom(0.5)
     pl.show()

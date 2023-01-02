@@ -48,6 +48,7 @@ class CorreFormer(nn.Module):
             out, _ = self.transformer(points)
         else:
             x, point_features = self.pointencoder(points)
+            # x = x / torch.linalg.norm(x, 2, dim=1, keepdim=True)
             out = self.transformer(x, x)
         return out, point_features
 
@@ -79,21 +80,21 @@ class CorreFormer(nn.Module):
         # compute correspondance loss
         b, n1, n2 = gt_corr.shape
         loss_dict = {}
-        regularizer = (1 - point_features1.square().mean(1)).square().mean() + (1 - point_features2.square().mean(1)).square().mean()
-        loss_dict['losses/feature_reg'] = regularizer.cpu().detach().numpy()
+        # regularizer = (1 - point_features1.square().mean(1)).square().mean() + (1 - point_features2.square().mean(1)).square().mean()
+        # loss_dict['losses/feature_reg'] = regularizer.cpu().detach().numpy()
         if self.loss_type == 'l2':
             l2_loss = (gt_corr - corr).square()
             l2_mask = torch.max(gt_corr, 1.0 * (torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
             # l2_loss = (l2_mask * l2_loss)
             l2_loss = l2_loss[l2_mask]
             loss_dict['losses/l2_loss'] = l2_loss.cpu().detach().numpy()
-            loss = l2_loss.mean() + regularizer
+            loss = l2_loss.mean() #+ regularizer
 
         elif self.loss_type == 'ce':
             # l2_features = (out1[:, point_ids] - out2).square().mean()
             ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
             loss_dict['losses/ce_loss'] = ce_loss.cpu().detach().numpy()
-            loss = ce_loss + regularizer #+ l2_features
+            loss = ce_loss #+ regularizer #+ l2_features
         # elif self.loss_type == 'ce2':
         #     TODO fix ce2
         #     ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
@@ -108,7 +109,7 @@ class CorreFormer(nn.Module):
             #                            torch.arange(n1, device=sim_mat.device).repeat(b))
             bbl_loss = self.BBL_loss(sim_mat, thresh=0.8)
             loss_dict['losses/bbl_loss'] = bbl_loss.cpu().detach().numpy()
-            loss = ce_loss1  + bbl_loss + regularizer #+ ce_loss2
+            loss = ce_loss1  + bbl_loss #+ regularizer #+ ce_loss2
         loss_dict['losses/total_loss'] = loss.cpu().detach().numpy()
         return loss, loss_dict
 

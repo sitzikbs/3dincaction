@@ -65,9 +65,9 @@ parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
 parser.add_argument('--model_path', type=str,
-                    default='../log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs32reg_cat_ce2/',
+                    default='../log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs32reg_cat_ce/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000250.pt', help='path to model save dir')
+parser.add_argument('--model', type=str, default='000000.pt', help='path to model save dir')
 parser.add_argument('--jitter', type=float, default=0.00,
                     help='if larger than 0 : adds random jitter to test points')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in each model')
@@ -112,8 +112,8 @@ for test_batchind, data in enumerate(test_dataloader):
 
 
         # attention_maps = extract_selfattention_maps(model, frame.unsqueeze(0))
-        attention_maps = extract_selfattention_maps(model, target_points)
-        # attention_maps =  [out_dict['sim_mat'].permute(0, 2, 1).detach().cpu().numpy()]
+        # attention_maps = extract_selfattention_maps(model, target_points)
+        attention_maps =  [out_dict['sim_mat'].permute(0, 1, 2).detach().cpu().numpy()]
 
         # print and visualize
         true_corr = max_ind21 == point_ids
@@ -132,7 +132,9 @@ for test_batchind, data in enumerate(test_dataloader):
         # vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=att_color, cmap='jet', point_size=25)
 
         # vis.plot_attention_maps(attention_maps, frame.unsqueeze(0), point_idx=500, title_text='', point_size=25)
-        attention_maps.append(gt_corr[None, :, :])
-        vis.pc_attn_vis(target_points.squeeze().detach().cpu().numpy(), attention_maps, text=None)
+
+        vis.pc_attn_vis(frame.squeeze().detach().cpu().numpy(), target_points.squeeze().detach().cpu().numpy(),
+                        np.eye(args.n_points), gt_corr, point_ids.cpu().detach().numpy(), attention_maps, text=None,
+                        color_rng=1.0)
         plt.close()
     acc = correct/total

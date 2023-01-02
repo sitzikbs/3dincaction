@@ -64,10 +64,10 @@ parser.add_argument('--transformer_type', type=str,
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
                     default='ce', help='ce | l2 | ce_bbl indicating the loss type ')
-parser.add_argument('--exp_id', type=str,
-                    default='debug', help='a unique identifier to append to the experiment name')
 parser.add_argument('--cat_points', dest='cat_points', action='store_false')
 parser.set_defaults(cat_points=True)
+parser.add_argument('--exp_id', type=str,
+                    default='debug_noreg_norm_ce_new', help='a unique identifier to append to the experiment name')
 
 point_size = 25
 sigma = ScalarScheduler(init_value=0.005, steps=5, increment=0.0)
@@ -98,7 +98,8 @@ test_enum = enumerate(test_dataloader, 0)
 model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
                     dim_feedforward=args.d_feedforward, transformer_type=args.transformer_type, twosided=False,
                     n_points=args.n_points, loss_type=args.loss_type, cat_points=args.cat_points)
-optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+optimizer = torch.optim.Adam([{'params': model.pointencoder.parameters()},
+                              {'params': model.transformer.parameters(), 'lr': args.learning_rate}], lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 
 eval_steps = 0
