@@ -125,9 +125,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
         elif pc_model == '3dmfv':
             model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=k, n_frames=frames_per_clip)
         else:
-            ValueError("point cloud architecture not supported. Check the pc_model input")
+            raise ValueError("point cloud architecture not supported. Check the pc_model input")
     else:
-        ValueError("Unsupported input type")
+        raise ValueError("Unsupported input type")
 
     # Load correspondance transformer
     if not args.correformer == 'none':
@@ -217,7 +217,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             inputs, labels, vid_idx, frame_pad = data
             if not args.correformer == 'none':
                 with torch.no_grad():
-                    inputs, _ = cf.sort_points(correformer, inputs)
+                    inputs, _ = cf.sort_points(correformer, inputs.permute(0, 1, 3, 2)[..., :3])
             inputs = inputs.cuda().requires_grad_().contiguous()
             labels = labels.cuda()
 
@@ -278,7 +278,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                 inputs, labels, vid_idx, frame_pad = data
                 if not args.correformer == 'none':
                     with torch.no_grad():
-                        inputs, _ = cf.sort_points(correformer, inputs)
+                        inputs, _ = cf.sort_points(correformer, inputs.permute(0, 1, 3, 2)[..., :3])
                 inputs = inputs.cuda().requires_grad_().contiguous()
                 labels = labels.cuda()
 
