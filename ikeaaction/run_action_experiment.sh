@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-GPU_IDX=0
+GPU_IDX=2
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
