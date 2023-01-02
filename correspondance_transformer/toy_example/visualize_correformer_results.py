@@ -21,10 +21,7 @@ def extract_selfattention_maps(model, points):
     mask = torch.zeros((args.n_points, args.n_points)).bool().cuda()
     src_key_padding_mask = torch.zeros((1, args.n_points)).bool().cuda()
 
-    x = F.relu(model.bn1(model.conv1(points.permute(0, 2, 1))))
-    x = F.relu(model.bn2(model.conv2(x)))
-    x = F.relu(model.bn3(model.conv3(x)))
-    x = x.permute(0, 2, 1)
+    x, point_features = model.pointencoder(points.permute(0, 2, 1))
     transformer_encoder = model.transformer.encoder
 
     attention_maps = []
@@ -68,9 +65,9 @@ parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
 parser.add_argument('--model_path', type=str,
-                    default='../log/jitter/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs32jitter0.005CE_NoSampler_bbl_fix/',
+                    default='../log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs32reg_cat_ce2/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000100.pt', help='path to model save dir')
+parser.add_argument('--model', type=str, default='000250.pt', help='path to model save dir')
 parser.add_argument('--jitter', type=float, default=0.00,
                     help='if larger than 0 : adds random jitter to test points')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in each model')
@@ -91,7 +88,7 @@ for test_batchind, data in enumerate(test_dataloader):
     model.eval()
     points, point_ids = data['points'].cuda(), data['corr_gt'].cuda()
     points2 = torch.roll(points, -1, dims=1).detach().clone()
-    points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3)  # remove first frame pair
+    points = points[:, 0:-1, :, :].reshape(-1, args.n_points, 3)    # remove first frame pair
     points2 = points2[:, 0:-1, :, :].reshape(-1, args.n_points, 3)  # remove first frame pair
 
     if args.jitter > 0.0:
@@ -116,6 +113,7 @@ for test_batchind, data in enumerate(test_dataloader):
 
         # attention_maps = extract_selfattention_maps(model, frame.unsqueeze(0))
         attention_maps = extract_selfattention_maps(model, target_points)
+        # attention_maps =  [out_dict['sim_mat'].permute(0, 2, 1).detach().cpu().numpy()]
 
         # print and visualize
         true_corr = max_ind21 == point_ids
@@ -124,7 +122,8 @@ for test_batchind, data in enumerate(test_dataloader):
         instance_acc = correct / total
         print("Pair correspondance accuracy: {}".format(instance_acc))
 
-        vis.plot_correformer_outputs(mat_dict_corr, title_dict, title_text='Correformer results')
+        # vis.plot_correformer_outputs(mat_dict_corr, title_dict, title_text='Correformer results')
+
         # vis.pc_seq_vis(target_points.squeeze().cpu().detach().numpy())
         # diff_colors = torch.logical_not(max_ind21[0] == point_ids).unsqueeze(0).cpu().detach().numpy()
         # vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=diff_colors, cmap='jet', point_size=25)
@@ -133,6 +132,7 @@ for test_batchind, data in enumerate(test_dataloader):
         # vis.plot_pc_pv(target_points.cpu().detach().numpy(), text=None, color=att_color, cmap='jet', point_size=25)
 
         # vis.plot_attention_maps(attention_maps, frame.unsqueeze(0), point_idx=500, title_text='', point_size=25)
+        attention_maps.append(gt_corr[None, :, :])
         vis.pc_attn_vis(target_points.squeeze().detach().cpu().numpy(), attention_maps, text=None)
         plt.close()
     acc = correct/total

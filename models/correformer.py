@@ -13,19 +13,10 @@ from models.pointnet_sem_seg import PNSeg
 
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
-                 twosided=True, transformer_type='none', n_points=1024, loss_type='l2'):
+                 twosided=True, transformer_type='none', n_points=1024, loss_type='l2', cat_points=True):
         super(CorreFormer, self).__init__()
-        self.conv1 = torch.nn.Conv1d(3, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(128)
+        self.pointencoder = PointEncoder(d_model, cat_points)
 
-        self.conv3 = torch.nn.Conv1d(128, d_model-3, 1)
-        self.bn3 = nn.BatchNorm1d(d_model-3)
-        # self.conv3 = torch.nn.Conv1d(128, d_model, 1)
-        # self.bn3 = nn.BatchNorm1d(d_model)
-        # self.conv3 = torch.nn.Conv1d(128, int(d_model/2), 1)
-        # self.bn3 = nn.BatchNorm1d(int(d_model / 2))
         self.transformer_type = transformer_type
         self.loss_type = loss_type
 
@@ -49,24 +40,14 @@ class CorreFormer(nn.Module):
     def single_pass(self, x):
         points = x.permute(0, 2, 1)
         if self.transformer_type == 'plr':
-            x = F.relu(self.bn1(self.conv1(points)))
-            x = F.relu(self.bn2(self.conv2(x)))
-            x = self.bn3(self.conv3(x))
-            x = x.permute(0, 2, 1)
+            x, point_features = self.pointencoder(points)
             out = self.transformer(x.permute(0, 2, 1), points.permute(0, 2, 1))
         elif self.transformer_type == 'ptr':
             out = self.transformer(points.permute(0, 2, 1))
         elif self.transformer_type == 'pnseg':
             out, _ = self.transformer(points)
         else:
-            x = F.relu(self.bn1(self.conv1(points)))
-            x = F.relu(self.bn2(self.conv2(x)))
-            point_features = self.bn3(self.conv3(x))
-            # global_feat = torch.max(point_features, -1)[0]
-            # x = torch.cat([point_features, global_feat[:, :, None].repeat(1, 1, points.shape[-1])], -2)
-            x = torch.cat([point_features, points], dim=1)
-            # x = point_features
-            x = x.permute(0, 2, 1)
+            x, point_features = self.pointencoder(points)
             out = self.transformer(x, x)
         return out, point_features
 
@@ -113,20 +94,21 @@ class CorreFormer(nn.Module):
             ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
             loss_dict['losses/ce_loss'] = ce_loss.cpu().detach().numpy()
             loss = ce_loss + regularizer #+ l2_features
-        elif self.loss_type == 'ce2':
-            ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
-            ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
-                                       torch.arange(n1, device=sim_mat.device).repeat(b))
-            loss_dict['losses/ce_loss'] = ce_loss1.cpu().detach().numpy()
-            loss_dict['losses/ce2_loss'] = ce_loss2.cpu().detach().numpy()
-            loss = ce_loss1 + ce_loss2 + regularizer
+        # elif self.loss_type == 'ce2':
+        #     TODO fix ce2
+        #     ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+        #     ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
+        #                                torch.arange(n1, device=sim_mat.device).repeat(b))
+        #     loss_dict['losses/ce_loss'] = ce_loss1.cpu().detach().numpy()
+        #     loss_dict['losses/ce2_loss'] = ce_loss2.cpu().detach().numpy()
+        #     loss = ce_loss1 + ce_loss2 + regularizer
         elif self.loss_type == 'ce_bbl':
             ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
-            ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
-                                       torch.arange(n1, device=sim_mat.device).repeat(b))
+            # ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
+            #                            torch.arange(n1, device=sim_mat.device).repeat(b))
             bbl_loss = self.BBL_loss(sim_mat, thresh=0.8)
             loss_dict['losses/bbl_loss'] = bbl_loss.cpu().detach().numpy()
-            loss = ce_loss1 + ce_loss2 + bbl_loss + regularizer
+            loss = ce_loss1  + bbl_loss + regularizer #+ ce_loss2
         loss_dict['losses/total_loss'] = loss.cpu().detach().numpy()
         return loss, loss_dict
 
@@ -147,6 +129,31 @@ class CorreFormer(nn.Module):
 
         return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21,
                 'sim_mat': sim_mat, 'point_features1': point_features1, 'point_features2': point_features2}
+
+class PointEncoder(nn.Module):
+    def __init__(self, d_model=1024, cat_points=True):
+        super(PointEncoder, self).__init__()
+        self.cat_points = cat_points
+        self.conv1 = torch.nn.Conv1d(3, 64, 1)
+        self.conv2 = torch.nn.Conv1d(64, 128, 1)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.bn2 = nn.BatchNorm1d(128)
+        if self.cat_points:
+            self.conv3 = torch.nn.Conv1d(128, d_model-3, 1)
+            self.bn3 = nn.BatchNorm1d(d_model-3)
+        else:
+            self.conv3 = torch.nn.Conv1d(128, d_model, 1)
+            self.bn3 = nn.BatchNorm1d(d_model)
+    def forward(self, points):
+        x = F.relu(self.bn1(self.conv1(points)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        point_features = self.bn3(self.conv3(x))
+        if self.cat_points:
+            x = torch.cat([point_features, points], dim=1)
+        else:
+            x = point_features
+        x = x.permute(0, 2, 1)
+        return x, point_features
 
 
 def sort_points(correformer, x):
@@ -176,6 +183,7 @@ def get_correformer(correformer_path):
         correformer_dims = args.dim
         correformer_nheads = args.n_heads
         correformer_feedforward = args.d_feedforward
+        cat_points = args.cat_points
     else:
         #support for old logs that did not save params file - delete for publication
         params_str = correformer_path.split("/")[-2].split("_")[2]
@@ -183,9 +191,10 @@ def get_correformer(correformer_path):
         correformer_nheads = int(params_str[params_str.index('h') + 1:])
         correformer_feedforward = int(params_str[params_str.index('ff') + 2:params_str.index('d')])
         correformer_type = 'none'
+        cat_points = False
     correformer = CorreFormer(d_model=correformer_dims, nhead=correformer_nheads, num_encoder_layers=6,
                                    num_decoder_layers=1, dim_feedforward=correformer_feedforward,
-                              transformer_type=correformer_type).cuda()
+                              transformer_type=correformer_type, cat_points=cat_points).cuda()
     correformer.load_state_dict(torch.load(correformer_path)["model_state_dict"])
     correformer.eval()
     # correformer.train(False)

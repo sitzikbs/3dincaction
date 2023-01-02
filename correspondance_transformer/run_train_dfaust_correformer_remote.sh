@@ -10,7 +10,7 @@ DIM=1024
 DFF=1024
 DATASET_PATH='/data1/datasets/dfaust/'
 AUG='none'
-LOSS='ce2'
-EXP_ID='reg_cat_ce2'
+LOSS='ce'
+EXP_ID='reg_cat_ce'
 TTYPE='none'
 taskset -c 32-64 python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS --d_feedforward $DFF --exp_id $EXP_ID --aug $AUG --loss_type $LOSS --transformer_type $TTYPE
