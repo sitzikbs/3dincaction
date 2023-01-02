@@ -142,7 +142,7 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
         inputs, labels, vid_idx, frame_pad = data
         if not args.correformer == 'none':
             with torch.no_grad():
-                inputs, _ = cf.sort_points(correformer, inputs)
+                inputs, _ = cf.sort_points(correformer, inputs.permute(0, 1, 3, 2)[..., :3])
         # wrap them in Variable
         inputs = inputs.cuda().requires_grad_().contiguous()
         labels = labels.cuda()
