@@ -248,8 +248,16 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
 
         self.video_set = self.get_video_frame_labels()
         self.clip_set, self.clip_label_count = self.get_clips()
-        self.seq_cache = Cache(cache_capacity, self, IKEAActionVideoClipDataset.get_seq_by_index)
 
+        # Caching:
+        print("Caching sequences...")
+        if cache_capacity == 0: #cache all dataset ionto memory
+            cache_capacity = len(self.clip_set) - 1
+        self.seq_cache = Cache(cache_capacity, self, IKEAActionVideoClipDataset.get_seq_by_index)
+        for seq_idx in range(cache_capacity):
+            print("loading sequence {} , {}, {} - {}".format(seq_idx, self.clip_set[seq_idx][0],
+                                                             self.clip_set[seq_idx][2][0], self.clip_set[seq_idx][2][-1])) #debugging
+            seq = self.seq_cache.get(seq_idx)
 
     def get_video_frame_labels(self):
         # Extract the label data from the database
