@@ -51,6 +51,7 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
+parser.add_argument('--cache_capacity', type=int, default=256, help='number of sequences to store in cache for faster loading')
 args = parser.parse_args()
 
 
@@ -83,7 +84,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     train_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
                  transform=train_transforms, set='train', camera=camera, frame_skip=frame_skip,
                             frames_per_clip=frames_per_clip, resize=None, mode=load_mode, input_type=input_type,
-                            n_points=args.n_points, use_pointlettes=use_pointlettes, pointlet_mode=args.pointlet_mode)
+                            n_points=args.n_points, use_pointlettes=use_pointlettes,
+                            pointlet_mode=args.pointlet_mode, cache_capacity=args.cache_capacity)
     print("Number of clips in the dataset:{}".format(len(train_dataset)))
     weights = utils.make_weights_for_balanced_classes(train_dataset.clip_set, train_dataset.clip_label_count)
     sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))

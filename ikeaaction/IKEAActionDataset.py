@@ -223,7 +223,7 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
                  action_object_relation_filename='action_object_relation_list.txt', train_filename='train_cross_env.txt',
                  test_filename='test_cross_env.txt', transform=None, set='test', camera='dev3', frame_skip=1,
                  frames_per_clip=64, resize=None, mode='vid', input_type='rgb', n_points=None, use_pointlettes=False,
-                 pointlet_mode='kdtree'):
+                 pointlet_mode='kdtree', cache_capacity=256):
         super().__init__(dataset_path=dataset_path, db_filename=db_filename, action_list_filename=action_list_filename,
                  action_object_relation_filename=action_object_relation_filename, train_filename=train_filename,
                          test_filename=test_filename)
@@ -248,6 +248,7 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
 
         self.video_set = self.get_video_frame_labels()
         self.clip_set, self.clip_label_count = self.get_clips()
+        self.seq_cache = Cache(cache_capacity, self, IKEAActionVideoClipDataset.load_seq_by_index)
 
 
     def get_video_frame_labels(self):
@@ -433,7 +434,7 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
         # 'Denotes the total number of samples'
         return len(self.clip_set)
 
-    def __getitem__(self, index):
+    def get_seq_by_index(self, index):
         # 'Generate one sample of data'
         video_full_path, labels, frame_ind, n_frames_per_clip, vid_idx, frame_pad = self.clip_set[index]
         if self.input_type == 'pc':
@@ -449,6 +450,28 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
             # imgs = self.video_to_tensor(imgs)
 
         return data, torch.from_numpy(labels), vid_idx, frame_pad
+
+    def __getitem__(self, index):
+        data, labels, vid_idx, frame_pad = self.seq_cashe(index)
+
+        return data, torch.from_numpy(labels), vid_idx, frame_pad
+
+    # def __getitem__(self, index):
+    #     # 'Generate one sample of data'
+    #     video_full_path, labels, frame_ind, n_frames_per_clip, vid_idx, frame_pad = self.clip_set[index]
+    #     if self.input_type == 'pc':
+    #         data = self.load_pc(video_full_path, frame_ind, self.n_points)
+    #         if self.use_pointlettes:
+    #             # data = self.temporal_sort(data)
+    #             data = self.get_pointlettes(data)
+    #     else:
+    #         data = self.load_rgb_frames(video_full_path, frame_ind)
+    #         data = torch.permute(data, [3, 0, 1, 2])  # permujte for transform of shape [..., H, W]
+    #         if self.transform is not None:
+    #             data = self.transform(data)
+    #         # imgs = self.video_to_tensor(imgs)
+    #
+    #     return data, torch.from_numpy(labels), vid_idx, frame_pad
 
 
 # This dataset loads each full video (frames) separately as a dataset
@@ -754,6 +777,33 @@ class IKEACombinedDataset(IKEAPoseActionVideoClipDataset):
             print('defective pose input')
             print(e)
             return None
+
+class Cache():
+    def __init__(self, capacity, loader, loadfunc):
+        self.elements = {}
+        self.used_at = {}
+        self.capacity = capacity
+        self.loader = loader
+        self.loadfunc = loadfunc
+        self.counter = 0
+
+    def get(self, element_id):
+        if element_id not in self.elements:
+            # cache miss
+
+            # if at capacity, throw out least recently used item
+            if len(self.elements) >= self.capacity:
+                remove_id = min(self.used_at, key=self.used_at.get)
+                del self.elements[remove_id]
+                del self.used_at[remove_id]
+
+            # load element
+            self.elements[element_id] = self.loadfunc(self.loader, element_id)
+
+        self.used_at[element_id] = self.counter
+        self.counter += 1
+
+        return self.elements[element_id]
 
 
 if __name__ == "__main__":
