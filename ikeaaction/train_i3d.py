@@ -30,7 +30,7 @@ parser.add_argument('--pc_model', type=str, default='pn1', help='which model to 
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skippig frames')
 parser.add_argument('--steps_per_update', type=int, default=20, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
+parser.add_argument('--batch_size', type=int, default=32, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=30, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=2048, help='number of points in a point cloud')
 parser.add_argument('--db_filename', type=str, default='ikea_annotation_db_full',
@@ -97,7 +97,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                            test_filename=testset_filename, transform=test_transforms, set='test', camera=camera,
                            frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode=load_mode,
                            input_type=input_type, n_points=args.n_points, use_pointlettes=use_pointlettes,
-                           pointlet_mode=args.pointlet_mode)
+                           pointlet_mode=args.pointlet_mode, cache_capacity=args.cache_capacity)
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)

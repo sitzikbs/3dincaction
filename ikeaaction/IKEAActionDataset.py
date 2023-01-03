@@ -248,7 +248,7 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
 
         self.video_set = self.get_video_frame_labels()
         self.clip_set, self.clip_label_count = self.get_clips()
-        self.seq_cache = Cache(cache_capacity, self, IKEAActionVideoClipDataset.load_seq_by_index)
+        self.seq_cache = Cache(cache_capacity, self, IKEAActionVideoClipDataset.get_seq_by_index)
 
 
     def get_video_frame_labels(self):
@@ -452,9 +452,9 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
         return data, torch.from_numpy(labels), vid_idx, frame_pad
 
     def __getitem__(self, index):
-        data, labels, vid_idx, frame_pad = self.seq_cashe(index)
+        data, labels, vid_idx, frame_pad = self.seq_cache.get(index)
 
-        return data, torch.from_numpy(labels), vid_idx, frame_pad
+        return data, labels, vid_idx, frame_pad
 
     # def __getitem__(self, index):
     #     # 'Generate one sample of data'
