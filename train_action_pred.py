@@ -40,7 +40,7 @@ parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussi
 parser.add_argument('--shuffle_points', type=str, default='each_frame', help='once | each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
-parser.add_argument('--data_augmentation', type=int, default=1, help='apply input data point augmentations')
+parser.add_argument('--data_augmentation', type=str, nargs='+', default=['none'], help='apply input data point augmentations')
 parser.add_argument('--correformer', type=str,
                     default='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt',
                     help='None or path to correformer model')
