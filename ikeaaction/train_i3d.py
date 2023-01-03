@@ -51,7 +51,8 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
-parser.add_argument('--cache_capacity', type=int, default=0, help='number of sequences to store in cache for faster loading')
+parser.add_argument('--cache_capacity', type=int, default=0, help='number of sequences to store in cache for faster '
+                                                                  'loading. 0 will cache all of the dataset')
 args = parser.parse_args()
 
 
