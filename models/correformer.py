@@ -9,7 +9,7 @@ from utils import cosine_similarity
 from models.point_transformer_pytorch import PointTransformerLayer
 from models.point_transformer_repro import PointTransformerSeg
 from models.pointnet_sem_seg import PNSeg
-
+from models.set_transformer import SetTransformer
 
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
@@ -31,6 +31,9 @@ class CorreFormer(nn.Module):
                                                    n_c=dim_feedforward, d_points=3, transformer_dim=dim_feedforward)
         elif self.transformer_type == 'pnseg':
             self.transformer = PNSeg(n_points)
+        elif self.transformer_type == 'set_transformer':
+            self.transformer = SetTransformer(3, 1024, dim_feedforward, num_inds=32, dim_hidden=128,
+                                              num_heads=nhead, ln=False)
         else:
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
