@@ -49,6 +49,9 @@ class CorreFormer(nn.Module):
             out = self.transformer(points.permute(0, 2, 1))
         elif self.transformer_type == 'pnseg':
             out, _ = self.transformer(points)
+        elif self.transformer_type == 'set_transformer':
+            out = self.transformer(points.permute(0, 2, 1))
+            point_features = []
         else:
             x, point_features = self.pointencoder(points)
             # x = x / torch.linalg.norm(x, 2, dim=1, keepdim=True)
