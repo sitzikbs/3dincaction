@@ -31,14 +31,8 @@ class DfaustActionClipsDataset(Dataset):
         self.clip_verts = None
         self.clip_labels = None
         self.subseq_pad = None  # stores the amount of padding for every clip
-        self.idxs = np.arange(DATASET_N_POINTS)
-        self.randomizer = random.Random(0)
-        if self.shuffle_points == 'once':
-            self.randomizer.shuffle(self.idxs)
-        elif self.shuffle_points == 'none' or self.shuffle_points == 'each' or self.shuffle_points == 'each_frame':
-            pass
-        else:
-            raise ValueError("Unknown shuffle protocol")
+        self.point_sampler = PointSampler(self.shuffle_points, self.n_points, total_n_points=DATASET_N_POINTS,
+                                    nn_sample_ratio=nn_sample_ratio)
 
         self.clip_data()
 
@@ -162,47 +156,14 @@ class DfaustActionClipsDataset(Dataset):
             out_points = points
         return out_points
 
-    def nn_sampler(self, points):
-        # sample more points that are not well corresponded using nn
-        if self.nn_sample_ratio < 1:
-            n_final_points = int(self.nn_sample_ratio * DATASET_N_POINTS)
-            # reorder the points to put the informative points first, then clip off points that nn gets well
-            tree = cKDTree(points[0])
-            _, max_ind = tree.query(points[1])
-            nn_idx = max_ind == np.arange(DATASET_N_POINTS)
-            good_points = points[:, nn_idx]
-            bad_points = points[:, np.logical_not(nn_idx)]
-            out_points = np.concatenate([bad_points, good_points], axis=1)
-            out_points = out_points[:, :n_final_points, :]
-        else:
-            out_points = points
-        return out_points
 
     def __len__(self):
         return len(self.clip_verts)
 
     # This returns given an index the i-th sample and label
     def __getitem__(self, idx):
-        points_seq = self.nn_sampler(self.clip_verts[idx])
-        # points_seq = self.clip_verts[idx]
-        n_initial_points = int(DATASET_N_POINTS * self.nn_sample_ratio)
-        if self.shuffle_points == 'each':
-            shuffled_idxs = np.arange(n_initial_points)
-            random.shuffle(shuffled_idxs)
-            shuffled_idxs = shuffled_idxs[:self.n_points]
-            points_seq = points_seq[:, shuffled_idxs]
-        elif self.shuffle_points == 'each_frame':
-            shuffled_idxs = np.arange(n_initial_points)
-            random.shuffle(shuffled_idxs)
-            points_seq = points_seq[:, shuffled_idxs[:self.n_points]]
-            shuffled_idxs = np.array([np.random.permutation(np.arange(self.n_points)) for _ in range(self.frames_per_clip-1)])[:, :, None]
-            shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None], axis=0) # make sure thefirst frame indices are unchanged (they are refs)
-            points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
-        else:
-            shuffled_idxs = np.arange(n_initial_points)[:self.n_points] # not shuffled
-            points_seq = points_seq[shuffled_idxs[:self.n_points], :]
 
-
+        points_seq, shuffled_idxs = self.point_sampler.samlpe_and_shuffle(self.clip_verts[idx])
         out_points = self.augment_points(points_seq)
 
 
@@ -261,14 +222,8 @@ class DfaustActionDataset(Dataset):
 
         self.n_points = n_points
         self.shuffle_points = shuffle_points
-        self.idxs = np.arange(DATASET_N_POINTS)
-        self.randomizer = random.Random(0)
-        if self.shuffle_points == 'once':
-            self.randomizer.shuffle(self.idxs)
-        elif self.shuffle_points == 'none' or self.shuffle_points == 'each' or self.shuffle_points == 'each_frame':
-            pass
-        else:
-            raise ValueError("Unknown shuffle protocol")
+        self.point_sampler = PointSampler(self.shuffle_points, self.n_points, total_n_points=DATASET_N_POINTS)
+
 
         self.load_data()
 
@@ -311,53 +266,117 @@ class DfaustActionDataset(Dataset):
 
     # This returns given an index the i-th sample and label
     def __getitem__(self, idx):
-
-        if self.shuffle_points == 'each':
-            shuffled_idxs = np.arange(DATASET_N_POINTS)
-            random.shuffle(shuffled_idxs)
-            shuffled_idxs = shuffled_idxs[:self.n_points]
-            points_seq = self.vertices[idx][:, shuffled_idxs]
-            shuffled_idxs = np.arange(self.n_points)  # the new indices match throghout the sequence
-        elif self.shuffle_points == 'each_frame':
-            shuffled_idxs = np.arange(DATASET_N_POINTS)
-            random.shuffle(shuffled_idxs)
-            points_seq = self.vertices[idx][:, shuffled_idxs[:self.n_points]]
-            shuffled_idxs = np.array([np.random.permutation(np.arange(self.n_points)) for _ in range(len(self.vertices[idx])-1)])[:, :, None]
-            shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None], axis=0) # make sure thefirst frame indices are unchanged (they are refs)
-            points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
-        else:
-            # this will give a partial point cloud of the human since the order of the points covers different regions
-            shuffled_idxs = np.arange(DATASET_N_POINTS)[:self.n_points]  # not shuffled
-            points_seq = self.vertices[idx][:, shuffled_idxs, :]
+        points_seq, shuffled_idxs = self.point_sampler.samlpe_and_shuffle(self.vertices[idx])
 
         out_dict = {'points': points_seq, 'labels': self.labels[idx], 'seq_idx': idx, 'corr_gt': shuffled_idxs}
         return out_dict
 
 
 class PointSampler():
-    def __init__(self, shuffle_points, total_n_points=DATASET_N_POINTS):
-        self.shuffle_points = shuffle_points
-        self.sample_function = {'each': self.sample_each, 'each_frame': self.sample_each_frame}
-        self.total_n_points = total_n_points
+    def __init__(self, shuffle_points, n_points, total_n_points=DATASET_N_POINTS, nn_sample_ratio=1.0):
+        """
+        :param shuffle_points: str indicating how to shuffle the points
+        :param n_points: int, number of points to shuffle
+        :param total_n_points: int, number of total points in the point clouds
+        """
 
-    def sample_each(self, points):
+        self.shuffle_points = shuffle_points
+        self.n_points = n_points
+        self.total_n_points = total_n_points
+        self.sample_function = {'each': self.sample_each_seq,
+                                'each_frame': self.sample_each_frame,
+                                'fps_each': self.fps_each, 'fps_each_frame': self.fps_each_frame,
+                                'none': self.no_shuffle}
+        self.nn_sample_ratio = nn_sample_ratio
+
+    def nn_sampler(self, points):
+        # sample more points that are not well corresponded using nn
+        if self.nn_sample_ratio < 1:
+            n_final_points = int(self.nn_sample_ratio * DATASET_N_POINTS)
+            # reorder the points to put the informative points first, then clip off points that nn gets well
+            tree = cKDTree(points[0])
+            _, max_ind = tree.query(points[1])
+            nn_idx = max_ind == np.arange(DATASET_N_POINTS)
+            good_points = points[:, nn_idx]
+            bad_points = points[:, np.logical_not(nn_idx)]
+            out_points = np.concatenate([bad_points, good_points], axis=1)
+            out_points = out_points[:, :n_final_points, :]
+        else:
+            out_points = points
+        return out_points
+
+    def sample_each_seq(self, points):
+        # shuffle each sequence individually but keep correspondance throughout the sequence
         shuffled_idxs = np.arange(self.total_n_points)
         random.shuffle(shuffled_idxs)
         shuffled_idxs = shuffled_idxs[:self.n_points]
-        points_seq = self.vertices[idx][:, shuffled_idxs]
+        points_seq = points[:, shuffled_idxs]
         shuffled_idxs = np.arange(self.n_points)  # the new indices match throghout the sequence
         return points_seq, shuffled_idxs
+
     def sample_each_frame(self, points):
-        shuffled_idxs = np.arange(DATASET_N_POINTS)
+        #shuffle each sequence individually and then each frame of each sequence individually
+        shuffled_idxs = np.arange(self.total_n_points)
         random.shuffle(shuffled_idxs)
-        points_seq = self.vertices[idx][:, shuffled_idxs[:self.n_points]]
+        points_seq = points[:, shuffled_idxs[:self.n_points]]
         shuffled_idxs = np.array(
-            [np.random.permutation(np.arange(self.n_points)) for _ in range(len(self.vertices[idx]) - 1)])[:, :, None]
+            [np.random.permutation(np.arange(self.n_points)) for _ in range(len(points) - 1)])[:, :, None]
         shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None],
                                   axis=0)  # make sure thefirst frame indices are unchanged (they are refs)
         points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
+        return points_seq, shuffled_idxs
+
+    def no_shuffle(self, points):
+        # does not shuffle the points, just takes the first n_points points
+        # for DFAUST, this will give a partial point cloud of the human since the order of the points covers different regions
+        shuffled_idxs = np.arange(self.total_n_points )[:self.n_points]  # not shuffled
+        points_seq = points[:, shuffled_idxs, :]
+        return points_seq, shuffled_idxs
+
+    def fps(self, points):
+        # returns farthers point distance sampling
+        # shuffle each sequence individually but keep correspondance throughout the sequence
+        """
+        Input:
+            points: pointcloud data, [N, 3]
+        Return:
+            points: farthest sampled pointcloud, [npoint]
+        """
+        xyz = points[0] #use the first frame for sampling
+        N, C = xyz.shape
+        centroids = np.zeros(self.n_points)
+        distance = np.ones(N) * 1e10
+        farthest = np.random.randint(0, N)
+        idxs = np.array(farthest)[None]
+
+        for i in range(self.n_points-1):
+            centroids[i] = farthest
+            centroid = xyz[farthest, :]
+            dist = np.sum((xyz - centroid) ** 2, -1)
+            mask = dist < distance
+            distance[mask] = dist[mask]
+            farthest = np.array(np.argmax(distance, -1))[None]
+            idxs = np.concatenate([idxs, farthest])
+
+        return points[:, idxs]
+
+    def fps_each(self, points):
+        points_seq = self.fps(points)
+        shuffled_idxs = np.arange(self.n_points)  # the new indices match throghout the sequence
+        return points_seq, shuffled_idxs
+
+    def fps_each_frame(self, points):
+        points_seq = self.fps(points)
+        shuffled_idxs = np.array(
+            [np.random.permutation(np.arange(self.n_points)) for _ in range(len(points) - 1)])[:, :, None]
+        shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None],
+                                  axis=0)  # make sure thefirst frame indices are unchanged (they are refs)
+        points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
+        return points_seq, shuffled_idxs
+
     def samlpe_and_shuffle(self, points):
         # points : B X T X N X 3
+        points = self.nn_sampler(points)
         return self.sample_function[self.shuffle_points](points)
 
 
@@ -367,13 +386,13 @@ if __name__ == '__main__':
     # dataset = DfaustActionDataset(dfaust_path='/home/sitzikbs/Datasets/dfaust/')
     correformer_path = './transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt'
     dataset = DfaustActionClipsDataset(action_dataset_path='/home/sitzikbs/Datasets/dfaust/',
-                                       frames_per_clip=16, set='train', n_points=1024, last_op='pad',
-                                       shuffle_points='each_frame')
+                                       frames_per_clip=64, set='train', n_points=1024, last_op='pad',
+                                       shuffle_points='each')
     test_loader = DataLoader(dataset, batch_size=2, num_workers=1, shuffle=False, drop_last=True)#,
                              # multiprocessing_context='spawn')
 
 
-    correformer = cf.get_correformer(correformer_path)
+    # correformer = cf.get_correformer(correformer_path)
 
     for batch, data in enumerate(test_loader):
         verts, labels = data['points'], data['labels']
@@ -381,12 +400,12 @@ if __name__ == '__main__':
         #                            text=dataset.actions[int(labels.detach().cpu().numpy()[0])])
         corr_gt = data['corr_gt']
 
-        sorted_verts, corr_pred = cf.sort_points(correformer, verts)
+        # sorted_verts, corr_pred = cf.sort_points(correformer, verts)
 
-        diff = torch.abs(corr_gt[[0]].squeeze() - corr_pred[[0]].detach().cpu().numpy())
+        # diff = torch.abs(corr_gt[[0]].squeeze() - corr_pred[[0]].detach().cpu().numpy())
         points_color = np.repeat(np.arange(len(verts[0][0]))[None, :], len(verts[0]), axis=0)
-        points_color = np.repeat(np.arange(len(verts[0][0]))[None, :], len(verts[0]), axis=0)
+
         visualization.pc_seq_vis(verts[0].detach().cpu().numpy(),
                                 text=np.take(dataset.action_dataset.actions,
                                                 labels.detach().cpu().numpy()[0].astype(int)),
-                                 color=points_color)
+                                 color=points_color, point_size=20)
