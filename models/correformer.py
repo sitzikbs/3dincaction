@@ -92,9 +92,9 @@ class CorreFormer(nn.Module):
             l2_loss = (gt_corr - corr).square()
             l2_mask = torch.max(gt_corr, 1.0 * (torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
             # l2_loss = (l2_mask * l2_loss)
-            l2_loss = l2_loss[l2_mask]
+            l2_loss = l2_loss[l2_mask].mean()
             loss_dict['losses/l2_loss'] = l2_loss.cpu().detach().numpy()
-            loss = l2_loss.mean() #+ regularizer
+            loss = l2_loss #+ regularizer
 
         elif self.loss_type == 'ce':
             # l2_features = (out1[:, point_ids] - out2).square().mean()
