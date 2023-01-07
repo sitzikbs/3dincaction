@@ -334,6 +334,35 @@ class DfaustActionDataset(Dataset):
         return out_dict
 
 
+class PointSampler():
+    def __init__(self, shuffle_points, total_n_points=DATASET_N_POINTS):
+        self.shuffle_points = shuffle_points
+        self.sample_function = {'each': self.sample_each, 'each_frame': self.sample_each_frame}
+        self.total_n_points = total_n_points
+
+    def sample_each(self, points):
+        shuffled_idxs = np.arange(self.total_n_points)
+        random.shuffle(shuffled_idxs)
+        shuffled_idxs = shuffled_idxs[:self.n_points]
+        points_seq = self.vertices[idx][:, shuffled_idxs]
+        shuffled_idxs = np.arange(self.n_points)  # the new indices match throghout the sequence
+        return points_seq, shuffled_idxs
+    def sample_each_frame(self, points):
+        shuffled_idxs = np.arange(DATASET_N_POINTS)
+        random.shuffle(shuffled_idxs)
+        points_seq = self.vertices[idx][:, shuffled_idxs[:self.n_points]]
+        shuffled_idxs = np.array(
+            [np.random.permutation(np.arange(self.n_points)) for _ in range(len(self.vertices[idx]) - 1)])[:, :, None]
+        shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None],
+                                  axis=0)  # make sure thefirst frame indices are unchanged (they are refs)
+        points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
+    def samlpe_and_shuffle(self, points):
+        # points : B X T X N X 3
+        return self.sample_function[self.shuffle_points](points)
+
+
+
+
 if __name__ == '__main__':
     # dataset = DfaustActionDataset(dfaust_path='/home/sitzikbs/Datasets/dfaust/')
     correformer_path = './transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt'
