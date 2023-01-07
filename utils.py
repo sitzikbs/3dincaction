@@ -573,6 +573,21 @@ class ScalarScheduler():
     def value(self):
         return self.current_value
 
+def sort_points(sort_model, x):
+    b, t, n, k = x.shape
+    x = x.cuda()
+    sorted_seq = x[:, [0], :, :]
+    sorted_frame = x[:, 0, :, :]
+    corr_pred = torch.arange(n)[None, None, :].cuda().repeat([b, 1, 1])
+    for frame_idx in range(t-1):
+        p1 = sorted_frame
+        p2 = x[:, frame_idx+1, :, :]
+        corre_out_dict = sort_model(p1, p2)
+        corr_idx12, corr_idx21 = corre_out_dict['corr_idx12'], corre_out_dict['corr_idx21']
+        sorted_frame = torch.gather(p2, 1, corr_idx12.unsqueeze(-1).repeat([1, 1, 3]))
+        sorted_seq = torch.cat([sorted_seq, sorted_frame.unsqueeze(1)], dim=1)
+        corr_pred = torch.cat([corr_pred, corr_idx21.unsqueeze(1)], dim=1)
+    return sorted_seq, corr_pred
 
 if __name__ == '__main__':
     points = torch.rand(16, 1000, 3)

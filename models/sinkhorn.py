@@ -7,11 +7,12 @@ import torch
 import tqdm
 
 class SinkhornCorr(torch.nn.Module):
-    def __init__(self, ):
+    def __init__(self, max_iters=100):
         super(SinkhornCorr, self).__init__()
+        self.max_iters = max_iters
 
     def forward(self, x1, x2):
-        corr_mat, max_ind12, max_ind21 = sinkhorn(x1.squeeze(), x2.squeeze())
+        corr_mat, max_ind12, max_ind21 = sinkhorn(x1.squeeze(), x2.squeeze(), max_iters=self.max_iters)
         return {'out1': x1, 'out2': x2, 'corr_mat': corr_mat, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,

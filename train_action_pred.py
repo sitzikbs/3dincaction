@@ -17,7 +17,8 @@ from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
-
+import utils as point_utils
+from models.sinkhorn import SinkhornCorr
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -41,6 +42,7 @@ parser.add_argument('--shuffle_points', type=str, default='each_frame', help='on
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=str, nargs='+', default=['none'], help='apply input data point augmentations')
+parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 parser.add_argument('--correformer', type=str,
                     default='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt',
                     help='None or path to correformer model')
@@ -100,8 +102,10 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
         raise ValueError("point cloud architecture not supported. Check the pc_model input")
 
     # Load correspondance transformer
-    if not args.correformer == 'none':
-        correformer = cf.get_correformer(args.correformer)
+    if args.sort_model == 'correformer':
+        sort_model = cf.get_correformer(args.correformer)
+    elif args.sort_model == 'sinkhorn':
+        sort_model = SinkhornCorr(max_iters=10)
 
     if pretrained_model is not None:
         checkpoints = torch.load(pretrained_model)
@@ -167,9 +171,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             num_iter += 1
             # get the inputs
             inputs, labels = data['points'], data['labels']
-            if not args.correformer == 'none':
+            if not args.sort_model == 'none':
                 with torch.no_grad():
-                    inputs, _ = cf.sort_points(correformer, inputs)
+                    inputs, _ = point_utils.sort_points(sort_model, inputs)
             inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
             labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
@@ -219,9 +223,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels = data['points'], data['labels']
-                if not args.correformer == 'none':
+                if not args.sort_model == 'none':
                     with torch.no_grad():
-                        inputs, _ = cf.sort_points(correformer, inputs)
+                        inputs, _ = point_utils.sort_points(sort_model, inputs)
                 inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
                 labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
