@@ -84,12 +84,12 @@ torch.save(args, params_filename)
 
 # Set up data
 train_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='train', n_points=args.n_points,
-                        shuffle_points='each', data_augmentation=args.aug, gender=args.gender,
+                        shuffle_points='fps_each', data_augmentation=args.aug, gender=args.gender,
                         nn_sample_ratio=args.nn_sample_ratio)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=8,
                                                pin_memory=True, shuffle=True, drop_last=True)
 test_dataset = Dataset(args.dataset_path, frames_per_clip=args.frames_per_clip + 1, set='test', n_points=args.n_points,
-                       shuffle_points='each', gender=args.gender)
+                       shuffle_points='fps_each', gender=args.gender)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8,
                                               pin_memory=True, drop_last=True)
 test_enum = enumerate(test_dataloader, 0)
