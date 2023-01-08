@@ -41,7 +41,7 @@ def get_frame_pairs(points):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_points", type=int, default=512)
+parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
 parser.add_argument("--batch_size", type=int, default=8)
 parser.add_argument("--dim", type=int, default=1024)

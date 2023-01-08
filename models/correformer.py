@@ -10,7 +10,7 @@ from models.point_transformer_pytorch import PointTransformerLayer
 from models.point_transformer_repro import PointTransformerSeg
 from models.pointnet_sem_seg import PNSeg
 from models.set_transformer import SetTransformer
-
+from models.PCT import PCTCorreformer
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
                  twosided=True, transformer_type='none', n_points=1024, loss_type='l2', cat_points=True):
@@ -33,6 +33,8 @@ class CorreFormer(nn.Module):
             self.transformer = PNSeg(n_points)
         elif self.transformer_type == 'set_transformer':
             self.transformer = SetTransformer(3, n_points, dim_feedforward, dim_hidden=128, num_heads=nhead, ln=False)
+        elif self.transformer_type == 'pct':
+            self.transformer = PCTCorreformer(dim_feedforward)
         else:
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
@@ -49,6 +51,9 @@ class CorreFormer(nn.Module):
         elif self.transformer_type == 'pnseg':
             out, _ = self.transformer(points)
         elif self.transformer_type == 'set_transformer':
+            out = self.transformer(points.permute(0, 2, 1))
+            point_features = []
+        elif self.transformer_type == 'pct':
             out = self.transformer(points.permute(0, 2, 1))
             point_features = []
         else:
