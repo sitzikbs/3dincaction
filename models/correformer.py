@@ -32,8 +32,7 @@ class CorreFormer(nn.Module):
         elif self.transformer_type == 'pnseg':
             self.transformer = PNSeg(n_points)
         elif self.transformer_type == 'set_transformer':
-            self.transformer = SetTransformer(3, 1024, dim_feedforward, num_inds=32, dim_hidden=128,
-                                              num_heads=nhead, ln=False)
+            self.transformer = SetTransformer(3, n_points, dim_feedforward, dim_hidden=128, num_heads=nhead, ln=False)
         else:
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
