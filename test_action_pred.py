@@ -41,9 +41,8 @@ parser.add_argument('--correformer', type=str,
                     help='None or path to correformer model')
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')
+parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 args = parser.parse_args()
-
-
 
 
 # from pointnet import PointNet4D
