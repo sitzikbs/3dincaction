@@ -54,7 +54,7 @@ class CorreFormer(nn.Module):
             out = self.transformer(points.permute(0, 2, 1))
             point_features = []
         elif self.transformer_type == 'pct':
-            out = self.transformer(points.permute(0, 2, 1))
+            out = self.transformer(points)
             point_features = []
         else:
             x, point_features = self.pointencoder(points)

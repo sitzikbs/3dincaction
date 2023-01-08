@@ -2,8 +2,64 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from models.pointnet2_utils import farthest_point_sample
 
 
+def square_distance(src, dst):
+    """
+    Calculate Euclid distance between each two points.
+    src^T * dst = xn * xm + yn * ym + zn * zm；
+    sum(src^2, dim=-1) = xn*xn + yn*yn + zn*zn;
+    sum(dst^2, dim=-1) = xm*xm + ym*ym + zm*zm;
+    dist = (xn - xm)^2 + (yn - ym)^2 + (zn - zm)^2
+         = sum(src**2,dim=-1)+sum(dst**2,dim=-1)-2*src^T*dst
+    Input:
+        src: source points, [B, N, C]
+        dst: target points, [B, M, C]
+    Output:
+        dist: per-point square distance, [B, N, M]
+    """
+    B, N, _ = src.shape
+    _, M, _ = dst.shape
+    dist = -2 * torch.matmul(src, dst.permute(0, 2, 1))
+    dist += torch.sum(src ** 2, -1).view(B, N, 1)
+    dist += torch.sum(dst ** 2, -1).view(B, 1, M)
+    return dist
+
+
+def knn_point(k, xyz, new_xyz):
+    """
+    K nearest neighborhood.
+    Input:
+        k: max sample number in local region
+        xyz: all points, [B, N, C]
+        new_xyz: query points, [B, S, C]
+
+    Output:
+        group_idx: grouped points index, [B, S, k]
+    """
+    sqrdists = square_distance(new_xyz, xyz)
+    _, group_idx = torch.topk(sqrdists, k, dim=-1, largest=False, sorted=False)
+    return group_idx
+
+def index_points(points, idx):
+    """
+    Input:
+        points: input points data, [B, N, C]
+        idx: sample index data, [B, S]
+
+    Output:
+        new_points:, indexed points data, [B, S, C]
+    """
+    device = points.device
+    B = points.shape[0]
+    view_shape = list(idx.shape)
+    view_shape[1:] = [1] * (len(view_shape) - 1)
+    repeat_shape = list(idx.shape)
+    repeat_shape[0] = 1
+    batch_indices = torch.arange(B, dtype=torch.long).to(device).view(view_shape).repeat(repeat_shape)
+    new_points = points[batch_indices, idx, :]
+    return new_points
 
 def sample_and_knn_group(s, k, coords, features):
     """
@@ -22,7 +78,7 @@ def sample_and_knn_group(s, k, coords, features):
     coords = coords.contiguous()
 
     # FPS sampling
-    fps_idx = pointnet2_utils.furthest_point_sample(coords, s).long()  # [B, s]
+    fps_idx = farthest_point_sample(coords, s).long()  # [B, s]
     new_coords = index_points(coords, fps_idx)  # [B, s, 3]
     new_features = index_points(features, fps_idx)  # [B, s, D]
 
