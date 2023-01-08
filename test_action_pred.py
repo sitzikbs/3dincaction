@@ -16,6 +16,7 @@ import importlib.util
 import visualization
 import pathlib
 import models.correformer as cf
+import utils as point_utils
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -111,8 +112,10 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     model = nn.DataParallel(model)
 
     # Load correspondance transformer
-    if not args.correformer =='none':
-        correformer = cf.get_correformer(args.correformer)
+    if args.sort_model == 'correformer':
+        sort_model = cf.get_correformer(args.correformer)
+    elif args.sort_model == 'sinkhorn':
+        sort_model = SinkhornCorr(max_iters=10)
 
     n_examples = 0
 
@@ -125,9 +128,9 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         model.train(False)
         # get the inputs
         inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
-        if not args.correformer == 'none':
+        if not args.sort_model == 'none':
             with torch.no_grad():
-                inputs, _ = cf.sort_points(correformer, inputs)
+                inputs, _ = point_utils.sort_points(sort_model, inputs)
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
         labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
