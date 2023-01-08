@@ -42,7 +42,7 @@ parser.add_argument('--shuffle_points', type=str, default='each_frame', help='on
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=str, nargs='+', default=['none'], help='apply input data point augmentations')
-parser.add_argument('--sort_model', type=str, default='none', help='transformer | sinkhorn | none')
+parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 parser.add_argument('--correformer', type=str,
                     default='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt',
                     help='None or path to correformer model')
@@ -105,7 +105,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     if args.sort_model == 'correformer':
         sort_model = cf.get_correformer(args.correformer)
     elif args.sort_model == 'sinkhorn':
-        sort_model = SinkhornCorr(max_iters=10)
+        sort_model = SinkhornCorr(max_iters=10).cuda()
 
     if pretrained_model is not None:
         checkpoints = torch.load(pretrained_model)

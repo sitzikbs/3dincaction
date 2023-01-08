@@ -115,7 +115,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     if args.sort_model == 'correformer':
         sort_model = cf.get_correformer(args.correformer)
     elif args.sort_model == 'sinkhorn':
-        sort_model = SinkhornCorr(max_iters=10)
+        sort_model = SinkhornCorr(max_iters=10).cuda()
 
     n_examples = 0
 
