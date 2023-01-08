@@ -12,7 +12,15 @@ class SinkhornCorr(torch.nn.Module):
         self.max_iters = max_iters
 
     def forward(self, x1, x2):
-        corr_mat, max_ind12, max_ind21 = sinkhorn(x1.squeeze(), x2.squeeze(), max_iters=self.max_iters)
+        if len(x1.shape) > 2:
+            # handle batch input
+            corr_mat, max_ind12, max_ind21 = [], [], []
+            for i, b1 in enumerate(x1):
+                corr_mat_, max_ind12_, max_ind21_ = sinkhorn(b1.squeeze(), x2[i].squeeze(), max_iters=self.max_iters)
+                corr_mat.append(corr_mat_), max_ind12.append(max_ind12_), max_ind21.append(max_ind21_)
+            corr_mat, max_ind12, max_ind21 = torch.vstack(corr_mat), torch.vstack(max_ind12), torch.vstack(max_ind21)
+        else:
+            corr_mat, max_ind12, max_ind21 = sinkhorn(x1.squeeze(), x2.squeeze(), max_iters=self.max_iters)
         return {'out1': x1, 'out2': x2, 'corr_mat': corr_mat, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,
