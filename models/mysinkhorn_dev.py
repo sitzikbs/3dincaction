@@ -5,6 +5,9 @@ import torch
 import tqdm
 import numpy as np
 import torch.nn as nn
+import geomloss
+
+
 def cost_matrix(x, y, p=2):
     "Returns the matrix of $|x_i-y_j|^p$."
     x_col = x.unsqueeze(-2)
@@ -28,11 +31,10 @@ class sinkhorn(nn.Module):
         - Input: :math:`(N, P_1, D_1)`, :math:`(N, P_2, D_2)`
         - Output: :math:`(N)` or :math:`()`, depending on `reduction`
     """
-    def __init__(self, eps, max_iter, reduction='none', cost=cost_matrix, thresh=1e-2):
+    def __init__(self, eps=1, max_iter=1, cost=cost_matrix, thresh=1e-2):
         super(sinkhorn, self).__init__()
         self.eps = eps
         self.max_iter = max_iter
-        self.reduction = reduction
         self.cost = cost
         self.thresh = thresh
 
@@ -60,28 +62,40 @@ class sinkhorn(nn.Module):
 
         # Sinkhorn iterations
         for i in range(self.max_iter):
+            # u_prev = u
+            # v_prev = v
+            # summand_u = (-C + v) / self.eps
+            # u = self.eps * (torch.log(mu).squeeze() - summand_u.logsumexp(dim=-1).squeeze())
+            #
+            # summand_v = (-C + u) / self.eps
+            # v = self.eps * (torch.log(nu).squeeze() - summand_v.logsumexp(dim=-2).squeeze())
+            #
+            # max_err_u = torch.max(torch.abs(u_prev - u))
+            # max_err_v = torch.max(torch.abs(v_prev - v))
+            #
+            # if max_err_u < self.thresh and max_err_v < self.thresh:
+            #     break
             if i % 2 == 0:
                 u1 = u  # useful to check the update
                 u = self.eps * (torch.log(mu) - torch.logsumexp(self.M(C, u, v), dim=-1)) + u
-
                 err = (u - u1).abs().sum(-1).mean()
             else:
                 v = self.eps * (torch.log(nu) - torch.logsumexp(self.M(C, u, v).transpose(-2, -1), dim=-1)) + v
-
-            if err.item() < self.thresh:
+            if err.item() < thresh:
                 break
+
 
         U, V = u, v
         # Transport plan pi = diag(a)*K*diag(b)
         pi = torch.exp(self.M(C, U, V))
-        approx_corr_1 = pi.argmax(dim=1).squeeze(-1)
-        approx_corr_2 = pi.argmax(dim=0).squeeze(-1)
+        approx_corr_1 = pi.argmax(dim=-1).squeeze(-1)
+        approx_corr_2 = pi.argmax(dim=-2).squeeze(-1)
 
         # Sinkhorn distance
         if u.shape[0] > v.shape[0]:
-            distance = (pi * C).sum(dim=1).sum()
+            distance = (pi * C).sum(dim=-1).sum()
         else:
-            distance = (pi * C).sum(dim=0).sum()
+            distance = (pi * C).sum(dim=-2).sum()
         return distance, approx_corr_1, approx_corr_2
 
     def M(self, C, u, v):
@@ -133,9 +147,10 @@ def local_distort(points, r=0.1, ratio=0.15, sigma=0.05):
 
 if __name__ == "__main__":
     batch_size = 1
-    n_points = 16384
+    n_points = 1024
     n_epochs = 10000
-    # model = SinkhornCorr(max_iters=1000)
+
+    model = sinkhorn()
     dataset = NoiseGenerator(n_points, n_samples=10000)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
@@ -145,4 +160,4 @@ if __name__ == "__main__":
             points1 = data['points']
             points2 = local_distort(points1)
             with torch.no_grad():
-                output = sinkhorn(points1.squeeze().cuda(), points2.squeeze().cuda())
+                output = model(points1.squeeze().cuda(), points2.squeeze().cuda())

@@ -5,6 +5,7 @@ import pykeops.torch as keops
 import torch
 import tqdm
 import numpy as np
+import nvidia_smi
 
 def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,
              w_x: Union[torch.Tensor, None] = None,
@@ -188,7 +189,11 @@ def local_distort(points, r=0.1, ratio=0.15, sigma=0.05):
 
     return torch.tensor(points)
 
+import numba
 if __name__ == "__main__":
+
+    nvidia_smi.nvmlInit()
+    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
     batch_size = 1
     n_points = 16384
     n_epochs = 10000
@@ -203,3 +208,9 @@ if __name__ == "__main__":
             points2 = local_distort(points1)
             with torch.no_grad():
                 output = sinkhorn(points1.squeeze().cuda(), points2.squeeze().cuda())
+
+            info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+            print("Memory : ({:.2f}% free): {}(total), {} (free), {} (used)".format(100 * info.free / info.total,
+                                                                                    info.total,
+                                                                                    info.free,
+                                                                                    info.used))
