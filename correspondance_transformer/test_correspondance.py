@@ -6,7 +6,7 @@ from DfaustDataset import DfaustActionDataset as Dataset
 from DfaustDataset import DfaustActionClipsDataset
 import models.correformer as cf
 from models.NNCorr import NNCorr
-from models.sinkhorn import SinkhornCorr
+from models.my_sinkhorn import SinkhornCorr
 import pc_transforms as transforms
 import numpy as np
 import visualization as vis
@@ -25,13 +25,13 @@ parser.add_argument('--n_points', type=int, default=1024, help='number of points
 parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs32reg_cat_ce2/',
                     help='path to model save dir')
 parser.add_argument('--model', type=str, default='000250.pt', help='path to model save dir')
-parser.add_argument('--jitter', type=float, default=0.01, help='if larger than 0 : adds random jitter to test points')
+parser.add_argument('--jitter', type=float, default=0.00, help='if larger than 0 : adds random jitter to test points')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
 parser.add_argument('--gender', type=str,
                     default='all', help='female | male | all indicating which subset of the dataset to use')
-parser.add_argument('--sinkhorn_n_iters', type=int, default=100, help='number of maximum iterations for sinkhorn')
+parser.add_argument('--sinkhorn_n_iters', type=int, default=10, help='number of maximum iterations for sinkhorn')
 args = parser.parse_args()
 
 test_dataset = Dataset(args.dataset_path,  set='test', n_points=args.n_points, shuffle_points='fps_each',
@@ -100,7 +100,7 @@ with open(results_filename, 'a', encoding='UTF8') as f:
     if args.method == 'transformer':
         method = args.method + '_' + checkpoints
     elif args.method == 'sinkhorn':
-        method = args.method + '_'+ args.sinkhorn_n_iters
+        method = args.method + '_'+ str(args.sinkhorn_n_iters)
     else:
         method = args.method
     data = [method, args.jitter, round(correct / total, 4)]

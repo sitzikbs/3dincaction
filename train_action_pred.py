@@ -18,7 +18,7 @@ from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
 import utils as point_utils
-from models.sinkhorn import SinkhornCorr
+from models.my_sinkhorn import SinkhornCorr
 
 np.random.seed(0)
 torch.manual_seed(0)

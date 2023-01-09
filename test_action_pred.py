@@ -17,6 +17,7 @@ import visualization
 import pathlib
 import models.correformer as cf
 import utils as point_utils
+from models.my_sinkhorn import SinkhornCorr
 
 np.random.seed(0)
 torch.manual_seed(0)
