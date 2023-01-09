@@ -90,9 +90,6 @@ class SinkhornDistance(nn.Module):
         # Transport plan pi = diag(a)*K*diag(b)
         pi = torch.exp(self.M(C, U, V))
         # Sinkhorn distance
-
-
-
         return pi, C, U, V
 
     def M(self, C, u, v):
@@ -106,6 +103,7 @@ class SinkhornDistance(nn.Module):
     def ave(u, u1, tau):
         "Barycenter subroutine, used by kinetic acceleration through extrapolation."
         return tau * u + (1 - tau) * u1
+
 def distmat2(X, Y, div=1):
   X_sq = (X ** 2).sum(axis=-1)
   Y_sq = (Y ** 2).sum(axis=-1)

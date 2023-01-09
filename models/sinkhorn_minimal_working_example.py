@@ -1,28 +1,10 @@
-# Sinkhorn implementation by Francis Williams: https://github.com/fwilliams/scalable-pytorch-sinkhorn
-# adapted to this project's requirements
+# minimum working example to debug the memory leak
 from typing import Union
 from scipy.spatial import KDTree
 import pykeops.torch as keops
 import torch
 import tqdm
 import numpy as np
-
-class SinkhornCorr(torch.nn.Module):
-    def __init__(self, max_iters=100):
-        super(SinkhornCorr, self).__init__()
-        self.max_iters = max_iters
-
-    def forward(self, x1, x2):
-        if len(x1.shape) > 2:
-            # handle batch input
-            corr_mat, max_ind12, max_ind21 = [], [], []
-            for i, b1 in enumerate(x1):
-                corr_mat_, max_ind12_, max_ind21_ = sinkhorn(b1.squeeze(), x2[i].squeeze(), max_iters=self.max_iters)
-                corr_mat.append(corr_mat_), max_ind12.append(max_ind12_), max_ind21.append(max_ind21_)
-            corr_mat, max_ind12, max_ind21 = torch.vstack(corr_mat), torch.vstack(max_ind12), torch.vstack(max_ind21)
-        else:
-            corr_mat, max_ind12, max_ind21 = sinkhorn(x1.squeeze(), x2.squeeze(), max_iters=self.max_iters)
-        return {'out1': x1, 'out2': x2, 'corr_mat': corr_mat, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21}
 
 def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,
              w_x: Union[torch.Tensor, None] = None,
@@ -99,6 +81,8 @@ def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,
 
 
     # Distance matrix [n, m]
+    # x_i = keops.LazyTensor(x, 0)
+    # y_j = keops.LazyTensor(y, 1)
     x_i = keops.Vi(x)  # [n, 1, d]
     y_j = keops.Vj(y)  # [i, m, d]
     if p == 1:
@@ -126,6 +110,9 @@ def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,
     u = torch.zeros_like(w_x)
     v = eps * torch.log(w_y)
 
+    # u_i = keops.LazyTensor(u.unsqueeze(-1), 0)
+    # v_j = keops.LazyTensor(v.unsqueeze(-1), 1)
+
     u_i = keops.Vi(u.unsqueeze(-1))
     v_j = keops.Vj(v.unsqueeze(-1))
 
@@ -140,10 +127,12 @@ def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,
 
         summand_u = (-M_ij + v_j) / eps
         u = eps * (log_a - summand_u.logsumexp(dim=1).squeeze())
+        # u_i = keops.LazyTensor(u.unsqueeze(-1), 0)
         u_i = keops.Vi(u.unsqueeze(-1))
 
         summand_v = (-M_ij + u_i) / eps
         v = eps * (log_b - summand_v.logsumexp(dim=0).squeeze())
+        # v_j = keops.LazyTensor(v.unsqueeze(-1), 1)
         v_j = keops.Vj(v.unsqueeze(-1))
 
         max_err_u = torch.max(torch.abs(u_prev-u))
@@ -163,3 +152,54 @@ def sinkhorn(x: torch.Tensor, y: torch.Tensor, p: float = 2,
     else:
         distance = (P_ij * M_ij).sum(dim=0).sum()
     return distance, approx_corr_1, approx_corr_2
+
+class NoiseGenerator(torch.utils.data.Dataset):
+    def __init__(self, n_points, radius=0.5, n_samples=1, sigma=0.3):
+        # # Generate random spherical coordinates
+
+        self.radius = radius
+        self.n_points = n_points
+        self.points = []
+        for i in range(n_samples):
+            self.points.append(self.get_noisy_points(sigma))
+    def get_noisy_points(self, sigma):
+        #TODO add local distortion (use kdtree and fixed motion vec)
+        return np.clip(np.random.randn(self.n_points, 3)*sigma, -1, 1).astype(np.float32)
+
+    def __len__(self):
+        return len(self.points)
+
+    # This returns given an index the i-th sample and label
+    def __getitem__(self, idx):
+        return {'points': self.points[idx]}
+
+def local_distort(points, r=0.1, ratio=0.15, sigma=0.05):
+    b, n, _ = points.size()
+    n_ratio = int(ratio*n)
+
+    points = points.cpu().numpy()
+    subset = torch.randperm(n)[:b]
+    translation_vec = np.random.rand(b, 3) * sigma
+
+    for i, pts in enumerate(points):
+        tree = KDTree(pts)
+        _, nn_idx = tree.query(points[i, subset[i], :], k=n_ratio) #distort knn
+        points[i, nn_idx, :] += translation_vec[i]
+
+    return torch.tensor(points)
+
+if __name__ == "__main__":
+    batch_size = 1
+    n_points = 16384
+    n_epochs = 10000
+    # model = SinkhornCorr(max_iters=1000)
+    dataset = NoiseGenerator(n_points, n_samples=10000)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0,
+                                                  pin_memory=True)
+    for epoch in range(n_epochs):
+        for batch_ind, data in enumerate(dataloader):
+            print("Epoch {}, Batch {}".format(epoch, batch_ind))
+            points1 = data['points']
+            points2 = local_distort(points1)
+            with torch.no_grad():
+                output = sinkhorn(points1.squeeze().cuda(), points2.squeeze().cuda())
