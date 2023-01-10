@@ -63,11 +63,11 @@ parser.add_argument('--transformer_type', type=str,
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
-                    default='ce', help='ce | l2 | ce_bbl indicating the loss type ')
+                    default='ce2', help='ce | l2 | ce_bbl indicating the loss type ')
 parser.add_argument('--cat_points', dest='cat_points', action='store_false')
 parser.set_defaults(cat_points=True)
 parser.add_argument('--exp_id', type=str,
-                    default='debug_set_transformer_ce', help='a unique identifier to append to the experiment name')
+                    default='debug_set_transformer_ce2_jitter', help='a unique identifier to append to the experiment name')
 
 point_size = 25
 sigma = ScalarScheduler(init_value=0.01, steps=5, increment=0.0)
