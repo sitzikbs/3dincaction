@@ -32,7 +32,8 @@ class CorreFormer(nn.Module):
         elif self.transformer_type == 'pnseg':
             self.transformer = PNSeg(n_points)
         elif self.transformer_type == 'set_transformer':
-            self.transformer = SetTransformer(3, n_points, dim_feedforward, dim_hidden=1024, num_heads=nhead, ln=False)
+            self.transformer = SetTransformer(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
+                                              dim_hidden=1024, num_heads=nhead, ln=False)
         elif self.transformer_type == 'pct':
             self.transformer = PCTCorreformer(dim_feedforward)
         else:
