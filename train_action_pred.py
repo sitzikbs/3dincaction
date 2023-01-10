@@ -14,7 +14,7 @@ from DfaustDataset import DfaustActionClipsDataset as Dataset
 from tensorboardX import SummaryWriter
 
 from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1, PointNet1Basic
-from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D
+from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
 import utils as point_utils
