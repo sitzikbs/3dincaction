@@ -105,14 +105,13 @@ class CorreFormer(nn.Module):
             ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
             loss_dict['losses/ce_loss'] = ce_loss.cpu().detach().numpy()
             loss = ce_loss #+ regularizer #+ l2_features
-        # elif self.loss_type == 'ce2':
-        #     TODO fix ce2
-        #     ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
-        #     ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
-        #                                torch.arange(n1, device=sim_mat.device).repeat(b))
-        #     loss_dict['losses/ce_loss'] = ce_loss1.cpu().detach().numpy()
-        #     loss_dict['losses/ce2_loss'] = ce_loss2.cpu().detach().numpy()
-        #     loss = ce_loss1 + ce_loss2 + regularizer
+        elif self.loss_type == 'ce2':
+            ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+            ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
+                                       point_ids[point_ids].repeat(b))
+            loss_dict['losses/ce_loss'] = ce_loss1.cpu().detach().numpy()
+            loss_dict['losses/ce2_loss'] = ce_loss2.cpu().detach().numpy()
+            loss = ce_loss1 + ce_loss2 #+ regularizer
         elif self.loss_type == 'ce_bbl':
             ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
             # ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),

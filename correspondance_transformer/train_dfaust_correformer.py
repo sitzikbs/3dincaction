@@ -59,15 +59,15 @@ parser.add_argument('--gender', type=str,
 parser.add_argument('--nn_sample_ratio', type=int,
                     default=1.0, help='sample nearest neighbor correct corresondences, if 1 takes all points')
 parser.add_argument('--transformer_type', type=str,
-                    default='set_transformer', help='plr | ptr | none - use point transformer layer (plr)'
+                    default='none', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
-                    default='l2', help='ce | l2 | ce_bbl indicating the loss type ')
+                    default='ce2', help='ce | l2 | ce_bbl indicating the loss type ')
 parser.add_argument('--cat_points', dest='cat_points', action='store_false')
 parser.set_defaults(cat_points=True)
 parser.add_argument('--exp_id', type=str,
-                    default='debug_set_transformer', help='a unique identifier to append to the experiment name')
+                    default='debug_ce2', help='a unique identifier to append to the experiment name')
 
 point_size = 25
 sigma = ScalarScheduler(init_value=0.01, steps=5, increment=0.0)
