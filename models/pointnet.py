@@ -111,14 +111,13 @@ class PointNetfeat4D(nn.Module):
         b, k, t, n = x.size()  # batch, feature_dim , temporal, n_points
         trans = self.stn(x)
         x = torch.bmm(x.permute(0, 2, 3, 1).reshape(b * t, n, k), trans)
-        x = x.reshape(b, t, n, k).permute(0, 3, 1, 2)
+        x = x.reshape(b, t, n, k).permute(0, 3, 1, 2) # -> b, k, t, n
         x = F.relu(self.bn1(self.conv1(x)))
 
         if self.feature_transform:
             trans_feat = self.fstn(x)
             x = torch.bmm(x.permute(0, 2, 3, 1).reshape(b * t, n, 64), trans_feat)
             x = x.reshape(b, t, n, 64).permute(0, 3, 1, 2)
-
         else:
             trans_feat = None
 
@@ -151,15 +150,19 @@ class PointNetCls4D(nn.Module):
         self.dropout = nn.Dropout(p=0.3)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
+        self.bn3 = nn.BatchNorm1d(256)
         self.relu = nn.ReLU()
+
+        self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
 
     def forward(self, x):
         b, k, t, n = x.size()
         x, trans, trans_feat = self.feat(x)
         x = F.relu(self.bn1(self.fc1(x).reshape(b, -1, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
-        x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, -1, 256).permute(0, 2, 1)))).permute(0, 2,
-                                                                                                    1).reshape(-1,
-                                                                                                               256)
+        x = F.relu(self.bn2(self.dropout(
+            self.fc2(x).reshape(b, -1, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
+        # learn a temporal filter on all per-frame global representations
+        x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
         x = self.fc3(x)
         # x = F.interpolate(x.reshape(b, -1, x.shape[-1]).permute(0, 2, 1), t, mode='linear', align_corners=True).permute(0, 2, 1)
         return F.log_softmax(x, dim=1), trans, trans_feat
@@ -281,6 +284,7 @@ class PointNetClsBasic(nn.Module):
         x, trans, trans_feat = self.feat(x)
         x = F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
         x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
+        # learn a temporal filter on all per-frame global representations
         x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
         x = self.fc3(x)
 

@@ -24,7 +24,7 @@ np.random.seed(0)
 torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn2', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=1, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
@@ -96,6 +96,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
         model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_4d':
         model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'pn2_4d_basic':
+        model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes, n_frames=frames_per_clip)
     else:
