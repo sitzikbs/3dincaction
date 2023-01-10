@@ -23,22 +23,22 @@ np.random.seed(0)
 torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
-parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
+parser.add_argument('--pc_model', type=str, default='pn1_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--frames_per_clip', type=int, default=64, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/pn1_f1_p1024_shuffle_once_sampler_weighted/',
+parser.add_argument('--model_path', type=str, default='./log/baseline_fps/dfaust_all_pn1_4d_f64_p1024_shuffle_fps_each_frame_aug1_b16_u1_sort.sinkhorn',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000030.pt', help='path to model save dir')
+parser.add_argument('--model', type=str, default='000200.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate ')
-parser.add_argument('--shuffle_points', type=str, default='once', help='once | each | none shuffle the input points '
+parser.add_argument('--shuffle_points', type=str, default='fps_each_frame', help='fps e each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
 parser.add_argument('--correformer', type=str,
-                    default='./transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt',
+                    default='none',
                     help='None or path to correformer model')
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')

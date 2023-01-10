@@ -66,9 +66,9 @@ def sinkhorn(p, q, p_norm=2, eps=1e-4, max_iters=100, stop_thresh=1e-3):
     """
     # a and b are tensors of size [nb, m] and [nb, n]
     # M is a tensor of size [nb, m, n]
-    M = pairwise_distances(p, q, p_norm).squeeze()
-    a = (torch.ones(p.shape[0:-1], dtype=torch.float32, device=p.device) / p.shape[0]).squeeze()
-    b = (torch.ones(q.shape[0:-1], dtype=torch.float32, device=q.device) / q.shape[0]).squeeze()
+    M = pairwise_distances(p, q, p_norm)#.squeeze()
+    a = (torch.ones(p.shape[0:-1], dtype=torch.float32, device=p.device) / p.shape[0])#.squeeze()
+    b = (torch.ones(q.shape[0:-1], dtype=torch.float32, device=q.device) / q.shape[0])#.squeeze()
 
     squeezed = False
 
