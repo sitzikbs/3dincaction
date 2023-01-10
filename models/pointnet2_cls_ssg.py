@@ -28,6 +28,9 @@ class PointNetPP4D(nn.Module):
         self.drop2 = nn.Dropout(0.4)
         self.fc3 = nn.Linear(256, num_class)
 
+        self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
+        self.bn3 = nn.BatchNorm1d(256)
+
 
     def forward(self, xyz):
         b, t, d, n = xyz.shape
@@ -46,6 +49,8 @@ class PointNetPP4D(nn.Module):
         x = x.reshape(b*t, 1024)
         x = self.drop1(F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512))
         x = self.drop2(F.relu(self.bn2(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 256))
+        # learn a temporal filter on all per-frame global representations
+        x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
         x = self.fc3(x)
 
         x = F.log_softmax(x, -1)

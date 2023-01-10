@@ -150,10 +150,11 @@ class PointNetCls4D(nn.Module):
         self.dropout = nn.Dropout(p=0.3)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
-        self.bn3 = nn.BatchNorm1d(256)
+
         self.relu = nn.ReLU()
 
         self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
+        self.bn3 = nn.BatchNorm1d(256)
 
     def forward(self, x):
         b, k, t, n = x.size()

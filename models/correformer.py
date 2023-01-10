@@ -11,6 +11,7 @@ from models.point_transformer_repro import PointTransformerSeg
 from models.pointnet_sem_seg import PNSeg
 from models.set_transformer import SetTransformer
 from models.PCT import PCTCorreformer
+from models.sinkformer import CorrSabSink
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
                  twosided=True, transformer_type='none', n_points=1024, loss_type='l2', cat_points=True):
@@ -34,6 +35,9 @@ class CorreFormer(nn.Module):
         elif self.transformer_type == 'set_transformer':
             self.transformer = SetTransformer(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
                                               dim_hidden=1024, num_heads=nhead, ln=False)
+        elif self.transformer_type == 'sinkformer':
+            self.transformer = CorrSabSink(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
+                                              dim_hidden=1024, num_heads=nhead, ln=False, n_it=5)
         elif self.transformer_type == 'pct':
             self.transformer = PCTCorreformer(dim_feedforward)
         else:
@@ -52,6 +56,9 @@ class CorreFormer(nn.Module):
         elif self.transformer_type == 'pnseg':
             out, _ = self.transformer(points)
         elif self.transformer_type == 'set_transformer':
+            out = self.transformer(points.permute(0, 2, 1))
+            point_features = []
+        elif self.transformer_type == 'sinkformer':
             out = self.transformer(points.permute(0, 2, 1))
             point_features = []
         elif self.transformer_type == 'pct':

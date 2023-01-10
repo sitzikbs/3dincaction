@@ -433,7 +433,7 @@ class CorrSabSink(nn.Module):
         ln=False,
         n_it=5,
     ):
-        super(ModelNetSabSink, self).__init__()
+        super(ModelNetSabSinkCorrSabSink, self).__init__()
         sinkhornkeops = SinkhornDistance(eps=eps, max_iter=n_it, cost=distmat2)
         self.enc = nn.Sequential(
             SABSINK(dim_input, dim_hidden, num_heads, ln=ln, sinkhorn=sinkhornkeops),
@@ -441,8 +441,10 @@ class CorrSabSink(nn.Module):
         )
         self.dec = nn.Sequential(
             nn.Dropout(),
-            PMASINK(dim_hidden, num_heads, num_outputs, ln=ln, sinkhorn=sinkhornkeops),
-            nn.Dropout()
+            # PMASINK(dim_hidden, num_heads, num_outputs, ln=ln, sinkhorn=sinkhornkeops),
+            SABSINK(dim_input, dim_hidden, num_heads, ln=ln, sinkhorn=sinkhornkeops),
+            SABSINK(dim_hidden, dim_hidden, num_heads, ln=ln, sinkhorn=sinkhornkeops),
+            # nn.Dropout()
         )
 
     def forward(self, X):
