@@ -7,6 +7,7 @@ sys.path.append('../')
 # import sys
 import argparse
 import i3d_utils as utils
+import utils as point_utils
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -53,6 +54,7 @@ parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussi
 parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
 parser.add_argument('--cache_capacity', type=int, default=0, help='number of sequences to store in cache for faster '
                                                                   'loading. 0 will cache all of the dataset')
+parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 args = parser.parse_args()
 
 
@@ -133,8 +135,10 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
         raise ValueError("Unsupported input type")
 
     # Load correspondance transformer
-    if not args.correformer == 'none':
-        correformer = cf.get_correformer(args.correformer)
+    if args.sort_model == 'correformer':
+        sort_model = cf.get_correformer(args.correformer)
+    elif args.sort_model == 'sinkhorn':
+        sort_model = SinkhornCorr(max_iters=10).cuda()
 
 
     if pretrained_model is not None:
@@ -218,9 +222,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             num_iter += 1
             # get the inputs
             inputs, labels, vid_idx, frame_pad = data
-            if not args.correformer == 'none':
+            if not args.sort_model == 'none':
                 with torch.no_grad():
-                    inputs, _ = cf.sort_points(correformer, inputs.permute(0, 1, 3, 2)[..., :3])
+                    inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
             inputs = inputs.cuda().requires_grad_().contiguous()
             labels = labels.cuda()
 
@@ -279,9 +283,9 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels, vid_idx, frame_pad = data
-                if not args.correformer == 'none':
+                if not args.sort_model == 'none':
                     with torch.no_grad():
-                        inputs, _ = cf.sort_points(correformer, inputs.permute(0, 1, 3, 2)[..., :3])
+                        inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
                 inputs = inputs.cuda().requires_grad_().contiguous()
                 labels = labels.cuda()
 

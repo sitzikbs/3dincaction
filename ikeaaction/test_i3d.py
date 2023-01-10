@@ -42,6 +42,7 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--correformer', type=str, default='none',  help='None or path to correformer model')
+parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 args = parser.parse_args()
 
 
@@ -126,8 +127,10 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
     model = nn.DataParallel(model)
 
     # Load correspondance transformer
-    if not args.correformer =='none':
-        correformer = cf.get_correformer(args.correformer)
+    if args.sort_model == 'correformer':
+        sort_model = cf.get_correformer(args.correformer)
+    elif args.sort_model == 'sinkhorn':
+        sort_model = SinkhornCorr(max_iters=10).cuda()
 
     n_examples = 0
 
@@ -140,9 +143,9 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
         model.train(False)
         # get the inputs
         inputs, labels, vid_idx, frame_pad = data
-        if not args.correformer == 'none':
+        if not args.sort_model == 'none':
             with torch.no_grad():
-                inputs, _ = cf.sort_points(correformer, inputs.permute(0, 1, 3, 2)[..., :3])
+                inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
         # wrap them in Variable
         inputs = inputs.cuda().requires_grad_().contiguous()
         labels = labels.cuda()
