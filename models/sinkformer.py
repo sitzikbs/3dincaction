@@ -433,7 +433,7 @@ class CorrSabSink(nn.Module):
         ln=False,
         n_it=5,
     ):
-        super(ModelNetSabSinkCorrSabSink, self).__init__()
+        super(CorrSabSink, self).__init__()
         sinkhornkeops = SinkhornDistance(eps=eps, max_iter=n_it, cost=distmat2)
         self.enc = nn.Sequential(
             SABSINK(dim_input, dim_hidden, num_heads, ln=ln, sinkhorn=sinkhornkeops),
