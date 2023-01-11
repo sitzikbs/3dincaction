@@ -36,8 +36,8 @@ class CorreFormer(nn.Module):
             self.transformer = SetTransformer(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
                                               dim_hidden=1024, num_heads=nhead, ln=False)
         elif self.transformer_type == 'sinkformer':
-            self.transformer = CorrSabSink(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
-                                              dim_hidden=1024, num_heads=nhead, ln=False, n_it=5)
+            self.transformer = CorrSabSink(dim_input=3, num_outputs=n_points,  dim_hidden=dim_feedforward,
+                                           num_heads=nhead, ln=False, n_it=5)
         elif self.transformer_type == 'pct':
             self.transformer = PCTCorreformer(dim_feedforward)
         else:
