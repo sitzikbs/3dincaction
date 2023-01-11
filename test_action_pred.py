@@ -18,6 +18,7 @@ import pathlib
 import models.correformer as cf
 import utils as point_utils
 from models.my_sinkhorn import SinkhornCorr
+from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 
 np.random.seed(0)
 torch.manual_seed(0)

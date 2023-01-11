@@ -23,7 +23,7 @@ from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1
 from models.pointnet2_cls_ssg import PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
-
+from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
@@ -127,6 +127,12 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
         elif pc_model == 'pn1_4d_basic':
             model = PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+        elif pc_model == 'pn2':
+            model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
+        elif pc_model == 'pn2_4d':
+            model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
+        elif pc_model == 'pn2_4d_basic':
+            model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
         elif pc_model == '3dmfv':
             model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=k, n_frames=frames_per_clip)
         else:
