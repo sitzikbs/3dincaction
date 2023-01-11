@@ -24,14 +24,15 @@ from models.pointnet2_cls_ssg import PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
+from models.my_sinkhorn import SinkhornCorr
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn2_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skippig frames')
-parser.add_argument('--steps_per_update', type=int, default=20, help='number of steps per backprop update')
+parser.add_argument('--steps_per_update', type=int, default=10, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=128, help='number of clips per batch')
+parser.add_argument('--batch_size', type=int, default=16, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=31, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
 parser.add_argument('--db_filename', type=str, default='ikea_annotation_db_full',
@@ -52,7 +53,7 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
-parser.add_argument('--cache_capacity', type=int, default=0, help='number of sequences to store in cache for faster '
+parser.add_argument('--cache_capacity', type=int, default=1, help='number of sequences to store in cache for faster '
                                                                   'loading. 0 will cache all of the dataset')
 parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 args = parser.parse_args()
@@ -231,6 +232,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             if not args.sort_model == 'none':
                 with torch.no_grad():
                     inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
+                    inputs = inputs.permute(0, 1, 3, 2)
             inputs = inputs.cuda().requires_grad_().contiguous()
             labels = labels.cuda()
 
@@ -292,6 +294,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                 if not args.sort_model == 'none':
                     with torch.no_grad():
                         inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
+                        inputs = inputs.permute(0, 1, 3, 2)
                 inputs = inputs.cuda().requires_grad_().contiguous()
                 labels = labels.cuda()
 

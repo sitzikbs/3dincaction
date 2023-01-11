@@ -19,6 +19,7 @@ import numpy as np
 from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
 import importlib.util
 import models.correformer as cf
+from models.my_sinkhorn import SinkhornCorr
 
 
 parser = argparse.ArgumentParser()
