@@ -442,7 +442,7 @@ class CorrSabSink(nn.Module):
         self.dec = nn.Sequential(
             nn.Dropout(),
             # PMASINK(dim_hidden, num_heads, num_outputs, ln=ln, sinkhorn=sinkhornkeops),
-            SABSINK(dim_input, dim_hidden, num_heads, ln=ln, sinkhorn=sinkhornkeops),
+            SABSINK(dim_hidden, dim_hidden, num_heads, ln=ln, sinkhorn=sinkhornkeops),
             SABSINK(dim_hidden, dim_hidden, num_heads, ln=ln, sinkhorn=sinkhornkeops),
             # nn.Dropout()
         )
