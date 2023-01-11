@@ -9,3 +9,4 @@ sinkhorn_10,0.0,0.9786
 transformer_./log/dfaust_N1024ff1024_d1024h8_ttypeset_transformerlr0.0001bs8debug_set_transformer_ce/000050.pt,0.0,0.9951
 transformer_./log/dfaust_N1024ff1024_d1024h8_ttypeset_transformerlr0.0001bs8debug_set_transformer_ce/000050.pt,0.01,0.5571
 transformer_./log/dfaust_N1024ff1024_d1024h8_ttypeset_transformerlr0.0001bs8debug_set_transformer_ce/000050.pt,0.0025,0.9598
+transformer_./log/dfaust_N1024ff1024_d1024h8_ttypeset_transformerlr0.0001bs8debug_set_transformer_ce/000050.pt,0.0025,0.9598

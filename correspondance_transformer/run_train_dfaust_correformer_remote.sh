@@ -13,4 +13,4 @@ AUG='jitter'
 LOSS='ce2'
 EXP_ID='fps_ce2_jitter0.01'
 TTYPE='set_transformer'
-taskset -c 256-320 python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS --d_feedforward $DFF --exp_id $EXP_ID --aug $AUG --loss_type $LOSS --transformer_type $TTYPE
+taskset -c 32-64 python3 train_dfaust_correformer.py --dataset_path $DATASET_PATH --dim $DIM --n_heads $NHEADS --batch_size $BATCH_SIZE --n_points $NPOINTS --d_feedforward $DFF --exp_id $EXP_ID --aug $AUG --loss_type $LOSS --transformer_type $TTYPE

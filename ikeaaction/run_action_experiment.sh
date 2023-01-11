@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-GPU_IDX=3
+GPU_IDX=0
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
@@ -12,7 +12,7 @@ CAMERA='dev3'
 DB_FILENAME='ikea_annotation_db_full'
 
 #LOGDIR='/home/sitzikbs/Pycharm_projects/3dinaction/log/debug/'
-LOGDIR='./log/pn1_4d_1024_baseline_sinkhorn/'
+LOGDIR='./log/pn2_4d_1024_baseline_sinkhorn/'
 BATCH_SIZE=10
 STEPS_PER_UPDATE=16
 FRAMES_PER_CLIP=32
@@ -21,7 +21,7 @@ USE_POINTLETTES=0     # deprecated
 POINTLET_MODE='none'  # deprecated
 N_GAUSSIANS=8         # for 3dmfv
 
-PC_MODEL='pn1_4d'
+PC_MODEL='pn2_4d'
 N_POINTS=1024
 CORREFORMER='../correspondance_transformer/log/dfaust_N1024ff1024_d1024h8_ttypenonelr0.0001bs32reg_cat_ce/000200.pt'    # path or 'none'
 CACHE_CAPACITY=0
