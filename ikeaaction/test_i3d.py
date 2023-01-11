@@ -20,6 +20,7 @@ from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
 import importlib.util
 import models.correformer as cf
 from models.my_sinkhorn import SinkhornCorr
+import utils as point_utils
 
 
 parser = argparse.ArgumentParser()
@@ -147,6 +148,7 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
         if not args.sort_model == 'none':
             with torch.no_grad():
                 inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
+                inputs = inputs.permute(0, 1, 3, 2)
         # wrap them in Variable
         inputs = inputs.cuda().requires_grad_().contiguous()
         labels = labels.cuda()
