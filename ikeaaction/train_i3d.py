@@ -161,12 +161,12 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                 param.requires_grad = True
             else:
                 param.requires_grad = False
-    elif pc_model == 'pn1':
-        for name, param in model.named_parameters():  # freeze i3d parameters
-            if 'fc3' in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
+    # elif pc_model == 'pn1':
+    #     for name, param in model.named_parameters():  # freeze i3d parameters
+    #         if 'fc3' in name:
+    #             param.requires_grad = True
+    #         else:
+    #             param.requires_grad = False
     else:
         for name, param in model.named_parameters():
             param.requires_grad = True
