@@ -481,3 +481,5 @@ def sort_points(sort_model, x):
         sorted_seq = torch.cat([sorted_seq, sorted_frame.unsqueeze(1)], dim=1)
         corr_pred = torch.cat([corr_pred, corr_idx21.unsqueeze(1)], dim=1)
     return sorted_seq, corr_pred
+
+#TODO implement batched_sort_points
