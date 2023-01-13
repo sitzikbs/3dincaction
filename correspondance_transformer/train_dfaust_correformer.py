@@ -59,7 +59,7 @@ parser.add_argument('--gender', type=str,
 parser.add_argument('--nn_sample_ratio', type=int,
                     default=1.0, help='sample nearest neighbor correct corresondences, if 1 takes all points')
 parser.add_argument('--transformer_type', type=str,
-                    default='sinkformer', help='plr | ptr | none - use point transformer layer (plr)'
+                    default='set_transformer_cross', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
