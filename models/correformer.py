@@ -38,6 +38,9 @@ class CorreFormer(nn.Module):
         elif self.transformer_type == 'sinkformer':
             self.transformer = CorrSabSink(dim_input=3, num_outputs=n_points,  dim_hidden=dim_feedforward,
                                            num_heads=nhead, ln=False, n_it=5)
+        elif self.transformer_type == 'set_transformer_cross':
+            self.transformer = SetTransformer(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
+                                              dim_hidden=1024, num_heads=nhead, ln=False)
         elif self.transformer_type == 'pct':
             self.transformer = PCTCorreformer(dim_feedforward)
         else:
@@ -100,33 +103,51 @@ class CorreFormer(nn.Module):
         loss_dict = {}
         # regularizer = (1 - point_features1.square().mean(1)).square().mean() + (1 - point_features2.square().mean(1)).square().mean()
         # loss_dict['losses/feature_reg'] = regularizer.cpu().detach().numpy()
-        if self.loss_type == 'l2':
-            l2_loss = (gt_corr - corr).square()
-            l2_mask = torch.max(gt_corr, 1.0 * (torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
-            # l2_loss = (l2_mask * l2_loss)
-            l2_loss = l2_loss[l2_mask].mean()
-            loss_dict['losses/l2_loss'] = l2_loss.cpu().detach().numpy()
-            loss = l2_loss #+ regularizer
+        if self.transformer_type == 'set_transformer_corr':
+            n_points = int(sim_mat.shape[1] / 2)
+            corr11, corr22 = sim_mat[:n_points, :n_points], sim_mat[n_points:, n_points:]
+            corr12, corr21 = sim_mat[:n_points, n_points:], sim_mat[n_points:, :n_points]
+            ce_loss21 = self.criterion(F.softmax(corr21, dim=-1).reshape(-1, corr21.shape[-1]),
+                                       point_ids.repeat(b))
+            ce_loss12 = self.criterion(F.softmax(corr12, dim=-1).reshape(-1, corr12.shape[-1]),
+                                      point_ids[point_ids].repeat(b))
+            ce_loss_sym = self.criterion(F.softmax(corr11, dim=-1).reshape(-1, corr11.shape[-1]),
+                                      torch.arange(n_points, device=corr11.device).repeat(b)) +
+            self.criterion(F.softmax(corr22, dim=-1).reshape(-1, corr22.shape[-1]),
+                           torch.arange(n_points, device=corr11.device).repeat(b))
+            loss_dict['losses/ce_loss21'] = ce_loss21.cpu().detach().numpy()
+            loss_dict['losses/ce_loss12'] = ce_loss12.cpu().detach().numpy()
+            loss_dict['losses/ce_loss_sym'] = ce_loss_sym.cpu().detach().numpy()
+            loss = ce_loss21 + ce_loss12   + ce_loss_sym# + regularizer
 
-        elif self.loss_type == 'ce':
-            # l2_features = (out1[:, point_ids] - out2).square().mean()
-            ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
-            loss_dict['losses/ce_loss'] = ce_loss.cpu().detach().numpy()
-            loss = ce_loss #+ regularizer #+ l2_features
-        elif self.loss_type == 'ce2':
-            ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
-            ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
-                                       point_ids[point_ids].repeat(b))
-            loss_dict['losses/ce_loss'] = ce_loss1.cpu().detach().numpy()
-            loss_dict['losses/ce2_loss'] = ce_loss2.cpu().detach().numpy()
-            loss = ce_loss1 + ce_loss2 #+ regularizer
-        elif self.loss_type == 'ce_bbl':
-            ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
-            # ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
-            #                            torch.arange(n1, device=sim_mat.device).repeat(b))
-            bbl_loss = self.BBL_loss(sim_mat, thresh=0.8)
-            loss_dict['losses/bbl_loss'] = bbl_loss.cpu().detach().numpy()
-            loss = ce_loss1  + bbl_loss #+ regularizer #+ ce_loss2
+        else:
+            if self.loss_type == 'l2':
+                l2_loss = (gt_corr - corr).square()
+                l2_mask = torch.max(gt_corr, 1.0 * (torch.rand(b, n1, n2).cuda() < gt_corr.mean())).bool()
+                # l2_loss = (l2_mask * l2_loss)
+                l2_loss = l2_loss[l2_mask].mean()
+                loss_dict['losses/l2_loss'] = l2_loss.cpu().detach().numpy()
+                loss = l2_loss #+ regularizer
+
+            elif self.loss_type == 'ce':
+                # l2_features = (out1[:, point_ids] - out2).square().mean()
+                ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+                loss_dict['losses/ce_loss'] = ce_loss.cpu().detach().numpy()
+                loss = ce_loss #+ regularizer #+ l2_features
+            elif self.loss_type == 'ce2':
+                ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+                ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
+                                           point_ids[point_ids].repeat(b))
+                loss_dict['losses/ce_loss'] = ce_loss1.cpu().detach().numpy()
+                loss_dict['losses/ce2_loss'] = ce_loss2.cpu().detach().numpy()
+                loss = ce_loss1 + ce_loss2 #+ regularizer
+            elif self.loss_type == 'ce_bbl':
+                ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+                # ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),
+                #                            torch.arange(n1, device=sim_mat.device).repeat(b))
+                bbl_loss = self.BBL_loss(sim_mat, thresh=0.8)
+                loss_dict['losses/bbl_loss'] = bbl_loss.cpu().detach().numpy()
+                loss = ce_loss1  + bbl_loss #+ regularizer #+ ce_loss2
         loss_dict['losses/total_loss'] = loss.cpu().detach().numpy()
         return loss, loss_dict
 
@@ -139,11 +160,24 @@ class CorreFormer(nn.Module):
         bbl_loss =  ort_loss #+ sym_loss
         return bbl_loss
 
-    def forward(self, x1, x2):
-        out1, point_features1 = self.single_pass(x1)
-        out2, point_features2 = self.single_pass(x2)
+    def set_cross_attn(self, x1, x2):
+        points = torch.concat([x1, x2], dim=2)
+        out = self.transformer(points.permute(0, 2, 1))
+        point_features = []
+        return out, point_features
 
-        sim_mat, corr21, max_ind12, max_ind21 = self.compute_sim_mat_full(out1, out2)
+    def forward(self, x1, x2):
+        n_points = x1.shape[1]
+        if not self.transformer_type == 'set_transformer_cross':
+            out1, point_features1 = self.single_pass(x1)
+            out2, point_features2 = self.single_pass(x2)
+
+            sim_mat, corr21, max_ind12, max_ind21 = self.compute_sim_mat_full(out1, out2)
+        elif self.transformer_type == 'set_transformer_cross':
+            out, point_features = self.set_cross_attn(x1, x2)
+            sim_mat = cosine_similarity(out, out)
+            corr21, max_ind12, max_ind21 = [], [], []
+            point_features1, point_features2 = point_features[:, n_points], point_features[:, n_points:]
 
         return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21,
                 'sim_mat': sim_mat, 'point_features1': point_features1, 'point_features2': point_features2}
