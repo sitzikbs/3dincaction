@@ -12,9 +12,9 @@ CAMERA='dev3'
 DB_FILENAME='ikea_annotation_db_full'
 
 #LOGDIR='/home/sitzikbs/Pycharm_projects/3dinaction/log/debug/'
-LOGDIR='./log/pn2_4d_1024_baseline_sinkhorn/'
-BATCH_SIZE=16
-STEPS_PER_UPDATE=10
+LOGDIR='./log/pn2_4d_1024_sinkhorn/'
+BATCH_SIZE=8
+STEPS_PER_UPDATE=20
 FRAMES_PER_CLIP=32
 N_EPOCHS=31
 USE_POINTLETTES=0     # deprecated
@@ -24,7 +24,7 @@ N_GAUSSIANS=8         # for 3dmfv
 PC_MODEL='pn2_4d'
 N_POINTS=1024
 CORREFORMER='none'    # path or 'none'
-CACHE_CAPACITY=0
+CACHE_CAPACITY=128
 SORT_MODEL='sinkhorn'
 
 python train_i3d.py --dataset_path $DATASET_PATH --camera $CAMERA --batch_size $BATCH_SIZE --steps_per_update $STEPS_PER_UPDATE --logdir $LOGDIR --db_filename $DB_FILENAME --frames_per_clip $FRAMES_PER_CLIP --n_epochs $N_EPOCHS --input_type $INPUT_TYPE --n_points $N_POINTS --pc_model $PC_MODEL --use_pointlettes $USE_POINTLETTES --pointlet_mode $POINTLET_MODE --n_gaussians $N_GAUSSIANS --correformer $CORREFORMER --cache_capacity $CACHE_CAPACITY --sort_model $SORT_MODEL
