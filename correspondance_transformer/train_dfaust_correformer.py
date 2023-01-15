@@ -43,7 +43,7 @@ def get_frame_pairs(points):
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
-parser.add_argument("--batch_size", type=int, default=8)
+parser.add_argument("--batch_size", type=int, default=24)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--d_feedforward", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=8)
@@ -51,7 +51,7 @@ parser.add_argument("--train_epochs", type=int, default=500000)
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--aug', type=str, nargs='+',
-                    default=['none'], help='list of augmentations to apply: scale, rotate, translate, jitter')
+                    default=['jitter'], help='list of augmentations to apply: scale, rotate, translate, jitter')
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument("--eval_steps", type=int, default=10)
 parser.add_argument('--gender', type=str,
@@ -59,7 +59,7 @@ parser.add_argument('--gender', type=str,
 parser.add_argument('--nn_sample_ratio', type=int,
                     default=1.0, help='sample nearest neighbor correct corresondences, if 1 takes all points')
 parser.add_argument('--transformer_type', type=str,
-                    default='set_transformer_cross', help='plr | ptr | none - use point transformer layer (plr)'
+                    default='set_transformer', help='plr | ptr | none - use point transformer layer (plr)'
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
@@ -67,7 +67,7 @@ parser.add_argument('--loss_type', type=str,
 parser.add_argument('--cat_points', dest='cat_points', action='store_false')
 parser.set_defaults(cat_points=True)
 parser.add_argument('--exp_id', type=str,
-                    default='debug_sinkformer_ce', help='a unique identifier to append to the experiment name')
+                    default='set_transformer_4SABenc', help='a unique identifier to append to the experiment name')
 
 point_size = 25
 sigma = ScalarScheduler(init_value=0.01, steps=5, increment=0.0)
@@ -98,9 +98,7 @@ test_enum = enumerate(test_dataloader, 0)
 model = CorreFormer(d_model=args.dim, nhead=args.n_heads, num_encoder_layers=6, num_decoder_layers=1,
                     dim_feedforward=args.d_feedforward, transformer_type=args.transformer_type, twosided=False,
                     n_points=args.n_points, loss_type=args.loss_type, cat_points=args.cat_points)
-optimizer = torch.optim.Adam([{'params': model.pointencoder.parameters()},
-                              {'params': model.transformer.parameters(), 'lr': args.learning_rate}],
-                             lr=args.learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 model = nn.DataParallel(model).cuda()
 
 eval_steps = 0

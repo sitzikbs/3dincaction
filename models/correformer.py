@@ -9,14 +9,16 @@ from utils import cosine_similarity
 from models.point_transformer_pytorch import PointTransformerLayer
 from models.point_transformer_repro import PointTransformerSeg
 from models.pointnet_sem_seg import PNSeg
-from models.set_transformer import SetTransformer
+from models.set_transformer import SetTransformer, SetTransformerCross
 from models.PCT import PCTCorreformer
 from models.sinkformer import CorrSabSink
+
+
 class CorreFormer(nn.Module):
     def __init__(self, d_model=3, nhead=4, num_encoder_layers=4, num_decoder_layers=6, dim_feedforward=256,
                  twosided=True, transformer_type='none', n_points=1024, loss_type='l2', cat_points=True):
         super(CorreFormer, self).__init__()
-        self.pointencoder = PointEncoder(d_model, cat_points)
+
 
         self.transformer_type = transformer_type
         self.loss_type = loss_type
@@ -24,6 +26,7 @@ class CorreFormer(nn.Module):
         if 'ce' in loss_type:
             self.criterion = torch.nn.CrossEntropyLoss()
         if self.transformer_type == 'plr':
+            self.pointencoder = PointEncoder(d_model, cat_points)
             # only the 16 nearest neighbors would be attended to for each point
             self.transformer = PointTransformerLayer(dim=dim_feedforward,  pos_mlp_hidden_dim=d_model,
                                                       attn_mlp_hidden_mult=nhead, num_neighbors=64)
@@ -39,11 +42,14 @@ class CorreFormer(nn.Module):
             self.transformer = CorrSabSink(dim_input=3, num_outputs=n_points,  dim_hidden=dim_feedforward,
                                            num_heads=nhead, ln=False, n_it=5)
         elif self.transformer_type == 'set_transformer_cross':
-            self.transformer = SetTransformer(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
-                                              dim_hidden=1024, num_heads=nhead, ln=False)
+            self.transformer = SetTransformerCross(dim_input=3, num_outputs=n_points, dim_output=128,
+                                              dim_hidden=128, num_heads=nhead, ln=False)
+            # self.transformer_cross = SetTransformerCross(dim_input=128, num_outputs=n_points, dim_output=dim_feedforward,
+            #                                   dim_hidden=1024, num_heads=nhead, ln=False)
         elif self.transformer_type == 'pct':
             self.transformer = PCTCorreformer(dim_feedforward)
         else:
+            self.pointencoder = PointEncoder(d_model, cat_points)
             self.transformer = torch.nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_encoder_layers,
                                                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward,
                                                     batch_first=True, dropout=0.0)
@@ -58,9 +64,12 @@ class CorreFormer(nn.Module):
             out = self.transformer(points.permute(0, 2, 1))
         elif self.transformer_type == 'pnseg':
             out, _ = self.transformer(points)
-        elif self.transformer_type == 'set_transformer':
+        elif self.transformer_type == 'set_transformer' :
             out = self.transformer(points.permute(0, 2, 1))
             point_features = []
+        # elif self.transformer_type == 'set_transformer_cross':
+        #     x, point_features = self.pointencoder(points)
+        #     out = self.transformer(x)
         elif self.transformer_type == 'sinkformer':
             out = self.transformer(points.permute(0, 2, 1))
             point_features = []
@@ -105,20 +114,20 @@ class CorreFormer(nn.Module):
         # loss_dict['losses/feature_reg'] = regularizer.cpu().detach().numpy()
         if self.transformer_type == 'set_transformer_cross':
             n_points = int(sim_mat.shape[1] / 2)
-            corr11, corr22 = sim_mat[:, :n_points, :n_points], sim_mat[:, n_points:, n_points:]
+            # corr11, corr22 = sim_mat[:, :n_points, :n_points], sim_mat[:, n_points:, n_points:]
             corr12, corr21 = sim_mat[:, :n_points, n_points:], sim_mat[:, n_points:, :n_points]
             ce_loss21 = self.criterion(F.softmax(corr21, dim=-1).reshape(-1, corr21.shape[-1]),
                                        point_ids.repeat(b))
-            ce_loss12 = self.criterion(F.softmax(corr12, dim=-1).reshape(-1, corr12.shape[-1]),
-                                      point_ids[point_ids].repeat(b))
-            ce_loss_sym = self.criterion(F.softmax(corr11, dim=-1).reshape(-1, corr11.shape[-1]),
-                                      torch.arange(n_points, device=corr11.device).repeat(b)) + \
-                          self.criterion(F.softmax(corr22, dim=-1).reshape(-1, corr22.shape[-1]),
-                           torch.arange(n_points, device=corr11.device).repeat(b))
+            # ce_loss12 = self.criterion(F.softmax(corr12, dim=-1).reshape(-1, corr12.shape[-1]),
+            #                           point_ids[point_ids].repeat(b))
+            # ce_loss_sym = self.criterion(F.softmax(corr11, dim=-1).reshape(-1, corr11.shape[-1]),
+            #                           torch.arange(n_points, device=corr11.device).repeat(b)) + \
+            #               self.criterion(F.softmax(corr22, dim=-1).reshape(-1, corr22.shape[-1]),
+            #                torch.arange(n_points, device=corr11.device).repeat(b))
             loss_dict['losses/ce_loss21'] = ce_loss21.cpu().detach().numpy()
-            loss_dict['losses/ce_loss12'] = ce_loss12.cpu().detach().numpy()
-            loss_dict['losses/ce_loss_sym'] = ce_loss_sym.cpu().detach().numpy()
-            loss = ce_loss21 + ce_loss12 + 0.1*ce_loss_sym# + regularizer
+            # loss_dict['losses/ce_loss12'] = ce_loss12.cpu().detach().numpy()
+            # loss_dict['losses/ce_loss_sym'] = ce_loss_sym.cpu().detach().numpy()
+            loss = ce_loss21# + 0.0001*ce_loss_sym #  + ce_loss12
 
         else:
             if self.loss_type == 'l2':
@@ -161,6 +170,14 @@ class CorreFormer(nn.Module):
         return bbl_loss
 
     def set_cross_attn(self, x1, x2):
+        # out1, point_features1 = self.single_pass(x1)
+        # out2, point_features2 = self.single_pass(x2)
+        # points = torch.concat([out1, out2], dim=1)
+
+        # x1, point_features1 = self.pointencoder(x1.permute(0, 2, 1))
+        # x2, point_features1 = self.pointencoder(x2.permute(0, 2, 1))
+
+        # out = self.transformer(x)
         points = torch.concat([x1, x2], dim=1)
         out = self.transformer(points)
         point_features = []
@@ -179,7 +196,7 @@ class CorreFormer(nn.Module):
             corr21 = F.softmax(sim_mat[:, n_points:, :n_points], dim=-1)
             max_ind21 = torch.argmax(corr21, dim=-1)
             max_ind12, point_features1, point_features2 = [], [], []
-            out1, out2 = out[:, n_points], out[:, n_points:]
+            out1, out2 = out[:, n_points:], out[:, n_points:]
 
         return {'out1': out1, 'out2': out2, 'corr_mat': corr21, 'corr_idx12': max_ind12, 'corr_idx21': max_ind21,
                 'sim_mat': sim_mat, 'point_features1': point_features1, 'point_features2': point_features2}
