@@ -22,10 +22,10 @@ parser.add_argument('--method', type=str, default='transformer', help='nn  | sin
 parser.add_argument('--frames_per_clip', type=int, default=1, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=1, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024ff1024_d1024h8_ttypeset_transformerlr0.0001bs8debug_set_transformer_ce/',
+parser.add_argument('--model_path', type=str, default='./log/dfaust_N1024ff1024_d1024h8_ttypeset_transformerlr0.0001bs8debug_set_transformer_ce2_jitter/',
                     help='path to model save dir')
-parser.add_argument('--model', type=str, default='000050.pt', help='path to model save dir')
-parser.add_argument('--jitter', type=float, default=0.0025, help='if larger than 0 : adds random jitter to test points')
+parser.add_argument('--model', type=str, default='000700.pt', help='path to model save dir')
+parser.add_argument('--jitter', type=float, default=0.001, help='if larger than 0 : adds random jitter to test points')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
 parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
