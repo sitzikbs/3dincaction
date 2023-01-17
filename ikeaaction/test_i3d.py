@@ -128,6 +128,13 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
                 sys.modules["PointNet2Basic"] = pointnet_pp
                 spec.loader.exec_module(pointnet_pp)
                 model = pointnet_pp.PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
+        elif pc_model == 'pn2_patchlets':
+            spec = importlib.util.spec_from_file_location("PointNet2Patchlets",
+                                                          os.path.join(args.model_path, "patchlets.py"))
+            pointnet_pp = importlib.util.module_from_spec(spec)
+            sys.modules["PointNet2Patchlets"] = pointnet_pp
+            spec.loader.exec_module(pointnet_pp)
+            model = pointnet_pp.PointNet2Patchlets(num_class=num_classes, n_frames=frames_per_clip)
         elif pc_model == '3dmfv':
                 spec = importlib.util.spec_from_file_location("FourDmFVNet",
                                                               os.path.join(args.model_path, "pytorch_3dmfv.py"))

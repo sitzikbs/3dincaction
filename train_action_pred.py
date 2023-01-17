@@ -19,12 +19,13 @@ from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
 import utils as point_utils
 from models.my_sinkhorn import SinkhornCorr
+from models.patchlets import PointNet2Patchlets
 
 np.random.seed(0)
 torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn1_4d_basic', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn2_patchlets', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=1, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=16, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
@@ -42,9 +43,8 @@ parser.add_argument('--shuffle_points', type=str, default='fps_each_frame', help
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=str, nargs='+', default=['none'], help='apply input data point augmentations')
-parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
-parser.add_argument('--correformer', type=str,
-                    default='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt',
+parser.add_argument('--sort_model', type=str, default='none', help='transformer | sinkhorn | none')
+parser.add_argument('--correformer', type=str,  default='none',
                     help='None or path to correformer model')
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')
@@ -61,6 +61,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     os.system('cp %s %s' % ('./models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pytorch_3dmfv.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/correformer.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('./models/patchlets.py', logdir))  # backup the models files
 
     params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
     torch.save(args, params_filename)
@@ -98,6 +99,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
         model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_4d_basic':
         model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'pn2_patchlets':
+        model = PointNet2Patchlets(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes, n_frames=frames_per_clip)
     else:

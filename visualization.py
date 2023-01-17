@@ -96,6 +96,136 @@ class PCAttnRoutine:
         return
 
 
+class PCPatchletsRoutine:
+    def __init__(self, vertices, point_obj, text, pl, patch_maps):
+
+        self.vertices = vertices
+        self.text = text
+        self.pl = pl
+        self.color = patch_maps
+        self.n_maps = len(patch_maps)
+        self.point_id = 0
+        # default parameters
+        self.kwargs = {'point_id': 0, 'frame_id': 0}
+        self.output = point_obj
+
+
+    def __call__(self, param, value):
+        self.kwargs[param] = value
+        self.update()
+
+    def update(self):
+        # This is where you call your simulation
+        frame_idx = int(self.kwargs['frame_id'])
+        point_idx = int(self.kwargs['point_id'])
+        pc = pv.PolyData(self.vertices[frame_idx])
+        pc['scalars'] = self.color[frame_idx, point_idx]
+        self.output.overwrite(pc)
+        return
+
+class PCPatchletsPatchRoutine:
+    def __init__(self, vertices, point_obj, text, pl, patch_maps):
+
+        self.vertices = vertices
+        self.text = text
+        self.pl = pl
+        self.color = patch_maps
+        self.n_maps = len(patch_maps)
+        self.point_id = 0
+        # default parameters
+        self.kwargs = {'point_id': 0, 'frame_id': 0}
+        self.output = point_obj
+
+
+    def __call__(self, param, value):
+        self.kwargs[param] = value
+        self.update()
+
+    def update(self):
+        # This is where you call your simulation
+        frame_idx = int(self.kwargs['frame_id'])
+        point_idx = int(self.kwargs['point_id'])
+        pc = pv.PolyData(self.vertices[frame_idx, point_idx])
+        pc['scalars'] = self.color[frame_idx, point_idx]
+        self.output.overwrite(pc)
+        return
+
+def pc_patchlet_vis(verts, patch_mask, text=None):
+    n_frames, n_points, _ = verts.shape
+    pc = pv.PolyData(verts[0])
+    pc['scalars'] = patch_mask[0, 0]
+
+    pl = pv.Plotter()
+    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=25, clim=[0, 1])
+    engine = PCPatchletsRoutine(verts, pc, text, pl, patch_mask)
+
+    pl.add_slider_widget(
+        callback=lambda value: engine('point_id', value),
+        rng=[0, n_points-1],
+        value=0,
+        title="point_id",
+        pointa=(0.025, 0.2),
+        pointb=(0.31, 0.2),
+        style='modern',
+        event_type='always'
+    )
+    pl.add_slider_widget(
+        callback=lambda value: engine('frame_id', value),
+        rng=[0, n_frames - 1],
+        value=0,
+        title="frame",
+        pointa=(0.025, 0.1),
+        pointb=(0.31, 0.1),
+        style='modern',
+        event_type='always'
+    )
+    if text is not None:
+        pl.add_title(text[0])
+
+    pl.camera.position = (1, 1, 1)
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
+    pl.show()
+
+def pc_patchlet_patch_vis(patch_verts, point_dist, text=None):
+    n_frames, n_points, k, _ = patch_verts.shape
+    pc = pv.PolyData(patch_verts[0, 0])
+    pc['scalars'] = point_dist[0, 0]
+
+    pl = pv.Plotter()
+    pl.add_mesh(pc, render_points_as_spheres=True, point_size=25, clim=[0, 1000])
+    engine = PCPatchletsPatchRoutine(patch_verts, pc, text, pl, 1. / (point_dist + 1e-6))
+
+    pl.add_slider_widget(
+        callback=lambda value: engine('point_id', value),
+        rng=[0, n_points-1],
+        value=0,
+        title="point_id",
+        pointa=(0.025, 0.2),
+        pointb=(0.31, 0.2),
+        style='modern',
+        event_type='always'
+    )
+    pl.add_slider_widget(
+        callback=lambda value: engine('frame_id', value),
+        rng=[0, n_frames - 1],
+        value=0,
+        title="frame",
+        pointa=(0.025, 0.1),
+        pointb=(0.31, 0.1),
+        style='modern',
+        event_type='always'
+    )
+    if text is not None:
+        pl.add_title(text[0])
+
+    pl.camera.position = (1, 1, 1)
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
+    pl.show()
+
 def pc_attn_vis(verts1, verts2, self_corr, gt_corr, point_ids, attn_maps, text=None,color_rng=0.00175):
     verts2 = verts2 + (1, 0, 0)
     n_maps = len(attn_maps)

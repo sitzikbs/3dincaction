@@ -74,6 +74,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/correformer.py', logdir))  # backup the models files
+    params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
+    torch.save(args, params_filename)
 
     # setup dataset
     # train_transforms = transforms.Compose([videotransforms.RandomCrop(224),

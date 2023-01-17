@@ -11,7 +11,7 @@ from models.point_transformer_repro import PointTransformerSeg
 from models.pointnet_sem_seg import PNSeg
 from models.set_transformer import SetTransformer, SetTransformerCross
 from models.PCT import PCTCorreformer
-from models.sinkformer import CorrSabSink
+from models.my_sinkformer import Sinkformer
 
 
 class CorreFormer(nn.Module):
@@ -39,8 +39,8 @@ class CorreFormer(nn.Module):
             self.transformer = SetTransformer(dim_input=3, num_outputs=n_points, dim_output=dim_feedforward,
                                               dim_hidden=1024, num_heads=nhead, ln=False)
         elif self.transformer_type == 'sinkformer':
-            self.transformer = CorrSabSink(dim_input=3, num_outputs=n_points,  dim_hidden=dim_feedforward,
-                                           num_heads=nhead, ln=False, n_it=5)
+            self.transformer = Sinkformer(dim_input=3, dim_output=dim_feedforward,
+                                          dim_hidden=dim_feedforward, num_heads=nhead, ln=False)
         elif self.transformer_type == 'set_transformer_cross':
             self.transformer = SetTransformerCross(dim_input=3, num_outputs=n_points, dim_output=128,
                                               dim_hidden=128, num_heads=nhead, ln=False)
@@ -143,6 +143,16 @@ class CorreFormer(nn.Module):
                 ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
                 loss_dict['losses/ce_loss'] = ce_loss.cpu().detach().numpy()
                 loss = ce_loss #+ regularizer #+ l2_features
+            elif self.loss_type == 'ce_topk':
+                mean, std = torch.mean(sim_mat, dim=-1), torch.std(sim_mat, dim=-1)
+                mask = torch.zeros_like(sim_mat)
+                mask[sim_mat > (mean + 3*std)[:, :, None].repeat(1, 1, sim_mat.shape[-1])] = 1
+                masked_corr = F.softmax(sim_mat*mask, -1)
+                masked_ce_loss = self.criterion(masked_corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+                ce_loss = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
+                loss_dict['losses/ce_loss'] = ce_loss.cpu().detach().numpy()
+                loss_dict['losses/ce_masked_loss'] = masked_ce_loss.cpu().detach().numpy()
+                loss = ce_loss + masked_ce_loss
             elif self.loss_type == 'ce2':
                 ce_loss1 = self.criterion(corr.reshape(-1, corr.shape[-1]), point_ids.repeat(b))
                 ce_loss2 = self.criterion(F.softmax(sim_mat, dim=-2).reshape(-1, corr.shape[-1]),

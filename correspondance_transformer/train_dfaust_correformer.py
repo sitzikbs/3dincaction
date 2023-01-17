@@ -43,7 +43,7 @@ def get_frame_pairs(points):
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_points", type=int, default=1024)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
-parser.add_argument("--batch_size", type=int, default=24)
+parser.add_argument("--batch_size", type=int, default=16)
 parser.add_argument("--dim", type=int, default=1024)
 parser.add_argument("--d_feedforward", type=int, default=1024)
 parser.add_argument("--n_heads", type=int, default=8)
@@ -63,11 +63,11 @@ parser.add_argument('--transformer_type', type=str,
                                         ' or point transformer full segmentation architecture (ptr)'
                                         'or none which is the default pytorch transformer implementation')
 parser.add_argument('--loss_type', type=str,
-                    default='ce', help='ce | l2 | ce_bbl indicating the loss type ')
+                    default='ce_topk', help='ce | l2 | ce_bbl indicating the loss type ')
 parser.add_argument('--cat_points', dest='cat_points', action='store_false')
 parser.set_defaults(cat_points=True)
 parser.add_argument('--exp_id', type=str,
-                    default='set_transformer_4SABenc', help='a unique identifier to append to the experiment name')
+                    default='set_transformer_top32maskce', help='a unique identifier to append to the experiment name')
 
 point_size = 25
 sigma = ScalarScheduler(init_value=0.01, steps=5, increment=0.0)
