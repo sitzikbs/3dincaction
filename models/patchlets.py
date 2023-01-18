@@ -38,10 +38,6 @@ class PatchletsExtractor(nn.Module):
         x1, x2 = x1.reshape(-1, n, d), x2.reshape(-1, n, d)
         feat_seq = feat_seq.reshape(-1, n, d_feat)
 
-        # TODO subsample
-        # fps_idx = farthest_point_sample(x1[:, 0], self.npoint)  # [B, npoint, C]
-        # x1_subsampled = index_points(x1[:, 0], fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, npoint))
-
         distances[0], idxs[0] = faiss_torch_knn_gpu(self.res, x2[0], x1[0], k=self.k)
         patchlets[0] = idxs[0]
 
@@ -62,18 +58,35 @@ class PatchletsExtractor(nn.Module):
         patchlets, patchlet_points = patchlets.reshape(b, t, n, self.k), patchlet_points.reshape(b, t, n, self.k, d)
         patchlet_feats = patchlet_feats.reshape(b, t, n, self.k, d_feat)
 
+        normalized_patchlet_points = patchlet_points - patchlet_points[:, 0, :, [0], :].unsqueeze(1) # normalize the patchlet around the center point of the first frame
 
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
-                'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats}
+                'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
+                'normalized_patchlet_points': normalized_patchlet_points}
+
+class PatchletTemporalConv(nn.Module):
+    def __init__(self, in_channel, temporal_conv, k, mlp):
+        super(PatchletTemporalConv, self).__init__()
+        self.mlp_convs = nn.ModuleList()
+        self.mlp_bns = nn.ModuleList()
+        last_channel = in_channel
+        for out_channel in mlp:
+            self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, [1, temporal_conv, k], 1, padding='same'))
+            self.mlp_bns.append(nn.BatchNorm3d(out_channel))
+            last_channel = out_channel
+    def forward(self, x):
+        for i, conv in enumerate(self.mlp_convs):
+            bn = self.mlp_bns[i]
+            x = F.relu(bn(conv(x)))
+
+        x = torch.max(x, -1)[0]
+        return x.permute(0, 3, 2, 1)
 
 
 class PointNet2PatchletsSA(nn.Module):
-    def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all, k=16, temporal_conv=4, extract_patchlets=True):
+    def __init__(self, npoint, radius, nsample, in_channel, mlp, group_all, k=16, temporal_conv=4):
         super(PointNet2PatchletsSA, self).__init__()
         self.k = k
-        self.patchlet_extractor = PatchletsExtractor(k=self.k, sample_mode='nn')
-        self.extract_patchlets = extract_patchlets
-
         self.radius = radius
         self.npoint = npoint
         self.nsample = nsample
@@ -96,65 +109,47 @@ class PointNet2PatchletsSA(nn.Module):
             new_points_concat: sample points feature data, [B, D', S]
         """
         b, t, k, n = xyz.shape
-
-        # xyz = xyz.reshape(-1, k, n)
-        # xyz = xyz.permute(0, 2, 1)
+        xyz = xyz.reshape(-1, k, n)
+        xyz = xyz.permute(0, 2, 1)
         if points is not None:
             points = points.permute(0, 1, 3, 2)
-
             # points = points.reshape(-1, points.shape[-2], points.shape[-1])
 
-        if self.patchlet_extractor:
-            if points is None:
-                patchlet_dict = self.patchlet_extractor(xyz, None)
-            else:
-                patchlet_dict = self.patchlet_extractor(xyz, points)
-            patchlet_features = patchlet_dict['patchlet_feats']
-            patchlet_features = patchlet_features.permute(0, 2, 4, 1, 3) # [b, d+k, npoint, t, nsample]
-            out_xyz = patchlet_dict['patchlet_points'][:, :, :, 0, :].permute(0, 1, 3, 2)
+        if self.group_all:
+            new_xyz, new_points = utils.sample_and_group_all_4d(xyz.reshape(b, t, n, k), points)
         else:
-            xyz = xyz.reshape(-1, k, n).permute(0, 2, 1)
-            if self.group_all:
-                new_xyz, new_points = utils.sample_and_group_all_4d(xyz.reshape(b, t, n, k), points)
-            else:
-                new_xyz, new_points = utils.sample_and_group_4d(self.npoint, self.radius, self.nsample,
-                                                                xyz.reshape(b, t, n, k), points)
-            patchlet_features = new_points.reshape(b, t, new_points.shape[-3], new_points.shape[-2], new_points.shape[-1])
-            out_xyz = new_xyz.reshape(b, t, new_xyz.shape[-2], new_xyz.shape[-1]).permute(0, 1, 3, 2)
-
-            patchlet_features = patchlet_features.permute(0, 4, 2, 1, 3)  # [b, d+k, npoint, t, nsample]
+            new_xyz, new_points = utils.sample_and_group_4d(self.npoint, self.radius, self.nsample,
+                                                      xyz.reshape(b, t, n, k), points)
 
         # new_xyz: sampled points position data, [b*t, npoint, k]
         # new_points: sampled points data, [b*t, npoint, nsample, d+k]
-
-        # patchlet_features = patchlet_features.permute(0, 4, 2, 1, 3)  # [b, d+k, npoint, t, nsample]
-
+        new_points = new_points.reshape(b, t, new_points.shape[-3], new_points.shape[-2], new_points.shape[-1])
+        new_points = new_points.permute(0, 4, 2, 1, 3)  # [b, d+k, npoint, t, nsample]
         for i, conv in enumerate(self.mlp_convs):
             bn = self.mlp_bns[i]
-            patchlet_features = F.relu(bn(conv(patchlet_features)))
+            new_points = F.relu(bn(conv(new_points)))
 
-        patchlet_features = torch.max(patchlet_features, -1)[0]
-        patchlet_features = patchlet_features.permute(0, 3, 2, 1)
-
-        return out_xyz, patchlet_features.permute(0, 1, 3, 2)
+        new_points = torch.max(new_points, -1)[0]
+        new_points = new_points.permute(0, 3, 1, 2)
+        new_xyz = new_xyz.reshape(b, t, new_xyz.shape[-2], new_xyz.shape[-1]).permute(0, 1, 3, 2)
+        return new_xyz, new_points
 
 
 
 
 class PointNet2Patchlets(nn.Module):
-    def __init__(self, num_class, n_frames=32, in_channel=3):
+    def __init__(self, num_class, n_frames=32, in_channel=3, k=32):
         super(PointNet2Patchlets, self).__init__()
         self.n_frames = n_frames
+        self.k = k
         self.patchlet_extractor = PatchletsExtractor(k=self.k, sample_mode='nn')
-        self.sa1 = PointNet2PatchletsSA(npoint=512, radius=0.2, nsample=32, in_channel=in_channel,
-                                        mlp=[64, 64, 128], group_all=False, k=8, temporal_conv=8,
-                                        extract_patchlets=True)
-        self.sa2 = PointNet2PatchletsSA(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3,
-                                        mlp=[128, 128, 256], group_all=False, k=8, temporal_conv=4,
-                                        extract_patchlets=False)
+        self.patchlet_temporal_conv = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 128])
+        self.sa1 = PointNet2PatchletsSA(npoint=512, radius=0.2, nsample=32, in_channel=128+3,
+                                        mlp=[128, 128, 256], group_all=False, k=8, temporal_conv=8)
+        self.sa2 = PointNet2PatchletsSA(npoint=128, radius=0.4, nsample=64, in_channel=256 + 3,
+                                        mlp=[256, 256, 256], group_all=False, k=8, temporal_conv=4)
         self.sa3 = PointNet2PatchletsSA(npoint=None, radius=None, nsample=None, in_channel=256 + 3,
-                                        mlp=[256, 512, 1024], group_all=True, k=1, temporal_conv=4,
-                                        extract_patchlets=False)
+                                        mlp=[256, 512, 1024], group_all=True, k=1, temporal_conv=4)
 
         self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
         self.temporal_pool_xyz = torch.nn.AvgPool3d([4, 1, 1])
@@ -176,8 +171,10 @@ class PointNet2Patchlets(nn.Module):
     def forward(self, xyz):
         b, t, d, n = xyz.shape
         # new_B = B*t
-        patchlet_dict = self.patchlet_extractor(xyz)
-        l1_xyz, l1_points = self.sa1(xyz, None)
+        patchlet_dict = self.patchlet_extractor(xyz.permute(0, 1, 3, 2))
+        xyz = patchlet_dict['patchlet_points']
+        patchlet_feats = self.patchlet_temporal_conv(patchlet_dict['patchlet_points'].permute(0, 4, 2, 1, 3)) # [b, d+k, npoint, t, nsample]
+        l1_xyz, l1_points = self.sa1(xyz[:, :, :, 0, :].permute(0, 1, 3, 2), patchlet_feats.permute(0, 1, 3, 2))
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
 

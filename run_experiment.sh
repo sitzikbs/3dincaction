@@ -1,7 +1,7 @@
 #DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
 DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 
-MODEL='pn2'
+MODEL='pn2_patchlets'
 STEPS_PER_UPDATE=2
 N_FRAMES=64
 BATCH_SIZE=8
@@ -11,7 +11,7 @@ GENDER='all'
 
 N_POINTS=4096
 N_EPOCHS=200
-POINTS_SHUFFLE='each_frame'
+POINTS_SHUFFLE='fps_each_frame'
 SAMPLER='weighted'
 AUGMENT=1
 

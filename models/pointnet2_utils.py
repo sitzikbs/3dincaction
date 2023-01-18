@@ -176,7 +176,8 @@ def sample_and_group_4d(npoint, radius, nsample, xyz, points, returnfps=False):
     """
     B, t, N, C = xyz.shape
     S = npoint
-    fps_idx = farthest_point_sample(xyz[:, 0], npoint)  # [B, npoint, C]
+    D = points.shape[-1]
+    fps_idx = farthest_point_sample(xyz[:, 0], npoint)  # [B, npoint, C], use frist drame for fps
     xyz = xyz.reshape(-1, N, C)
     new_xyz = index_points(xyz, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, npoint))
     idx = query_ball_point(radius, nsample, xyz, new_xyz)
@@ -184,7 +185,7 @@ def sample_and_group_4d(npoint, radius, nsample, xyz, points, returnfps=False):
     grouped_xyz_norm = grouped_xyz - new_xyz.view(B*t, S, 1, C)  # shouldnt this also be scaled to unit sphere?
 
     if points is not None:
-        grouped_points = index_points(points.reshape(-1, N, S), idx)
+        grouped_points = index_points(points.reshape(-1, N, D), idx)
         new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)  # [B, npoint, nsample, C+D]
     else:
         new_points = grouped_xyz_norm
