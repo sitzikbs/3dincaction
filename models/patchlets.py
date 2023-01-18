@@ -6,11 +6,16 @@ import models.pointnet2_utils as utils
 import torch.nn.functional as F
 torch.autograd.set_detect_anomaly(True)
 from scipy.spatial import cKDTree
+import numpy as np
 
+def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
 
-def get_knn(x1, x2, k=16, res=None, method='faiss'):
-    if method == 'faiss':
+    if method == 'faiss_gpu':
         distances, idxs = faiss_torch_knn_gpu(res, x1, x2, k=k)
+    if method == 'faiss_cpu':
+        distances, idxs = faiss.knn(np.ascontiguousarray(x1.detach().cpu().numpy(), dtype=np.float32),
+                                    np.ascontiguousarray(x2.detach().cpu().numpy(), dtype=np.float32), k=k)
+        distances, idxs = torch.tensor(distances, device=x1.device).cuda(), torch.tensor(idxs, device=x1.device).cuda()
     if method == 'spatial':
         tree = cKDTree(x1.detach().cpu().numpy())
         distances, idxs = tree.query(x2.detach().cpu().numpy(), k)
@@ -48,15 +53,15 @@ class PatchletsExtractor(nn.Module):
         x1, x2 = x1.reshape(-1, n, d), x2.reshape(-1, n, d)
         feat_seq = feat_seq.reshape(-1, n, d_feat)
 
-        distances[0], idxs[0] = faiss_torch_knn_gpu(self.res, x2[0], x1[0], k=self.k)
-        # distances[0], idxs[0] = get_knn(x1[0], x2[0], k=self.k, res=self.res, method='spatial')
+        # distances[0], idxs[0] = faiss_torch_knn_gpu(self.res, x2[0], x1[0], k=self.k)
+        distances[0], idxs[0] = get_knn(x2[0], x1[0], k=self.k, res=self.res, method='faiss_gpu')
         patchlets[0] = idxs[0]
 
         # loop over the data to reorder the indices to form the patchlets
         for i in range(1, len(x1)):
             xb, xq = x1[i], x2[i]
-            distances[i], idxs[i] = faiss_torch_knn_gpu(self.res, xq, xb, k=self.k)
-            # distances[0], idxs[0] = get_knn(xb, xq, k=self.k, res=self.res, method='spatial')
+            # distances[i], idxs[i] = faiss_torch_knn_gpu(self.res, xq, xb, k=self.k)
+            distances[i], idxs[i] = get_knn(xq, xb, k=self.k, res=self.res, method='faiss_gpu')
             prev_frame_neighbor_idx = patchlets[i - 1, :, selected_point_idx]
             patchlets[i] = idxs[i][prev_frame_neighbor_idx, :]
 
@@ -191,7 +196,8 @@ class PointNet2Patchlets(nn.Module):
 
         patchlet_dict = self.patchlet_extractor(xyz.permute(0, 1, 3, 2))
         xyz = patchlet_dict['patchlet_points']
-        patchlet_feats = self.patchlet_temporal_conv(patchlet_dict['patchlet_points'].permute(0, 4, 2, 1, 3)) # [b, d+k, npoint, t, nsample]
+        patchlet_feats = self.patchlet_temporal_conv(patchlet_dict['normalized_patchlet_points'].permute(0, 4, 2, 1, 3)) # [b, d+k, npoint, t, nsample]
+
         l1_xyz, l1_points = self.sa1(xyz[:, :, :, 0, :].permute(0, 1, 3, 2), patchlet_feats.permute(0, 1, 3, 2))
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
