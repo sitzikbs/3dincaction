@@ -179,8 +179,8 @@ class PointNet2Patchlets(nn.Module):
         self.drop2 = nn.Dropout(0.4)
         self.fc3 = nn.Linear(256, num_class)
 
-        self.bnt = nn.BatchNorm1d(1024)
-        self.temporalconv1 = torch.nn.Conv1d(1024, 1024, int(n_frames/4), 1, padding='same')
+        # self.bnt = nn.BatchNorm1d(1024)
+        # self.temporalconv1 = torch.nn.Conv1d(1024, 1024, int(n_frames/4), 1, padding='same')
         self.temporalconv2 = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
         self.bn3 = nn.BatchNorm1d(256)
 
@@ -199,7 +199,7 @@ class PointNet2Patchlets(nn.Module):
         l3_xyz, l3_points = l3_xyz.squeeze(-1), l3_points.squeeze(-1)
         x = l3_points.permute(0, 2, 1)
 
-        x = F.relu(self.bnt(self.temporalconv1(x)))
+        # x = F.relu(self.bnt(self.temporalconv1(x)))
 
         x = x.permute(0, 2, 1).reshape(b*t, 1024)
 
