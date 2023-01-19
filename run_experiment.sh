@@ -1,10 +1,10 @@
 #DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
 DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 
-MODEL='pn2'
-STEPS_PER_UPDATE=16
+MODEL='pn2_patchlets'
+STEPS_PER_UPDATE=8
 N_FRAMES=64
-BATCH_SIZE=1
+BATCH_SIZE=2
 TEST_BATCH_SIZE=1
 TEST_ITER=200
 GENDER='all'
