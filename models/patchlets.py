@@ -17,19 +17,19 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
                                     np.ascontiguousarray(x2.detach().cpu().numpy(), dtype=np.float32), k=k)
         distances, idxs = torch.tensor(distances, device=x1.device).cuda(), torch.tensor(idxs, device=x1.device).cuda()
     if method == 'spatial':
-        tree = cKDTree(x1.detach().cpu().numpy())
-        distances, idxs = tree.query(x2.detach().cpu().numpy(), k)
+        tree = cKDTree(x2.detach().cpu().numpy())
+        distances, idxs = tree.query(x1.detach().cpu().numpy(), k)
         distances, idxs = torch.tensor(distances).cuda(), torch.tensor(idxs).cuda()
     return distances, idxs
 
 
 class PatchletsExtractor(nn.Module):
-    def __init__(self, k=16, sample_mode='nn'):
+    def __init__(self, k=16, sample_mode='nn', npoints=None):
         super(PatchletsExtractor, self).__init__()
         #TODO consider implementing a radius threshold
         self.k = k
         self.sample_mode = sample_mode
-
+        self.npoints = npoints
         self.res = faiss.StandardGpuResources()
         self.res.setDefaultNullStreamAllDevices()
 
@@ -43,6 +43,7 @@ class PatchletsExtractor(nn.Module):
 
         x1 = point_seq
         x2 = torch.cat([point_seq[:, [0]], point_seq], dim=1)[:, :-1]
+
         if self.sample_mode == 'nn':
             selected_point_idx = 0
 
@@ -54,14 +55,14 @@ class PatchletsExtractor(nn.Module):
         feat_seq = feat_seq.reshape(-1, n, d_feat)
 
         # distances[0], idxs[0] = faiss_torch_knn_gpu(self.res, x2[0], x1[0], k=self.k)
-        distances[0], idxs[0] = get_knn(x2[0], x1[0], k=self.k, res=self.res, method='faiss_gpu')
+        distances[0], idxs[0] = get_knn(x2[0], x1[0], k=self.k, res=self.res, method='spatial')
         patchlets[0] = idxs[0]
 
         # loop over the data to reorder the indices to form the patchlets
         for i in range(1, len(x1)):
             xb, xq = x1[i], x2[i]
             # distances[i], idxs[i] = faiss_torch_knn_gpu(self.res, xq, xb, k=self.k)
-            distances[i], idxs[i] = get_knn(xq, xb, k=self.k, res=self.res, method='faiss_gpu')
+            distances[i], idxs[i] = get_knn(xq, xb, k=self.k, res=self.res, method='spatial')
             prev_frame_neighbor_idx = patchlets[i - 1, :, selected_point_idx]
             patchlets[i] = idxs[i][prev_frame_neighbor_idx, :]
 
@@ -69,6 +70,15 @@ class PatchletsExtractor(nn.Module):
         patchlet_points = utils.index_points(x1, patchlets)
         patchlet_feats = utils.index_points(feat_seq, patchlets)
 
+        # # downsample
+        # if self.npoints is not None:
+        #     fps_idx = utils.farthest_point_sample(point_seq[:, 0], self.npoints)
+        #     patchlet_points = utils.index_points(patchlet_points, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+        #     patchlet_feats = utils.index_points(patchlet_feats, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+        #     distances = utils.index_points(distances, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+        #     idxs = utils.index_points(idxs, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+        #     patchlets =  utils.index_points(patchlets, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+        #     n = self.npoints
 
         # reshape all to bxtxnxk
         distances, idxs = distances.reshape(b, t, n, self.k), idxs.reshape(b, t, n, self.k)
@@ -76,6 +86,8 @@ class PatchletsExtractor(nn.Module):
         patchlet_feats = patchlet_feats.reshape(b, t, n, self.k, d_feat)
 
         normalized_patchlet_points = patchlet_points - patchlet_points[:, 0, :, [0], :].unsqueeze(1) # normalize the patchlet around the center point of the first frame
+
+
 
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
                 'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
@@ -164,7 +176,7 @@ class PointNet2Patchlets(nn.Module):
         super(PointNet2Patchlets, self).__init__()
         self.n_frames = n_frames
         self.k = k
-        self.patchlet_extractor = PatchletsExtractor(k=self.k, sample_mode='nn')
+        self.patchlet_extractor = PatchletsExtractor(k=self.k, sample_mode='nn', npoints=512)
         self.patchlet_temporal_conv = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 64])
         self.sa1 = PointNet2PatchletsSA(npoint=512, radius=0.2, nsample=32, in_channel=64+3,
                                         mlp=[64, 64, 128], group_all=False, k=8, temporal_conv=8)
