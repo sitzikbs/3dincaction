@@ -5,7 +5,7 @@ export OMP_NUM_THREADS=8
 
 #DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 DATASET_PATH='/data1/datasets/dfaust/'
-MODEL='pn1_4d'
+MODEL='pn2_patchlets'
 STEPS_PER_UPDATE=1
 N_FRAMES=64
 BATCH_SIZE=16
@@ -15,7 +15,7 @@ GENDER='all'
 
 N_POINTS=1024
 N_EPOCHS=200
-POINTS_SHUFFLE='fps_each'
+POINTS_SHUFFLE='fps_each_frame'
 SAMPLER='weighted'
 AUGMENT=1
 

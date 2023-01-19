@@ -19,7 +19,7 @@ from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
 import utils as point_utils
 from models.my_sinkhorn import SinkhornCorr
-from models.patchlets import PointNet2Patchlets
+from models.patchlets import PointNet2Patchlets, PointNet2Patchlets_v2
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -100,7 +100,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     elif pc_model == 'pn2_4d_basic':
         model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_patchlets':
-        model = PointNet2Patchlets(num_class=num_classes, n_frames=frames_per_clip)
+        model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes, n_frames=frames_per_clip)
     else:

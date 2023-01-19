@@ -1,10 +1,10 @@
 #DATASET_PATH='/home/sitzikbs/datasets/dfaust/'
 DATASET_PATH='/home/sitzikbs/Datasets/dfaust/'
 
-MODEL='pn2_patchlets'
-STEPS_PER_UPDATE=8
+MODEL='pn2'
+STEPS_PER_UPDATE=16
 N_FRAMES=64
-BATCH_SIZE=2
+BATCH_SIZE=1
 TEST_BATCH_SIZE=1
 TEST_ITER=200
 GENDER='all'
@@ -15,7 +15,7 @@ POINTS_SHUFFLE='fps_each_frame'
 SAMPLER='weighted'
 AUGMENT=1
 
-LOGDIR='./log/dfaust_'$GENDER'_'$MODEL'_f'$N_FRAMES'_p'$N_POINTS'_shuffle_'$POINTS_SHUFFLE'_aug'$AUGMENT'_b'$BATCH_SIZE'_u'$STEPS_PER_UPDATE'/'
+LOGDIR='./log/baseline_fps/dfaust_'$GENDER'_'$MODEL'_f'$N_FRAMES'_p'$N_POINTS'_shuffle_'$POINTS_SHUFFLE'_aug'$AUGMENT'_b'$BATCH_SIZE'_u'$STEPS_PER_UPDATE'/'
 SET='test'
 GT_JSON='gt_segments_'$GENDER'.json'
 #CORREFORMER='./correspondance_transformer/log/dfaust_N1024_ff1024d1024h8_lr0.0001bs32/000840.pt'
