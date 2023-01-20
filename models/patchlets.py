@@ -163,7 +163,7 @@ class PointNet2PatchletsSA(nn.Module):
             bn = self.mlp_bns[i]
             new_points = F.relu(bn(conv(new_points)))
 
-        new_points = torch.max(new_points, -1)[0]
+        new_points = torch.max(new_points, -1)[0] #TODO test this with mean
         new_points = new_points.permute(0, 3, 1, 2)
         new_xyz = new_xyz.reshape(b, t, new_xyz.shape[-2], new_xyz.shape[-1]).permute(0, 1, 3, 2)
         return new_xyz, new_points
@@ -239,9 +239,9 @@ class PointNet2Patchlets_v2(nn.Module):
         self.k = k
         self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode='nn', npoints=512)
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 128])
-        self.patchlet_extractor2 = PatchletsExtractor(k=32, sample_mode='nn', npoints=128)
+        self.patchlet_extractor2 = PatchletsExtractor(k=16, sample_mode='nn', npoints=128)
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128, temporal_conv=4, k=k, mlp=[128, 128, 256])
-        self.patchlet_extractor3 = PatchletsExtractor(k=64, sample_mode='nn', npoints=None)
+        self.patchlet_extractor3 = PatchletsExtractor(k=32, sample_mode='nn', npoints=None)
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256, temporal_conv=4, k=k,
                                                            mlp=[256, 512, 1024])
 
