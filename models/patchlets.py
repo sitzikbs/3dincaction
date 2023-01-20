@@ -237,11 +237,11 @@ class PointNet2Patchlets_v2(nn.Module):
         super(PointNet2Patchlets_v2, self).__init__()
         self.n_frames = n_frames
         self.k = k
-        self.patchlet_extractor1 = PatchletsExtractor(k=32, sample_mode='nn', npoints=512)
+        self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode='nn', npoints=512)
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 128])
-        self.patchlet_extractor2 = PatchletsExtractor(k=64, sample_mode='nn', npoints=128)
+        self.patchlet_extractor2 = PatchletsExtractor(k=32, sample_mode='nn', npoints=128)
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128, temporal_conv=4, k=k, mlp=[128, 128, 256])
-        self.patchlet_extractor3 = PatchletsExtractor(k=128, sample_mode='nn', npoints=None)
+        self.patchlet_extractor3 = PatchletsExtractor(k=64, sample_mode='nn', npoints=None)
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256, temporal_conv=4, k=k,
                                                            mlp=[256, 512, 1024])
 
