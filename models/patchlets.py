@@ -86,7 +86,7 @@ class PatchletsExtractor(nn.Module):
         patchlet_feats = patchlet_feats.reshape(b, t, n, self.k, d_feat)
 
         normalized_patchlet_points = patchlet_points - patchlet_points[:, 0, :, [0], :].unsqueeze(1) # normalize the patchlet around the center point of the first frame
-
+        patchlet_feats = torch.cat([patchlet_feats, normalized_patchlet_points], -1)
 
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
                 'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
@@ -115,6 +115,24 @@ class PatchletTemporalConv(nn.Module):
         x = torch.max(x, -1)[0] # pool neighbors to get patch representation
         x = F.relu(self.bnt(self.temporal_conv(x))) # convolve temporally to improve patch representation
         return x.permute(0, 3, 2, 1)
+
+class PointMLP(nn.Module):
+    def __init__(self, in_channel, mlp):
+        super(PointMLP, self).__init__()
+        self.mlp_convs = nn.ModuleList()
+        self.mlp_bns = nn.ModuleList()
+        last_channel = in_channel
+        for out_channel in mlp:
+            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
+            self.mlp_bns.append(nn.BatchNorm2d(out_channel))
+            last_channel = out_channel
+
+    def forward(self, x):
+        for i, conv in enumerate(self.mlp_convs):
+            bn = self.mlp_bns[i]
+            x = F.relu(bn(conv(x)))
+
+        return x.permute(0, 2, 3, 1)
 
 
 class PointNet2PatchletsSA(nn.Module):
@@ -237,12 +255,13 @@ class PointNet2Patchlets_v2(nn.Module):
         super(PointNet2Patchlets_v2, self).__init__()
         self.n_frames = n_frames
         self.k = k
+        self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
         self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode='nn', npoints=512)
-        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 128])
+        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=128+3, temporal_conv=8, k=k, mlp=[128, 128, 256])
         self.patchlet_extractor2 = PatchletsExtractor(k=16, sample_mode='nn', npoints=128)
-        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128, temporal_conv=4, k=k, mlp=[128, 128, 256])
+        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=256+3, temporal_conv=4, k=k, mlp=[256, 256, 256])
         self.patchlet_extractor3 = PatchletsExtractor(k=16, sample_mode='nn', npoints=None)
-        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256, temporal_conv=4, k=k,
+        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+3, temporal_conv=4, k=k,
                                                            mlp=[256, 512, 1024])
 
         self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
@@ -265,9 +284,9 @@ class PointNet2Patchlets_v2(nn.Module):
     def forward(self, xyz):
         b, t, d, n = xyz.shape
         # new_B = B*t
-
-        patchlet_dict = self.patchlet_extractor1(xyz.permute(0, 1, 3, 2))
-        xyz, patchlet_feats = patchlet_dict['patchlet_points'], patchlet_dict['normalized_patchlet_points'].permute(0, 4, 2, 1, 3)
+        point_features = self.point_mlp(xyz.permute(0, 2, 1, 3))
+        patchlet_dict = self.patchlet_extractor1(xyz.permute(0, 1, 3, 2), point_features)
+        xyz, patchlet_feats = patchlet_dict['patchlet_points'], patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
         patchlet_feats = self.patchlet_temporal_conv1(patchlet_feats)  # [b, d+k, npoint, t, nsample]
 
         patchlet_dict = self.patchlet_extractor2(xyz[:, :, :, 0, :], patchlet_feats)
