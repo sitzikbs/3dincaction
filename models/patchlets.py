@@ -112,8 +112,8 @@ class PatchletTemporalConv(nn.Module):
             bn = self.mlp_bns[i]
             x = F.relu(bn(conv(x)))
 
-        # x = torch.max(x, -1)[0] # pool neighbors to get patch representation
-        x = torch.mean(x, -1)  # pool neighbors to get patch representation
+        x = torch.max(x, -1)[0] # pool neighbors to get patch representation
+        # x = torch.mean(x, -1)  # pool neighbors to get patch representation
         x = F.relu(self.bnt(self.temporal_conv(x))) # convolve temporally to improve patch representation
         return x.permute(0, 3, 2, 1)
 
@@ -264,7 +264,7 @@ class PointNet2Patchlets_v2(nn.Module):
                                                            mlp=[256, 512, 1024])
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
-        # self.temporal_pool_xyz = torch.nn.AvgPool3d([4, 1, 1])
+        self.temporal_pool = torch.nn.AvgPool2d(3, stride=1, padding=1)
 
         self.fc1 = nn.Linear(1024, 512)
         self.bn1 = nn.BatchNorm1d(512)
@@ -304,8 +304,8 @@ class PointNet2Patchlets_v2(nn.Module):
 
 
         xyz, patchlet_feats = xyz.squeeze(-1), patchlet_feats.squeeze(-1)
-        # x = torch.max(patchlet_feats, -2)[0]
-        x = torch.mean(patchlet_feats, -2)
+        x = torch.max(patchlet_feats, -2)[0]
+        # x = torch.mean(patchlet_feats, -2)
         x = x.reshape(b*t, 1024)
 
         x = self.drop1(F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512))
@@ -313,6 +313,8 @@ class PointNet2Patchlets_v2(nn.Module):
         # learn a temporal filter on all per-frame global representations
         x = F.relu(self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
         x = self.fc3(x)
+
+        x = self.temporal_pool(x.reshape(b, t, -1))
 
         x = F.log_softmax(x, -1)
 

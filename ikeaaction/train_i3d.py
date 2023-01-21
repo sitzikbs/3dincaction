@@ -25,6 +25,7 @@ from models.pytorch_3dmfv import FourDmFVNet
 import models.correformer as cf
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 from models.my_sinkhorn import SinkhornCorr
+from models.patchlets import PointNet2Patchlets_v2
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
@@ -136,6 +137,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
         elif pc_model == 'pn2_4d_basic':
             model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
+        elif pc_model == 'pn2_patchlets':
+            model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip)
         elif pc_model == '3dmfv':
             model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=k, n_frames=frames_per_clip)
         else:
