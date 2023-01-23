@@ -55,25 +55,10 @@ class PatchletsExtractor(nn.Module):
         if self.sample_mode == 'nn': #TODO imlement weighted random sample mode ?
             selected_point_idx = 0
 
-        distances = torch.empty(b*t, n, self.k, device=point_seq.device)
-        idxs = torch.empty(b*t, n, self.k, device=point_seq.device, dtype=torch.long)
         patchlets = torch.empty(b*t, n, self.k, device=point_seq.device, dtype=torch.long)
 
         x1, x2 = x1.reshape(-1, n, d), x2.reshape(-1, n, d)
         feat_seq = feat_seq.reshape(-1, n, d_feat)
-
-        # Not supporting batches
-        # # distances[0], idxs[0] = faiss_torch_knn_gpu(self.res, x2[0], x1[0], k=self.k)
-        # distances[0], idxs[0] = get_knn(x2[0], x1[0], k=self.k, res=self.res, method='keops')
-        # patchlets[0] = idxs[0]
-        #
-        # # loop over the data to reorder the indices to form the patchlets
-        # for i in range(1, len(x1)):
-        #     xb, xq = x1[i], x2[i]
-        #     # distances[i], idxs[i] = faiss_torch_knn_gpu(self.res, xq, xb, k=self.k)
-        #     distances[i], idxs[i] = get_knn(xq, xb, k=self.k, res=self.res, method='keops')
-        #     prev_frame_neighbor_idx = patchlets[i - 1, :, selected_point_idx]
-        #     patchlets[i] = idxs[i][prev_frame_neighbor_idx, :]
 
         # batch support version using keops
         distances, idxs = get_knn(x2, x1, k=self.k, res=self.res, method='keops')
@@ -86,15 +71,15 @@ class PatchletsExtractor(nn.Module):
         patchlet_points = utils.index_points(x1, patchlets)
         patchlet_feats = utils.index_points(feat_seq, patchlets)
 
-        # # downsample
-        # if self.npoints is not None:
-        #     fps_idx = utils.farthest_point_sample(point_seq[:, 0], self.npoints)
-        #     patchlet_points = utils.index_points(patchlet_points, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
-        #     patchlet_feats = utils.index_points(patchlet_feats, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
-        #     distances = utils.index_points(distances, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
-        #     idxs = utils.index_points(idxs, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
-        #     patchlets =  utils.index_points(patchlets, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
-        #     n = self.npoints
+        # downsample
+        if self.npoints is not None:
+            fps_idx = utils.farthest_point_sample(point_seq[:, 0], self.npoints)
+            patchlet_points = utils.index_points(patchlet_points, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+            patchlet_feats = utils.index_points(patchlet_feats, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+            distances = utils.index_points(distances, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+            idxs = utils.index_points(idxs, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+            patchlets =  utils.index_points(patchlets, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+            n = self.npoints
 
         # reshape all to bxtxnxk
         distances, idxs = distances.reshape(b, t, n, self.k), idxs.reshape(b, t, n, self.k)
