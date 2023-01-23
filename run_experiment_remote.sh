@@ -19,7 +19,7 @@ POINTS_SHUFFLE='fps_each_frame'
 SAMPLER='weighted'
 AUGMENT=1
 
-IDENTIFIER='mean_pool_patchlets'
+IDENTIFIER='keops_patchlets'
 SET='test'
 GT_JSON='gt_segments_'$GENDER'.json'
 CORREFORMER='none'

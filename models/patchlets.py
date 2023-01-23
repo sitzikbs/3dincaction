@@ -57,7 +57,7 @@ class PatchletsExtractor(nn.Module):
 
         patchlets = torch.empty(b*t, n, self.k, device=point_seq.device, dtype=torch.long)
 
-        x1, x2 = x1.reshape(-1, n, d), x2.reshape(-1, n, d)
+        x1, x2 = x1.reshape(-1, n, d).contiguous(), x2.reshape(-1, n, d).contiguous()
         feat_seq = feat_seq.reshape(-1, n, d_feat)
 
         # batch support version using keops
@@ -265,7 +265,7 @@ class PointNet2Patchlets_v2(nn.Module):
                                                            mlp=[256, 512, 1024])
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
-        self.temporal_pool = torch.nn.AvgPool2d(3, stride=1, padding=1)
+        # self.temporal_pool = torch.nn.AvgPool2d(3, stride=1, padding=1)
 
         self.fc1 = nn.Linear(1024, 512)
         self.bn1 = nn.BatchNorm1d(512)
@@ -315,7 +315,7 @@ class PointNet2Patchlets_v2(nn.Module):
         x = F.relu(self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
         x = self.fc3(x)
 
-        x = self.temporal_pool(x.reshape(b, t, -1))
+        # x = self.temporal_pool(x.reshape(b, t, -1))
 
         x = F.log_softmax(x, -1)
 
