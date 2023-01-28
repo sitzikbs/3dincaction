@@ -56,7 +56,7 @@ parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussi
 parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
 parser.add_argument('--cache_capacity', type=int, default=1, help='number of sequences to store in cache for faster '
                                                                   'loading. 0 will cache all of the dataset')
-parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
+parser.add_argument('--sort_model', type=str, default='none', help='transformer | sinkhorn | none')
 args = parser.parse_args()
 
 
@@ -75,6 +75,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/correformer.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('./models/patchlets.py', logdir))  # backup the models files
     params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
     torch.save(args, params_filename)
 

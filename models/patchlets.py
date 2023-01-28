@@ -55,10 +55,23 @@ class PatchletsExtractor(nn.Module):
         if self.sample_mode == 'nn': #TODO imlement weighted random sample mode ?
             selected_point_idx = 0
 
-        patchlets = torch.empty(b*t, n, self.k, device=point_seq.device, dtype=torch.long)
+        # distances = torch.empty(b * t, n, self.k, device=point_seq.device)
+        # idxs = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
+        patchlets = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
 
         x1, x2 = x1.reshape(-1, n, d).contiguous(), x2.reshape(-1, n, d).contiguous()
         feat_seq = feat_seq.reshape(-1, n, d_feat)
+
+        # # Not supporting batches
+        # distances[0], idxs[0] = get_knn(x2[0], x1[0], k=self.k, res=self.res, method='spatial')
+        # patchlets[0] = idxs[0]
+        #
+        # # loop over the data to reorder the indices to form the patchlets
+        # for i in range(1, len(x1)):
+        #     xb, xq = x1[i], x2[i]
+        #     distances[i], idxs[i] = get_knn(xq, xb, k=self.k, res=self.res, method='spatial')
+        #     prev_frame_neighbor_idx = patchlets[i - 1, :, selected_point_idx]
+        #     patchlets[i] = idxs[i][prev_frame_neighbor_idx, :]
 
         # batch support version using keops
         distances, idxs = get_knn(x2, x1, k=self.k, res=self.res, method='keops')
@@ -283,11 +296,7 @@ class PointNet2Patchlets_v2(nn.Module):
 
     def forward(self, xyz):
         b, t, d, n = xyz.shape
-        # new_B = B*t
-        # point_features = self.point_mlp(xyz.permute(0, 2, 1, 3))
-        # patchlet_dict = self.patchlet_extractor1(xyz.permute(0, 1, 3, 2), point_features)
-        # patchlet_dict = self.patchlet_extractor1(xyz.permute(0, 1, 3, 2))
-        # xyz, patchlet_feats = patchlet_dict['patchlet_points'], patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
+
         patchlet_dict = self.patchlet_extractor1(xyz.permute(0, 1, 3, 2))
         xyz = patchlet_dict['patchlet_points']
         patchlet_feats = patchlet_dict['normalized_patchlet_points'].permute(0, 4, 2, 1, 3)

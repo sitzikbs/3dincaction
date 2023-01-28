@@ -259,7 +259,6 @@ class DfaustActionDataset(Dataset):
                 n_frames_per_label[int(frame_label)] = n_frames_per_label[int(frame_label)] + 1
         return n_frames_per_label
 
-
     # This returns the total amount of samples in your Dataset
     def __len__(self):
         return len(self.vertices)
