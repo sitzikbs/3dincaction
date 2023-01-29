@@ -123,6 +123,32 @@ class PCPatchletsRoutine:
         self.output.overwrite(pc)
         return
 
+class PCPatchletsAllRoutine:
+    def __init__(self, vertices, point_obj_list, text, pl):
+
+        self.vertices = vertices
+        self.text = text
+        self.pl = pl
+        self.point_id = 0
+        # default parameters
+        self.kwargs = {'frame_id': 0}
+        self.output = point_obj_list
+
+
+    def __call__(self, param, value):
+        self.kwargs[param] = value
+        self.update()
+
+    def update(self):
+        # This is where you call your simulation
+        frame_idx = int(self.kwargs['frame_id'])
+        pc = []
+        for i, patchlet_points in enumerate(self.vertices[frame_idx]):
+            pc.append(pv.PolyData(patchlet_points))
+            pc[i]['scalars'] = i * np.ones(len(patchlet_points))
+            self.output[i].overwrite(pc[i])
+        return
+
 class PCPatchletsPatchRoutine:
     def __init__(self, vertices, point_obj, text, pl, patch_maps):
 
@@ -169,6 +195,37 @@ def pc_patchlet_vis(verts, patch_mask, text=None):
         style='modern',
         event_type='always'
     )
+    pl.add_slider_widget(
+        callback=lambda value: engine('frame_id', value),
+        rng=[0, n_frames - 1],
+        value=0,
+        title="frame",
+        pointa=(0.025, 0.1),
+        pointb=(0.31, 0.1),
+        style='modern',
+        event_type='always'
+    )
+    if text is not None:
+        pl.add_title(text[0])
+
+    pl.camera.position = (1, 1, 1)
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
+    pl.show()
+
+def pc_patchlet_points_vis(verts, text=None):
+    n_frames, n_points, k, d = verts.shape
+    pv.global_theme.cmap = 'cet_glasbey_bw'
+
+    pl = pv.Plotter()
+    pc = []
+    for i, patchlet_points in enumerate(verts[0]):
+        pc.append( pv.PolyData(patchlet_points))
+        pc[i]['scalars'] = i*np.ones(k)
+        pl.add_mesh(pc[i], render_points_as_spheres=True, scalars=pc[i]['scalars'], point_size=25, clim=[0, n_points])
+    engine = PCPatchletsAllRoutine(verts, pc, text, pl)
+
     pl.add_slider_widget(
         callback=lambda value: engine('frame_id', value),
         rng=[0, n_frames - 1],
