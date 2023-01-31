@@ -32,12 +32,13 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
 
 
 class PatchletsExtractor(nn.Module):
-    def __init__(self, k=16, sample_mode='nn', npoints=None):
+    def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None):
         super(PatchletsExtractor, self).__init__()
         #TODO consider implementing a radius threshold
         self.k = k
         self.sample_mode = sample_mode
         self.npoints = npoints
+        self.add_centroid_jitter = add_centroid_jitter
         self.res = faiss.StandardGpuResources()
         self.res.setDefaultNullStreamAllDevices()
 
@@ -82,9 +83,17 @@ class PatchletsExtractor(nn.Module):
         for i in range(0, t):
             x_next = x2[:, i]
             distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='keops')
-            x_current = utils.index_points(x_next, idxs).squeeze()[:, :, 0, :]
+            if self.sample_mode == 'nn':
+                x_current = utils.index_points(x_next, idxs).squeeze()[:, :, 0, :]
+            elif self.sample_mode == 'rand':
+                rand_idx = torch.randint(self.k, (b, n, 1, 3), device=x_next.device, dtype=torch.int64)
+                x_current = torch.gather(utils.index_points(x_next, idxs).squeeze(), dim=2, index=rand_idx).squeeze()
+            elif self.sample_mode == 'mean':
+                x_current = utils.index_points(x_next, idxs).squeeze().mean(2)
+
             x1[:, i] = x_current
-            x_current = x_current + 0.005*torch.randn_like(x_current)
+            if self.add_centroid_jitter is not None:
+                x_current = x_current + self.add_centroid_jitter*torch.randn_like(x_current)
 
             distances_i[:, i], idxs_i[:, i] = distances, idxs
             patchlets[:, i] = idxs_i[:, i]
@@ -332,16 +341,16 @@ class PointNet2Patchlets(nn.Module):
 
 
 class PointNet2Patchlets_v2(nn.Module):
-    def __init__(self, num_class, n_frames=32, in_channel=3, k=16):
+    def __init__(self, num_class, n_frames=32, in_channel=3, k=16, add_centroid_jitter=0.005):
         super(PointNet2Patchlets_v2, self).__init__()
         self.n_frames = n_frames
         self.k = k
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
-        self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode='nn', npoints=512)
+        self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode='nn', npoints=512, add_centroid_jitter=add_centroid_jitter)
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 128])
-        self.patchlet_extractor2 = PatchletsExtractor(k=16, sample_mode='nn', npoints=128)
+        self.patchlet_extractor2 = PatchletsExtractor(k=16, sample_mode='nn', npoints=128, add_centroid_jitter=add_centroid_jitter)
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+3, temporal_conv=4, k=k, mlp=[128, 128, 256])
-        self.patchlet_extractor3 = PatchletsExtractor(k=16, sample_mode='nn', npoints=None)
+        self.patchlet_extractor3 = PatchletsExtractor(k=16, sample_mode='nn', npoints=None, add_centroid_jitter=add_centroid_jitter)
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+3, temporal_conv=4, k=k,
                                                            mlp=[256, 512, 1024])
 

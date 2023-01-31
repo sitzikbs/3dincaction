@@ -446,7 +446,10 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
         # 'Generate one sample of data'
         video_full_path, labels, frame_ind, n_frames_per_clip, vid_idx, frame_pad = self.clip_set[index]
         if self.input_type == 'pc':
-            data = self.load_pc(video_full_path, frame_ind, self.n_points)
+            try:
+                data = self.load_pc(video_full_path, frame_ind, self.n_points)
+            except:
+                raise ValueError( 'video: {}, frames: {}' .format(video_full_path, frame_ind))
             if self.use_pointlettes:
                 # data = self.temporal_sort(data)
                 data = self.get_pointlettes(data)

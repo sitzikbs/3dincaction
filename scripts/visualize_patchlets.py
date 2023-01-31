@@ -7,9 +7,12 @@ from ikeaaction.IKEAActionDataset import IKEAActionVideoClipDataset
 
 from models.patchlets import PatchletsExtractor
 
-dataset_name = 'ikea'
+dataset_name = 'dfaust'
 npoints = 128
 k = 16
+sample_mode = 'nn'
+dfaust_augmentation=['jitter']
+
 if dataset_name == 'ikea':
     dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/'
     dataset = IKEAActionVideoClipDataset(dataset_path, frames_per_clip=64, set='train', n_points=1024, input_type='pc', camera='dev3',
@@ -17,10 +20,10 @@ if dataset_name == 'ikea':
 else:
     dataset_path = '/home/sitzikbs/Datasets/dfaust/'
     dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=64, set='train', n_points=1024,
-                            shuffle_points='fps_each_frame', gender='all', data_augmentation=[''] )
+                            shuffle_points='fps_each_frame', gender='female', data_augmentation=dfaust_augmentation )
 
 
-extract_pachlets = PatchletsExtractor(k=16, npoints=npoints)
+extract_pachlets = PatchletsExtractor(k=16, npoints=npoints, sample_mode=sample_mode)
 
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=8,
@@ -40,7 +43,17 @@ for batch_ind, data in enumerate(dataloader):
 
     batch_ind = 2
 
+    u_points = []
+    for j in range(t):
+        u_points.append(len(torch.unique(patchlet_dict['patchlet_points'][batch_ind, j].reshape(-1, 3), dim=0)))
+    u_points = np.array(u_points)
+    print('Uniq points: ' + str(u_points))
+    print('Maximum difference: ' + str(u_points[0] - u_points[-1]))
 
+    shifted_u_points = u_points.copy()
+    shifted_u_points = np.roll(shifted_u_points, -1)
+    degredation_rate = np.mean(u_points[:-1] - shifted_u_points[:-1])
+    print('degredation rate: ' + str(degredation_rate))
     visualization.pc_patchlet_points_vis(patchlet_dict['patchlet_points'][batch_ind].detach().cpu().numpy())
     # visualization.pc_patchlet_vis(point_seq[batch_ind].cpu().numpy(), patchlet_dict['patchlet_points'][batch_ind].cpu().numpy())
     # visualization.pc_patchlet_vis(patchlet_dict['patchlet_points'][batch_ind, :, :, 0].cpu().numpy(), patch_mask.astype(np.float32))
