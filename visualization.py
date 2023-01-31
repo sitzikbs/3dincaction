@@ -97,17 +97,18 @@ class PCAttnRoutine:
 
 
 class PCPatchletsRoutine:
-    def __init__(self, vertices, point_obj, text, pl, patch_maps):
+    def __init__(self, vertices, point_obj, patchlet_obj, text, pl, patchlets):
 
         self.vertices = vertices
         self.text = text
         self.pl = pl
-        self.color = patch_maps
-        self.n_maps = len(patch_maps)
+        self.patchlets = patchlets
+
         self.point_id = 0
         # default parameters
         self.kwargs = {'point_id': 0, 'frame_id': 0}
         self.output = point_obj
+        self.output_patchlet = patchlet_obj
 
 
     def __call__(self, param, value):
@@ -119,8 +120,9 @@ class PCPatchletsRoutine:
         frame_idx = int(self.kwargs['frame_id'])
         point_idx = int(self.kwargs['point_id'])
         pc = pv.PolyData(self.vertices[frame_idx])
-        pc['scalars'] = self.color[frame_idx, point_idx]
+        pc_patchlet = pv.PolyData(self.patchlets[frame_idx, point_idx])
         self.output.overwrite(pc)
+        self.output_patchlet.overwrite(pc_patchlet)
         return
 
 class PCPatchletsAllRoutine:
@@ -176,14 +178,16 @@ class PCPatchletsPatchRoutine:
         self.output.overwrite(pc)
         return
 
-def pc_patchlet_vis(verts, patch_mask, text=None):
-    n_frames, n_points, _ = verts.shape
+def pc_patchlet_vis(verts, patchlets, text=None):
+    # n_frames, _, _ = verts.shape
+    n_frames, n_points, k, _ = patchlets.shape
     pc = pv.PolyData(verts[0])
-    pc['scalars'] = patch_mask[0, 0]
+    patchlet_pc = pv.PolyData(patchlets[0][0])
 
     pl = pv.Plotter()
-    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=25, clim=[0, 1])
-    engine = PCPatchletsRoutine(verts, pc, text, pl, patch_mask)
+    pl.add_mesh(pc, render_points_as_spheres=True, color='grey', point_size=25, clim=[0, 1])
+    pl.add_mesh(patchlet_pc, render_points_as_spheres=True, color='yellow', point_size=25, clim=[0, 1])
+    engine = PCPatchletsRoutine(verts, pc, patchlet_pc, text, pl, patchlets)
 
     pl.add_slider_widget(
         callback=lambda value: engine('point_id', value),
@@ -212,6 +216,7 @@ def pc_patchlet_vis(verts, patch_mask, text=None):
     pl.camera.focal_point = (0, 0, 0)
     pl.camera.up = (0.0, 1.0, 0.0)
     pl.camera.zoom(0.5)
+    pl.set_background('white', top='white')
     pl.show()
 
 def pc_patchlet_points_vis(verts, text=None):

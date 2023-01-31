@@ -20,14 +20,14 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
         distances, idxs = torch.tensor(distances, device=x1.device).cuda(), torch.tensor(idxs, device=x1.device).cuda()
     if method == 'spatial':
         tree = cKDTree(x2.detach().cpu().numpy())
-        distances, idxs = tree.query(x1.detach().cpu().numpy(), k)
+        distances, idxs = tree.query(x1.detach().cpu().numpy(), k, workers=-1)
         distances, idxs = torch.tensor(distances).cuda(), torch.tensor(idxs).cuda()
     if method == 'keops':
         X_i = Vi(0, x1.shape[-1])
         X_j = Vj(1, x2.shape[-1])
         D_ij = ((X_i - X_j) ** 2).sum(-1)
         KNN_fun = D_ij.Kmin_argKmin(k, dim=1)
-        distances, idxs = KNN_fun(x1, x2)
+        distances, idxs = KNN_fun(x1.contiguous(), x2.contiguous())
     return distances, idxs
 
 
@@ -57,36 +57,72 @@ class PatchletsExtractor(nn.Module):
             selected_point_idx = 0
 
 
-        patchlets = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
 
-        x1, x2 = x1.reshape(-1, n, d).contiguous(), x2.reshape(-1, n, d).contiguous()
-        feat_seq = feat_seq.reshape(-1, n, d_feat)
+
+        # x1, x2 = x1.reshape(-1, n, d).contiguous(), x2.reshape(-1, n, d).contiguous()
+        # feat_seq = feat_seq.reshape(-1, n, d_feat)
+
+        # # Not supporting batches, including Ori's noise thingy
+        # patchlets = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
+        # distances_i = torch.empty(b * t, n, self.k, device=point_seq.device)
+        # idxs_i = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
+        # patchlet_points = torch.empty(b * t, n, self.k, 3, device=point_seq.device)
+        # patchlet_feats = torch.empty(b * t, n, self.k, d_feat, device=point_seq.device)
 
         # Not supporting batches, including Ori's noise thingy
-        distances_i = torch.empty(b * t, n, self.k, device=point_seq.device)
-        idxs_i = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
-        patchlet_points = torch.empty(b * t, n, self.k, 3, device=point_seq.device)
-        patchlet_feats = torch.empty(b * t, n, self.k, d_feat, device=point_seq.device)
+        patchlets = torch.empty(b, t, n, self.k, device=point_seq.device, dtype=torch.long)
+        distances_i = torch.empty(b,  t, n, self.k, device=point_seq.device)
+        idxs_i = torch.empty(b, t, n, self.k, device=point_seq.device, dtype=torch.long)
+        patchlet_points = torch.empty(b, t, n, self.k, 3, device=point_seq.device)
+        patchlet_feats = torch.empty(b, t, n, self.k, d_feat, device=point_seq.device)
 
         # loop over the data to reorder the indices to form the patchlets
-        x_current = x1[0]
+        x_current = x1[:, 0]
         feat_seq_2 = torch.cat([feat_seq[:, [0]], feat_seq], dim=1)[:, :-1]
-        for i in range(0, len(x1)):
-            x_next = x2[i]
-            distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='spatial')
-            x_current = utils.index_points(x_next.unsqueeze(0), idxs.unsqueeze(0)).squeeze()[:, 0, :]
-            x1[i] = x_current
+        for i in range(0, t):
+            x_next = x2[:, i]
+            distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='keops')
+            x_current = utils.index_points(x_next, idxs).squeeze()[:, :, 0, :]
+            x1[:, i] = x_current
             x_current = x_current + 0.005*torch.randn_like(x_current)
 
-            distances_i[i], idxs_i[i] = distances, idxs
-            patchlets[i] = idxs_i[i]
-            patchlet_points[i] = utils.index_points(x_next.unsqueeze(0), idxs.unsqueeze(0)).squeeze()
-            patchlet_feats[i] = utils.index_points(feat_seq_2[i].unsqueeze(0), idxs.unsqueeze(0)).squeeze()
-            if i % t == t-1 and not i == len(x1)-1:
-                x_current = x1[i+1]
+            distances_i[:, i], idxs_i[:, i] = distances, idxs
+            patchlets[:, i] = idxs_i[:, i]
+            patchlet_points[:, i] = utils.index_points(x_next, idxs).squeeze()
+            patchlet_feats[:, i] = utils.index_points(feat_seq_2[:, i], idxs).squeeze()
+
+            # if i % t == t-1 and not i == len(x1)-1:
+            #     x_current = x1[i+1]
 
         distances = distances_i
         idxs = idxs_i
+
+        patchlet_feats = patchlet_feats.reshape(b*t, n, self.k, d_feat)
+        patchlet_points = patchlet_points.reshape(b * t, n, self.k, 3)
+        idxs = idxs.reshape(b*t, n, self.k)
+        distances = distances.reshape(b*t, n, self.k)
+        patchlets = patchlets.reshape(b*t, n, self.k)
+        # # loop over the data to reorder the indices to form the patchlets
+        # x_current = x1[0]
+        # feat_seq_2 = torch.cat([feat_seq[:, [0]], feat_seq], dim=1)[:, :-1]
+        # for i in range(0, len(x1)):
+        #     x_next = x2[i]
+        #     distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='spatial')
+        #     x_current = utils.index_points(x_next.unsqueeze(0), idxs.unsqueeze(0)).squeeze()[:, 0, :]
+        #     x1[i] = x_current
+        #     x_current = x_current + 0.005*torch.randn_like(x_current)
+        #
+        #     distances_i[i], idxs_i[i] = distances, idxs
+        #     patchlets[i] = idxs_i[i]
+        #     patchlet_points[i] = utils.index_points(x_next.unsqueeze(0), idxs.unsqueeze(0)).squeeze()
+        #     patchlet_feats[i] = utils.index_points(feat_seq_2[i].unsqueeze(0), idxs.unsqueeze(0)).squeeze()
+        #
+        #
+        #     if i % t == t-1 and not i == len(x1)-1:
+        #         x_current = x1[i+1]
+        #
+        # distances = distances_i
+        # idxs = idxs_i
 
         # # Not supporting batches
         # distances = torch.empty(b * t, n, self.k, device=point_seq.device)
@@ -112,7 +148,7 @@ class PatchletsExtractor(nn.Module):
 
 
         # patchlet_points = utils.index_points(x1, patchlets)
-        patchlet_feats = utils.index_points(feat_seq, patchlets)
+        # patchlet_feats = utils.index_points(feat_seq, patchlets)
 
         fps_idx = []
         # downsample

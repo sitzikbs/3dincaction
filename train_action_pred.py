@@ -54,7 +54,7 @@ args = parser.parse_args()
 def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/sitzikbs/Datasets/dfaust/',
         logdir='', batch_size=8, refine=False, refine_epoch=0,
         pretrained_model='charades', steps_per_update=1, pc_model='pn1'):
-    data_augmentation = True if args.data_augmentation == 1 else False
+    data_augmentation = ['jitter'] if args.data_augmentation == 1 else False
     os.makedirs(logdir, exist_ok=True)
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('./models/pointnet.py', logdir))  # backup the models files
@@ -81,7 +81,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
-                           shuffle_points=args.shuffle_points, gender=args.gender)
+                           shuffle_points=args.shuffle_points, gender=args.gender, data_augmentation=data_augmentation)
     print("Number of clips in the testset:{}".format(len(test_dataset)))
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
