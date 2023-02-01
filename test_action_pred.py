@@ -188,7 +188,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
 if __name__ == '__main__':
     # need to add argparse
-    set_start_method('spawn')
+    # set_start_method('spawn')
     output_path = pathlib.Path(os.path.join(args.model_path, 'results_'+str(args.model))).with_suffix("")
     os.makedirs(output_path, exist_ok=True)
     model_path = os.path.join(args.model_path, args.model)
