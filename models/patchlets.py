@@ -9,6 +9,7 @@ from scipy.spatial import cKDTree
 import numpy as np
 from pykeops.torch import Vi, Vj
 import time
+import torch_cluster
 
 def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
 
@@ -22,12 +23,19 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
         tree = cKDTree(x2.detach().cpu().numpy())
         distances, idxs = tree.query(x1.detach().cpu().numpy(), k, workers=-1)
         distances, idxs = torch.tensor(distances).cuda(), torch.tensor(idxs).cuda()
-    if method == 'keops':
+    if method == 'keops': #supports batch operaations
         X_i = Vi(0, x1.shape[-1])
         X_j = Vj(1, x2.shape[-1])
         D_ij = ((X_i - X_j) ** 2).sum(-1)
         KNN_fun = D_ij.Kmin_argKmin(k, dim=1)
         distances, idxs = KNN_fun(x1.contiguous(), x2.contiguous())
+    # if method =='geometric':
+    #     with torch.no_grad():
+    #         b, n, d = x1.shape
+    #         batch_x = torch.arange(b, device=x1.device).unsqueeze(1).repeat(1, n).reshape(-1)
+    #         batch_y = batch_x.reshape(-1)
+    #         idxs = torch_cluster.knn(x1.reshape(-1, 3), x2.reshape(-1, 3), k, batch_x, batch_y)[0].reshape(b, n, k)
+    #         distances = torch.zeros_like(idxs)
     return distances, idxs
 
 
@@ -52,23 +60,12 @@ class PatchletsExtractor(nn.Module):
             d_feat = feat_seq.shape[-1]
 
         x1 = point_seq
+        out_x = torch.empty_like(x1)
         x2 = torch.cat([point_seq[:, [0]], point_seq], dim=1)[:, :-1]
 
         if self.sample_mode == 'nn': #TODO imlement weighted random sample mode ?
             selected_point_idx = 0
 
-
-
-
-        # x1, x2 = x1.reshape(-1, n, d).contiguous(), x2.reshape(-1, n, d).contiguous()
-        # feat_seq = feat_seq.reshape(-1, n, d_feat)
-
-        # # Not supporting batches, including Ori's noise thingy
-        # patchlets = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
-        # distances_i = torch.empty(b * t, n, self.k, device=point_seq.device)
-        # idxs_i = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
-        # patchlet_points = torch.empty(b * t, n, self.k, 3, device=point_seq.device)
-        # patchlet_feats = torch.empty(b * t, n, self.k, d_feat, device=point_seq.device)
 
         # Not supporting batches, including Ori's noise thingy
         patchlets = torch.empty(b, t, n, self.k, device=point_seq.device, dtype=torch.long)
@@ -84,14 +81,15 @@ class PatchletsExtractor(nn.Module):
             x_next = x2[:, i]
             distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='keops')
             if self.sample_mode == 'nn':
-                x_current = utils.index_points(x_next, idxs).squeeze()[:, :, 0, :]
+                x_current = utils.index_points(x_next, idxs)[:, :, 0, :]
             elif self.sample_mode == 'rand':
                 rand_idx = torch.randint(self.k, (b, n, 1, 3), device=x_next.device, dtype=torch.int64)
                 x_current = torch.gather(utils.index_points(x_next, idxs).squeeze(), dim=2, index=rand_idx).squeeze()
             elif self.sample_mode == 'mean':
-                x_current = utils.index_points(x_next, idxs).squeeze().mean(2)
+                x_current = utils.index_points(x_next, idxs).mean(2)
 
-            x1[:, i] = x_current
+            # x1[:, i] = x_current
+            out_x[:, i] = x_current
             if self.add_centroid_jitter is not None:
                 x_current = x_current + self.add_centroid_jitter*torch.randn_like(x_current)
 
@@ -100,8 +98,6 @@ class PatchletsExtractor(nn.Module):
             patchlet_points[:, i] = utils.index_points(x_next, idxs).squeeze()
             patchlet_feats[:, i] = utils.index_points(feat_seq_2[:, i], idxs).squeeze()
 
-            # if i % t == t-1 and not i == len(x1)-1:
-            #     x_current = x1[i+1]
 
         distances = distances_i
         idxs = idxs_i
@@ -111,58 +107,11 @@ class PatchletsExtractor(nn.Module):
         idxs = idxs.reshape(b*t, n, self.k)
         distances = distances.reshape(b*t, n, self.k)
         patchlets = patchlets.reshape(b*t, n, self.k)
-        # # loop over the data to reorder the indices to form the patchlets
-        # x_current = x1[0]
-        # feat_seq_2 = torch.cat([feat_seq[:, [0]], feat_seq], dim=1)[:, :-1]
-        # for i in range(0, len(x1)):
-        #     x_next = x2[i]
-        #     distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='spatial')
-        #     x_current = utils.index_points(x_next.unsqueeze(0), idxs.unsqueeze(0)).squeeze()[:, 0, :]
-        #     x1[i] = x_current
-        #     x_current = x_current + 0.005*torch.randn_like(x_current)
-        #
-        #     distances_i[i], idxs_i[i] = distances, idxs
-        #     patchlets[i] = idxs_i[i]
-        #     patchlet_points[i] = utils.index_points(x_next.unsqueeze(0), idxs.unsqueeze(0)).squeeze()
-        #     patchlet_feats[i] = utils.index_points(feat_seq_2[i].unsqueeze(0), idxs.unsqueeze(0)).squeeze()
-        #
-        #
-        #     if i % t == t-1 and not i == len(x1)-1:
-        #         x_current = x1[i+1]
-        #
-        # distances = distances_i
-        # idxs = idxs_i
 
-        # # Not supporting batches
-        # distances = torch.empty(b * t, n, self.k, device=point_seq.device)
-        # idxs = torch.empty(b * t, n, self.k, device=point_seq.device, dtype=torch.long)
-        # distances[0], idxs[0] = get_knn(x2[0], x1[0], k=self.k, res=self.res, method='spatial')
-        # patchlets[0] = idxs[0]
-        #
-        # # loop over the data to reorder the indices to form the patchlets
-        # for i in range(1, len(x1)):
-        #     xb, xq = x1[i], x2[i]
-        #
-        #     distances[i], idxs[i] = get_knn(xq, xb, k=self.k, res=self.res, method='spatial')
-        #     prev_frame_neighbor_idx = patchlets[i - 1, :, selected_point_idx]
-        #     patchlets[i] = idxs[i][prev_frame_neighbor_idx, :]
-
-        # # batch support version using keops
-        # # x1 = x1 + 0.1*torch.randn_like(x1)
-        # distances, idxs = get_knn(x2, x1, k=self.k, res=self.res, method='keops')
-        # patchlets[0] = idxs[0]
-        # for i in range(1, len(x1)):
-        #     prev_frame_neighbor_idx = patchlets[i - 1, :, selected_point_idx]
-        #     patchlets[i] = idxs[i][prev_frame_neighbor_idx, :]
-
-
-        # patchlet_points = utils.index_points(x1, patchlets)
-        # patchlet_feats = utils.index_points(feat_seq, patchlets)
-
-        fps_idx = []
+        fps_idx = None
         # downsample
         if self.npoints is not None:
-            fps_idx = utils.farthest_point_sample(point_seq[:, 0], self.npoints)
+            fps_idx = utils.farthest_point_sample(point_seq[:, 0].contiguous(), self.npoints).to(torch.int64)
             patchlet_points = utils.index_points(patchlet_points, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
             patchlet_feats = utils.index_points(patchlet_feats, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
             distances = utils.index_points(distances, fps_idx.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
@@ -181,7 +130,7 @@ class PatchletsExtractor(nn.Module):
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
                 'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
                 'normalized_patchlet_points': normalized_patchlet_points, 'fps_idx': fps_idx,
-                'x_current': x1.reshape(b, t, n_original, 3)}
+                'x_current': out_x.reshape(b, t, n_original, 3)}
 
 
 class PatchletTemporalConv(nn.Module):
@@ -341,16 +290,19 @@ class PointNet2Patchlets(nn.Module):
 
 
 class PointNet2Patchlets_v2(nn.Module):
-    def __init__(self, num_class, n_frames=32, in_channel=3, k=16, add_centroid_jitter=0.005):
+    def __init__(self, num_class, n_frames=32, in_channel=3, k=16, sample_mode='nn', add_centroid_jitter=0.005):
         super(PointNet2Patchlets_v2, self).__init__()
         self.n_frames = n_frames
         self.k = k
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
-        self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode='nn', npoints=512, add_centroid_jitter=add_centroid_jitter)
+        self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode=sample_mode, npoints=512,
+                                                      add_centroid_jitter=add_centroid_jitter)
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 128])
-        self.patchlet_extractor2 = PatchletsExtractor(k=16, sample_mode='nn', npoints=128, add_centroid_jitter=add_centroid_jitter)
+        self.patchlet_extractor2 = PatchletsExtractor(k=16, sample_mode=sample_mode, npoints=128,
+                                                      add_centroid_jitter=add_centroid_jitter)
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+3, temporal_conv=4, k=k, mlp=[128, 128, 256])
-        self.patchlet_extractor3 = PatchletsExtractor(k=16, sample_mode='nn', npoints=None, add_centroid_jitter=add_centroid_jitter)
+        self.patchlet_extractor3 = PatchletsExtractor(k=16, sample_mode=sample_mode, npoints=None,
+                                                      add_centroid_jitter=add_centroid_jitter)
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+3, temporal_conv=4, k=k,
                                                            mlp=[256, 512, 1024])
 

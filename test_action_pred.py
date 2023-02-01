@@ -19,6 +19,7 @@ import models.correformer as cf
 import utils as point_utils
 from models.my_sinkhorn import SinkhornCorr
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
+from torch.multiprocessing import set_start_method
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -112,7 +113,10 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         pointnet_pp = importlib.util.module_from_spec(spec)
         sys.modules["PointNet2Patchlets_v2"] = pointnet_pp
         spec.loader.exec_module(pointnet_pp)
-        model = pointnet_pp.PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip)
+        model = pointnet_pp.PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip,
+                                                  sample_mode=args.patchlet_sample_mode,
+                                                  add_centroid_jitter=args.patchlet_centroid_jitter
+                                                  )
     elif pc_model == '3dmfv':
             spec = importlib.util.spec_from_file_location("FourDmFVNet",
                                                           os.path.join(args.model_path, "pytorch_3dmfv.py"))
@@ -184,7 +188,7 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
 
 if __name__ == '__main__':
     # need to add argparse
-
+    set_start_method('spawn')
     output_path = pathlib.Path(os.path.join(args.model_path, 'results_'+str(args.model))).with_suffix("")
     os.makedirs(output_path, exist_ok=True)
     model_path = os.path.join(args.model_path, args.model)

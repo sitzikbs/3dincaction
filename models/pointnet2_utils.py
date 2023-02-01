@@ -3,6 +3,34 @@ import torch.nn as nn
 import torch.nn.functional as F
 from time import time
 import numpy as np
+from torch.autograd import Function
+import warnings
+
+try:
+    import models._ext as _ext
+except ImportError:
+    from torch.utils.cpp_extension import load
+    import glob
+    import os.path as osp
+    import os
+
+    warnings.warn("Unable to load pointnet2_ops cpp extension. JIT Compiling.")
+
+    _ext_src_root = osp.join(osp.dirname(__file__), "_ext-src")
+    _ext_sources = glob.glob(osp.join(_ext_src_root, "src", "*.cpp")) + glob.glob(
+        osp.join(_ext_src_root, "src", "*.cu")
+    )
+    _ext_headers = glob.glob(osp.join(_ext_src_root, "include", "*"))
+
+    os.environ["TORCH_CUDA_ARCH_LIST"] = "3.7+PTX;5.0;6.0;6.1;6.2;7.0;7.5"
+    _ext = load(
+        "_ext",
+        sources=_ext_sources,
+        extra_include_paths=[osp.join(_ext_src_root, "include")],
+        extra_cflags=["-O3"],
+        extra_cuda_cflags=["-O3", "-Xfatbin", "-compress-all"],
+        with_cuda=True,
+    )
 
 def timeit(tag, t):
     print("{}: {}s".format(tag, time() - t))
@@ -60,28 +88,28 @@ def index_points(points, idx):
     return new_points
 
 
-def farthest_point_sample(xyz, npoint):
-    """
-    Input:
-        xyz: pointcloud data, [B, N, 3]
-        npoint: number of samples
-    Return:
-        centroids: sampled pointcloud index, [B, npoint]
-    """
-    device = xyz.device
-    B, N, C = xyz.shape
-    centroids = torch.zeros(B, npoint, dtype=torch.long).to(device)
-    distance = torch.ones(B, N).to(device) * 1e10
-    farthest = torch.randint(0, N, (B,), dtype=torch.long).to(device)
-    batch_indices = torch.arange(B, dtype=torch.long).to(device)
-    for i in range(npoint):
-        centroids[:, i] = farthest
-        centroid = xyz[batch_indices, farthest, :].view(B, 1, 3)
-        dist = torch.sum((xyz - centroid) ** 2, -1)
-        mask = dist < distance
-        distance[mask] = dist[mask]
-        farthest = torch.max(distance, -1)[1]
-    return centroids
+# def farthest_point_sample(xyz, npoint):
+#     """
+#     Input:
+#         xyz: pointcloud data, [B, N, 3]
+#         npoint: number of samples
+#     Return:
+#         centroids: sampled pointcloud index, [B, npoint]
+#     """
+#     device = xyz.device
+#     B, N, C = xyz.shape
+#     centroids = torch.zeros(B, npoint, dtype=torch.long, device=device)
+#     distance = torch.ones(B, N, device=device)* 1e10
+#     farthest = torch.randint(0, N, (B,), dtype=torch.long, device=device)
+#     batch_indices = torch.arange(B, dtype=torch.long, device=device)
+#     for i in range(npoint):
+#         centroids[:, i] = farthest
+#         centroid = xyz[batch_indices, farthest, :].view(B, 1, 3)
+#         dist = torch.sum((xyz - centroid) ** 2, -1)
+#         mask = dist < distance
+#         distance[mask] = dist[mask]
+#         farthest = torch.max(distance, -1)[1]
+#     return centroids
 
 
 def query_ball_point(radius, nsample, xyz, new_xyz):
@@ -468,3 +496,33 @@ class PointNetSetAbstractionOriginal(nn.Module):
 
         new_points = torch.max(new_points, 2)[0].transpose(1, 2)
         return new_xyz, new_points
+
+
+class FurthestPointSampling(Function):
+    @staticmethod
+    def forward(ctx, xyz, npoint):
+        # type: (Any, torch.Tensor, int) -> torch.Tensor
+        r"""
+        Uses iterative furthest point sampling to select a set of npoint features that have the largest
+        minimum distance
+        Parameters
+        ----------
+        xyz : torch.Tensor
+            (B, N, 3) tensor where N > npoint
+        npoint : int32
+            number of features in the sampled set
+        Returns
+        -------
+        torch.Tensor
+            (B, npoint) tensor containing the set
+        """
+        fps_inds = _ext.furthest_point_sampling(xyz, npoint)
+        ctx.mark_non_differentiable(fps_inds)
+        return fps_inds
+
+    @staticmethod
+    def backward(xyz, a=None):
+        return None, None
+
+
+farthest_point_sample = FurthestPointSampling.apply

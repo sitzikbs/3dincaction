@@ -12,6 +12,7 @@ import models.correformer as cf
 from scipy.spatial import cKDTree
 import torch
 from tqdm import tqdm
+import models.pointnet2_utils as utils
 
 DATASET_N_POINTS = 6890
 
@@ -332,6 +333,22 @@ class PointSampler():
         points_seq = points[:, shuffled_idxs, :]
         return points_seq, shuffled_idxs
 
+    def fps_cuda(self, points):
+        # returns farthers point distance sampling
+        # shuffle each sequence individually but keep correspondance throughout the sequence
+        # to use this CUDA based version you must insert multiprocessing.set_start_method('spawn') in the main function
+        """
+        Input:
+            points: pointcloud data, [N, 3]
+        Return:
+            points: farthest sampled pointcloud, [npoint]
+        """
+        with torch.no_grad():
+            cuda_points = torch.tensor(points[0]).cuda().contiguous()
+        fps_idx = utils.farthest_point_sample(cuda_points.unsqueeze(0), self.n_points).to(torch.int64)
+
+        return points[:, fps_idx.squeeze().cpu().numpy()]
+
     def fps(self, points):
         # returns farthers point distance sampling
         # shuffle each sequence individually but keep correspondance throughout the sequence
@@ -356,6 +373,7 @@ class PointSampler():
             distance[mask] = dist[mask]
             farthest = np.array(np.argmax(distance, -1))[None]
             idxs = np.concatenate([idxs, farthest])
+
 
         return points[:, idxs]
 

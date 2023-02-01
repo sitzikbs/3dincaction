@@ -45,6 +45,10 @@ parser.add_argument('--pointlet_mode', type=str, default='none', help='choose po
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--correformer', type=str, default='none',  help='None or path to correformer model')
 parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
+
+parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
+                    help='jitter to add to nearest neighbor when generating the patchlets')
+parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn | randn | mean type of patchlet sampling')
 args = parser.parse_args()
 
 
@@ -134,7 +138,10 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
                 pointnet_pp = importlib.util.module_from_spec(spec)
                 sys.modules["PointNet2Patchlets_v2"] = pointnet_pp
                 spec.loader.exec_module(pointnet_pp)
-                model = pointnet_pp.PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip)
+                model = pointnet_pp.PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip,
+                                                          sample_mode = args.patchlet_sample_mode,
+                                                          add_centroid_jitter = args.patchlet_centroid_jitter
+                )
         elif pc_model == '3dmfv':
                 spec = importlib.util.spec_from_file_location("FourDmFVNet",
                                                               os.path.join(args.model_path, "pytorch_3dmfv.py"))

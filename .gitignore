@@ -4,4 +4,7 @@
 **/__pycache__/
 **/pt_models/
 **/.idea/
+**/build/
+**/dist/
+**/wandb/
 temp.py

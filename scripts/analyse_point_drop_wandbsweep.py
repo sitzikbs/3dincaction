@@ -5,7 +5,7 @@ from DfaustDataset import DfaustActionClipsDataset
 from ikeaaction.IKEAActionDataset import IKEAActionVideoClipDataset
 import os
 # import pandas as pd
-
+import wandb
 
 from models.patchlets import PatchletsExtractor
 
@@ -14,13 +14,38 @@ output_dir = './patchlet_parameter_ablations/'
 n_examples = 1000
 
 npoints = 512
-k = 16
-sample_mode = 'nn'
+# k_list = [8, 16, 32, 64, 128]
+k_list = [16]
+# k = 16
+# sample_mode = 'nn'
+# sample_mode_list = ['nn', 'randn', 'mean']
+sample_mode_list = ['nn']
 dfaust_augmentation = ['']
-add_centroid_jitter = 0.005
+# add_centroid_jitter = 0.005
+centroid_noise_list = [0.0, 0.001, 0.0025, 0.005, 0.0075, 0.01]
+# centroid_noise_list = [0.0]
+# Define sweep config
+sweep_configuration = {
+    'method': 'random',
+    'name': 'sweep',
+    'metric': {'goal': 'minimize', 'name': 'final_degradation_rate'},
+    'parameters':
+    {
+        'k': {'values': k_list},
+        'sample_mode': {'values': sample_mode_list},
+        'centroid_noise': {'values': centroid_noise_list}
 
+     }
+}
+
+sweep_id = wandb.sweep(sweep=sweep_configuration, project='point_drop_sweep')
 
 def main():
+    run = wandb.init()
+
+    k = wandb.config.k
+    sample_mode = wandb.config.sample_mode
+    add_centroid_jitter = wandb.config.centroid_noise
 
     extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
                                           add_centroid_jitter=add_centroid_jitter)
@@ -56,6 +81,7 @@ def main():
         for batch_ind in range(b):
             example_counter = example_counter+1
             u_points = []
+            patchlet_var = []
 
             for j in range(t):
                 u_points.append(len(torch.unique(patchlet_points[batch_ind, j].reshape(-1, 3), dim=0)))
@@ -76,16 +102,18 @@ def main():
             print("completed analizing {} examples".format(n_examples))
             break
 
-        visualization.pc_patchlet_points_vis(patchlet_dict['patchlet_points'][0].detach().cpu().numpy())
+        # visualization.pc_patchlet_points_vis(patchlet_dict['patchlet_points'][0].detach().cpu().numpy())
     final_degradation_rate = round(np.mean(total_degredation_percentage), 2)
     final_average_patchlet_variance = np.mean(patchlet_variance)
     print('Average Degredation rate: {} points per frame'.format(np.mean(degredation_rate)))
     print('Average total degredation percentage (last - first): {}'.format(final_degradation_rate))
     print('Average total variance: {}'.format(final_average_patchlet_variance))
 
+    wandb.log({
+        'degredation_rate': final_degradation_rate,
+        'patchlet_variance': final_average_patchlet_variance,
+    })
+    run.finish()
 
-
-if __name__ == "__main__":
-    main()
-
-
+# Start sweep job.
+wandb.agent(sweep_id, function=main, count=4)

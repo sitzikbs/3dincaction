@@ -21,6 +21,9 @@ import utils as point_utils
 from models.my_sinkhorn import SinkhornCorr
 from models.patchlets import PointNet2Patchlets, PointNet2Patchlets_v2
 
+from torch.multiprocessing import set_start_method
+
+
 np.random.seed(0)
 torch.manual_seed(0)
 
@@ -28,7 +31,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--pc_model', type=str, default='pn2_patchlets', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--steps_per_update', type=int, default=1, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
+parser.add_argument('--batch_size', type=int, default=1, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
 parser.add_argument('--logdir', type=str, default='./log/debug/', help='path to model save dir')
@@ -48,6 +51,10 @@ parser.add_argument('--correformer', type=str,  default='none',
                     help='None or path to correformer model')
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')
+
+parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
+                    help='jitter to add to nearest neighbor when generating the patchlets')
+parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn | randn | mean type of patchlet sampling')
 args = parser.parse_args()
 
 
@@ -55,6 +62,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
         logdir='', batch_size=8, refine=False, refine_epoch=0,
         pretrained_model='charades', steps_per_update=1, pc_model='pn1'):
     data_augmentation = ['jitter'] if args.data_augmentation == 1 else False
+
     os.makedirs(logdir, exist_ok=True)
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('./models/pointnet.py', logdir))  # backup the models files
@@ -100,7 +108,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     elif pc_model == 'pn2_4d_basic':
         model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_patchlets':
-        model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip)
+        model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip, sample_mode=args.patchlet_sample_mode,
+                                          add_centroid_jitter=args.patchlet_centroid_jitter)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes, n_frames=frames_per_clip)
     else:
@@ -282,6 +291,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 
 
 if __name__ == '__main__':
+    set_start_method('spawn')
     # need to add argparse
     print("Starting training ...")
     run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs+1,

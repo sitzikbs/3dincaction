@@ -29,11 +29,11 @@ from models.patchlets import PointNet2Patchlets_v2
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn2_4d', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn2_patchlets', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skippig frames')
 parser.add_argument('--steps_per_update', type=int, default=10, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=16, help='number of clips per batch')
+parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=31, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
 parser.add_argument('--db_filename', type=str, default='ikea_annotation_db_full',
@@ -57,6 +57,10 @@ parser.add_argument('--correformer', type=str, default='none', help='None or pat
 parser.add_argument('--cache_capacity', type=int, default=1, help='number of sequences to store in cache for faster '
                                                                   'loading. 0 will cache all of the dataset')
 parser.add_argument('--sort_model', type=str, default='none', help='transformer | sinkhorn | none')
+
+parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
+                    help='jitter to add to nearest neighbor when generating the patchlets')
+parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn | randn | mean type of patchlet sampling')
 args = parser.parse_args()
 
 
@@ -75,7 +79,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/correformer.py', logdir))  # backup the models files
-    os.system('cp %s %s' % ('./models/patchlets.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('../models/patchlets.py', logdir))  # backup the models files
     params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
     torch.save(args, params_filename)
 
@@ -139,7 +143,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
         elif pc_model == 'pn2_4d_basic':
             model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
         elif pc_model == 'pn2_patchlets':
-            model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip)
+            model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip, sample_mode=args.patchlet_sample_mode,
+                                          add_centroid_jitter=args.patchlet_centroid_jitter)
         elif pc_model == '3dmfv':
             model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=k, n_frames=frames_per_clip)
         else:
