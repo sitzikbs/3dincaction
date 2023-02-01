@@ -9,7 +9,7 @@ from scipy.spatial import cKDTree
 import numpy as np
 from pykeops.torch import Vi, Vj
 import time
-import torch_cluster
+# import torch_cluster
 
 def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
 
