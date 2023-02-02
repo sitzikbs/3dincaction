@@ -45,6 +45,10 @@ parser.add_argument('--correformer', type=str,
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')
 parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
+
+parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
+                    help='jitter to add to nearest neighbor when generating the patchlets')
+parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn | randn | mean type of patchlet sampling')
 args = parser.parse_args()
 
 
