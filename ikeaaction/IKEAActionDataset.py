@@ -357,17 +357,17 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
             plydata = plyfile.PlyData.read(pc_filename)
             d = np.asarray(plydata['vertex'].data)
             pc = np.column_stack([d[p.name] for p in plydata['vertex'].properties])
-            pc = torch.from_numpy(pc)
+            # pc = torch.from_numpy(pc)
             if counter == 0: # set the translation and scale consistently throughout the sequence
-                t = torch.mean(pc[:, 0:3], axis=0)
-                s = torch.linalg.norm(torch.max(torch.abs(pc[:, 0:3] - t), axis=0)[0])
+                t = np.mean(pc[:, 0:3], axis=0)
+                s = np.linalg.norm(np.max(np.abs(pc[:, 0:3] - t), axis=0))
             pc[:, 0:3] = (pc[:, 0:3] - t) / s
 
             if n_points is not None:
-                indices = torch.randperm(len(pc))[:n_points]
+                indices = np.random.choice(range(len(pc)), size=n_points, replace=False)
                 pc = pc[indices, :]
-            frames.append(pc.t())
-        return torch.stack(frames, 0)
+            frames.append(pc.T)
+        return np.stack(frames, 0)
 
 
     def video_to_tensor(self, pic):
@@ -460,7 +460,7 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
                 data = self.transform(data)
             # imgs = self.video_to_tensor(imgs)
 
-        return data, torch.from_numpy(labels), vid_idx, frame_pad
+        return data, labels, vid_idx, frame_pad
 
     def __getitem__(self, index):
         data, labels, vid_idx, frame_pad = self.seq_cache.get(index)

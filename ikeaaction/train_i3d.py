@@ -29,7 +29,7 @@ from models.patchlets import PointNet2Patchlets_v2
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn2_patchlets', help='which model to use for point cloud processing: pn1 | pn2 ')
+parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skippig frames')
 parser.add_argument('--steps_per_update', type=int, default=10, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
@@ -54,7 +54,7 @@ parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to u
 parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
 parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
-parser.add_argument('--cache_capacity', type=int, default=1, help='number of sequences to store in cache for faster '
+parser.add_argument('--cache_capacity', type=int, default=512, help='number of sequences to store in cache for faster '
                                                                   'loading. 0 will cache all of the dataset')
 parser.add_argument('--sort_model', type=str, default='none', help='transformer | sinkhorn | none')
 

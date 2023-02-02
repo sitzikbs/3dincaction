@@ -333,7 +333,7 @@ class PointSampler():
         points_seq = points[:, shuffled_idxs, :]
         return points_seq, shuffled_idxs
 
-    def fps_cuda(self, points):
+    def fps(self, points):
         # returns farthers point distance sampling
         # shuffle each sequence individually but keep correspondance throughout the sequence
         # to use this CUDA based version you must insert multiprocessing.set_start_method('spawn') in the main function
@@ -349,7 +349,7 @@ class PointSampler():
 
         return points[:, fps_idx.squeeze().cpu().numpy()]
 
-    def fps(self, points):
+    def fps_np(self, points):
         # returns farthers point distance sampling
         # shuffle each sequence individually but keep correspondance throughout the sequence
         """
@@ -386,8 +386,9 @@ class PointSampler():
         points_seq = self.fps(points)
         shuffled_idxs = np.array(
             [np.random.permutation(np.arange(self.n_points)) for _ in range(len(points) - 1)])[:, :, None]
-        shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None],
-                                  axis=0)  # make sure thefirst frame indices are unchanged (they are refs)
+        # shuffled_idxs = np.insert(shuffled_idxs, 0, np.arange(self.n_points)[None, :, None],
+        #                           axis=0)  # make sure thefirst frame indices are unchanged (they are refs)
+        shuffled_idxs = np.concatenate([np.arange(self.n_points)[None, :, None], shuffled_idxs])
         points_seq = np.take_along_axis(points_seq, shuffled_idxs[:, :self.n_points], axis=1)
         return points_seq, shuffled_idxs
 
