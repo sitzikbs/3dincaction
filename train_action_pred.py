@@ -291,7 +291,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 
 
 if __name__ == '__main__':
-    set_start_method('spawn')
+    # set_start_method('spawn')
     # need to add argparse
     print("Starting training ...")
     run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs+1,
