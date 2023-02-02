@@ -14,10 +14,10 @@ output_dir = './patchlet_parameter_ablations/'
 n_examples = 1000
 
 npoints = 512
-k = 16
+k = 32
 sample_mode = 'nn'
 dfaust_augmentation = ['']
-add_centroid_jitter = 0.005
+add_centroid_jitter = 0.001
 
 
 def main():
@@ -76,7 +76,7 @@ def main():
             print("completed analizing {} examples".format(n_examples))
             break
 
-        visualization.pc_patchlet_points_vis(patchlet_dict['patchlet_points'][0].detach().cpu().numpy())
+        # visualization.pc_patchlet_points_vis(patchlet_dict['patchlet_points'][0].detach().cpu().numpy())
     final_degradation_rate = round(np.mean(total_degredation_percentage), 2)
     final_average_patchlet_variance = np.mean(patchlet_variance)
     print('Average Degredation rate: {} points per frame'.format(np.mean(degredation_rate)))

@@ -61,6 +61,7 @@ parser.add_argument('--sort_model', type=str, default='none', help='transformer 
 parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
                     help='jitter to add to nearest neighbor when generating the patchlets')
 parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn | randn | mean type of patchlet sampling')
+parser.add_argument('--k', type=int, default=16, help='number of nearest neighbors')
 args = parser.parse_args()
 
 
@@ -144,7 +145,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
         elif pc_model == 'pn2_patchlets':
             model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip, sample_mode=args.patchlet_sample_mode,
-                                          add_centroid_jitter=args.patchlet_centroid_jitter)
+                                          add_centroid_jitter=args.patchlet_centroid_jitter, k=args.k)
         elif pc_model == '3dmfv':
             model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=k, n_frames=frames_per_clip)
         else:

@@ -295,15 +295,15 @@ class PointNet2Patchlets_v2(nn.Module):
         self.n_frames = n_frames
         self.k = k
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
-        self.patchlet_extractor1 = PatchletsExtractor(k=16, sample_mode=sample_mode, npoints=512,
+        self.patchlet_extractor1 = PatchletsExtractor(k=self.k, sample_mode=sample_mode, npoints=512,
                                                       add_centroid_jitter=add_centroid_jitter)
-        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=k, mlp=[64, 64, 128])
-        self.patchlet_extractor2 = PatchletsExtractor(k=16, sample_mode=sample_mode, npoints=128,
+        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=8, k=self.k, mlp=[64, 64, 128])
+        self.patchlet_extractor2 = PatchletsExtractor(k=self.k, sample_mode=sample_mode, npoints=128,
                                                       add_centroid_jitter=add_centroid_jitter)
-        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+3, temporal_conv=4, k=k, mlp=[128, 128, 256])
-        self.patchlet_extractor3 = PatchletsExtractor(k=16, sample_mode=sample_mode, npoints=None,
+        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+3, temporal_conv=4, k=self.k, mlp=[128, 128, 256])
+        self.patchlet_extractor3 = PatchletsExtractor(k=self.k, sample_mode=sample_mode, npoints=None,
                                                       add_centroid_jitter=add_centroid_jitter)
-        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+3, temporal_conv=4, k=k,
+        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+3, temporal_conv=4, k=self.k,
                                                            mlp=[256, 512, 1024])
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])

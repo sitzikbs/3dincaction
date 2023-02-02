@@ -14,12 +14,12 @@ output_dir = './patchlet_parameter_ablations/'
 n_examples = 1000
 
 npoints = 512
-# k_list = [8, 16, 32, 64, 128]
-k_list = [16]
+k_list = [8, 16, 32, 64]
+# k_list = [16]
 # k = 16
 # sample_mode = 'nn'
-# sample_mode_list = ['nn', 'randn', 'mean']
-sample_mode_list = ['nn']
+sample_mode_list = ['nn', 'randn']
+# sample_mode_list = ['nn']
 dfaust_augmentation = ['']
 # add_centroid_jitter = 0.005
 centroid_noise_list = [0.0, 0.001, 0.0025, 0.005, 0.0075, 0.01]
