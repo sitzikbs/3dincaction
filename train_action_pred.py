@@ -16,13 +16,12 @@ from tensorboardX import SummaryWriter
 from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1, PointNet1Basic
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 from models.pytorch_3dmfv import FourDmFVNet
-import models.correformer as cf
 import utils as point_utils
-from models.my_sinkhorn import SinkhornCorr
 from models.patchlets import PointNet2Patchlets, PointNet2Patchlets_v2
 
 from torch.multiprocessing import set_start_method
-
+import wandb
+wandb.init()
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -47,9 +46,6 @@ parser.add_argument('--shuffle_points', type=str, default='fps_each_frame', help
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
 parser.add_argument('--data_augmentation', type=str, nargs='+', default=['none'], help='apply input data point augmentations')
-parser.add_argument('--sort_model', type=str, default='none', help='transformer | sinkhorn | none')
-parser.add_argument('--correformer', type=str,  default='none',
-                    help='None or path to correformer model')
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')
 
@@ -59,6 +55,12 @@ parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn |
 parser.add_argument('--k', type=int, default=16, help='number of nearest neighbors')
 args = parser.parse_args()
 
+wandb.config.update(args) # adds all of the arguments as config variables
+wandb.run.log_code(".")
+# define our custom x axis metric
+wandb.define_metric("train/step")
+wandb.define_metric("train/*", step_metric="train/step")
+wandb.define_metric("test/*", step_metric="train/step")
 
 def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/sitzikbs/Datasets/dfaust/',
         logdir='', batch_size=8, refine=False, refine_epoch=0,
@@ -70,7 +72,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     os.system('cp %s %s' % ('./models/pointnet.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pytorch_3dmfv.py', logdir))  # backup the models files
-    os.system('cp %s %s' % ('./models/correformer.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/patchlets.py', logdir))  # backup the models files
 
     params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
@@ -118,11 +119,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     else:
         raise ValueError("point cloud architecture not supported. Check the pc_model input")
 
-    # Load correspondance transformer
-    if args.sort_model == 'correformer':
-        sort_model = cf.get_correformer(args.correformer)
-    elif args.sort_model == 'sinkhorn':
-        sort_model = SinkhornCorr(max_iters=10).cuda()
 
     if pretrained_model is not None:
         checkpoints = torch.load(pretrained_model)
@@ -187,9 +183,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             num_iter += 1
             # get the inputs
             inputs, labels = data['points'], data['labels']
-            if not args.sort_model == 'none':
-                with torch.no_grad():
-                    inputs, _ = point_utils.sort_points(sort_model, inputs)
             inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
             labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
@@ -227,6 +220,16 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                 print('train Total Loss: {:.4f}'.format(tot_loss / n_steps))
                 optimizer.step()
                 optimizer.zero_grad()
+                # log train losses
+                log_dict = {
+                    "train/step": n_examples,
+                    "train/loss": tot_loss / n_steps,
+                    "train/cls_loss": tot_cls_loss / n_steps,
+                    "train/loc_loss": tot_loc_loss / n_steps,
+                    "train/Accuracy": np.mean(avg_acc),
+                    "train/lr":  optimizer.param_groups[0]['lr'] }
+                wandb.log(log_dict)
+
                 train_writer.add_scalar('loss', tot_loss / n_steps, n_examples)
                 train_writer.add_scalar('cls loss', tot_cls_loss / n_steps, n_examples)
                 train_writer.add_scalar('loc loss', tot_loc_loss / n_steps, n_examples)
@@ -239,9 +242,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels = data['points'], data['labels']
-                if not args.sort_model == 'none':
-                    with torch.no_grad():
-                        inputs, _ = point_utils.sort_points(sort_model, inputs)
                 inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
                 labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
@@ -271,6 +271,13 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 
                 print('[{}] test Acc: {}, Loss: {:.4f} [{} / {}]'.format(steps, acc.item(), loss.item(), test_batchind,
                                                                      len(test_dataloader)))
+                log_dict = {
+                    "test/step": n_examples,
+                    "test/loss": loss.item(),
+                    "test/cls_loss": loc_loss.item(),
+                    "test/loc_loss": cls_loss.item(),
+                    "test/Accuracy": acc.item()}
+                wandb.log(log_dict)
                 test_writer.add_scalar('loss', loss.item(), n_examples)
                 test_writer.add_scalar('cls loss', loc_loss.item(), n_examples)
                 test_writer.add_scalar('loc loss', cls_loss.item(), n_examples)

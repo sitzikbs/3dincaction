@@ -22,10 +22,11 @@ from models.pytorch_i3d import InceptionI3d
 from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1, PointNet1Basic
 from models.pointnet2_cls_ssg import PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
-import models.correformer as cf
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
-from models.my_sinkhorn import SinkhornCorr
 from models.patchlets import PointNet2Patchlets_v2
+
+import wandb
+wandb.init()
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
@@ -49,14 +50,9 @@ parser.add_argument('--refine_epoch', type=int, default=0, help='refine model fr
 parser.add_argument('--input_type', type=str, default='pc', help='pc | depth | rgb | flow support will be added later')
 parser.add_argument('--pretrained_model', type=str, default=None, help='path to pretrained model')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
-parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to use pointlettes in the data loader'
-                                                                   ' to sort the points temporally')
-parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--correformer', type=str, default='none', help='None or path to correformer model')
 parser.add_argument('--cache_capacity', type=int, default=512, help='number of sequences to store in cache for faster '
                                                                   'loading. 0 will cache all of the dataset')
-parser.add_argument('--sort_model', type=str, default='none', help='transformer | sinkhorn | none')
 
 parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
                     help='jitter to add to nearest neighbor when generating the patchlets')
@@ -64,6 +60,12 @@ parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn |
 parser.add_argument('--k', type=int, default=16, help='number of nearest neighbors')
 args = parser.parse_args()
 
+wandb.config.update(args) # adds all of the arguments as config variables
+wandb.run.log_code(".")
+# define our custom x axis metric
+wandb.define_metric("train/step")
+wandb.define_metric("train/*", step_metric="train/step")
+wandb.define_metric("test/*", step_metric="train/step")
 
 def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/sitzikbs/6TB/ANU_ikea_dataset/',
         train_filename='train_cross_env.txt', testset_filename='test_cross_env.txt',
@@ -71,15 +73,12 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
         frame_skip=1, batch_size=8, camera='dev3', refine=False, refine_epoch=0, load_mode='vid',
         input_type='rgb', pretrained_model='charades', steps_per_update=1, pc_model='pn1'):
 
-    use_pointlettes = True if not args.use_pointlettes == 0 else False
-
     os.makedirs(logdir, exist_ok=True)
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('../models/pytorch_i3d.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pointnet.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
-    os.system('cp %s %s' % ('../models/correformer.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/patchlets.py', logdir))  # backup the models files
     params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
     torch.save(args, params_filename)
@@ -97,8 +96,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     train_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
                  transform=train_transforms, set='train', camera=camera, frame_skip=frame_skip,
                             frames_per_clip=frames_per_clip, resize=None, mode=load_mode, input_type=input_type,
-                            n_points=args.n_points, use_pointlettes=use_pointlettes,
-                            pointlet_mode=args.pointlet_mode, cache_capacity=args.cache_capacity)
+                            n_points=args.n_points, cache_capacity=args.cache_capacity)
     print("Number of clips in the dataset:{}".format(len(train_dataset)))
     weights = utils.make_weights_for_balanced_classes(train_dataset.clip_set, train_dataset.clip_label_count)
     sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
@@ -109,17 +107,12 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     test_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
                            test_filename=testset_filename, transform=test_transforms, set='test', camera=camera,
                            frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode=load_mode,
-                           input_type=input_type, n_points=args.n_points, use_pointlettes=use_pointlettes,
-                           pointlet_mode=args.pointlet_mode, cache_capacity=args.cache_capacity)
+                           input_type=input_type, n_points=args.n_points, cache_capacity=args.cache_capacity)
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
     num_classes = train_dataset.num_classes
-    # # setup the model
-    # if mode == 'flow':
-    #     model = InceptionI3d(400, in_channels=2)
-    #     model.load_state_dict(torch.load('pt_models/flow_' + pretrained_model + '.pt'))
-    #     model.replace_logits(num_classes)
+
     if input_type == 'rgb':
         model = InceptionI3d(157, in_channels=3)
         model.load_state_dict(torch.load('pt_models/rgb_' + pretrained_model + '.pt'))
@@ -152,12 +145,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             raise ValueError("point cloud architecture not supported. Check the pc_model input")
     else:
         raise ValueError("Unsupported input type")
-
-    # Load correspondance transformer
-    if args.sort_model == 'correformer':
-        sort_model = cf.get_correformer(args.correformer)
-    elif args.sort_model == 'sinkhorn':
-        sort_model = SinkhornCorr(max_iters=10).cuda()
 
 
     if pretrained_model is not None:
@@ -241,10 +228,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
             num_iter += 1
             # get the inputs
             inputs, labels, vid_idx, frame_pad = data
-            if not args.sort_model == 'none':
-                with torch.no_grad():
-                    inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
-                    inputs = inputs.permute(0, 1, 3, 2)
             inputs = inputs.cuda().requires_grad_().contiguous()
             labels = labels.cuda()
 
@@ -291,11 +274,22 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                 print('train Total Loss: {:.4f}'.format(tot_loss / n_steps))
                 optimizer.step()
                 optimizer.zero_grad()
+
+                # log train losses
+                log_dict = {
+                    "train/step": n_examples,
+                    "train/loss": tot_loss / n_steps,
+                    "train/cls_loss": tot_cls_loss / n_steps,
+                    "train/loc_loss": tot_loc_loss / n_steps,
+                    "train/Accuracy": np.mean(avg_acc),
+                    "train/lr":  optimizer.param_groups[0]['lr'] }
+                wandb.log(log_dict)
                 train_writer.add_scalar('loss', tot_loss / n_steps, n_examples)
                 train_writer.add_scalar('cls loss', tot_cls_loss / n_steps, n_examples)
                 train_writer.add_scalar('loc loss', tot_loc_loss / n_steps, n_examples)
                 train_writer.add_scalar('Accuracy', np.mean(avg_acc), n_examples)
                 train_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], n_examples)
+
                 num_iter = 0
                 tot_loss = 0.
 
@@ -303,10 +297,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
                 model.train(False)  # Set model to evaluate mode
                 test_batchind, data = next(test_enum)
                 inputs, labels, vid_idx, frame_pad = data
-                if not args.sort_model == 'none':
-                    with torch.no_grad():
-                        inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
-                        inputs = inputs.permute(0, 1, 3, 2)
                 inputs = inputs.cuda().requires_grad_().contiguous()
                 labels = labels.cuda()
 
@@ -340,6 +330,13 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
 
                 print('[{}] test Acc: {}, Loss: {:.4f} [{} / {}]'.format(steps, acc.item(), loss.item(), test_batchind,
                                                                      len(test_dataloader)))
+                log_dict = {
+                    "test/step": n_examples,
+                    "test/loss": loss.item(),
+                    "test/cls_loss": loc_loss.item(),
+                    "test/loc_loss": cls_loss.item(),
+                    "test/Accuracy": acc.item()}
+                wandb.log(log_dict)
                 test_writer.add_scalar('loss', loss.item(), n_examples)
                 test_writer.add_scalar('cls loss', loc_loss.item(), n_examples)
                 test_writer.add_scalar('loc loss', cls_loss.item(), n_examples)

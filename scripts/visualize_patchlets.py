@@ -10,7 +10,7 @@ from models.patchlets import PatchletsExtractor
 if __name__ == "__main__":
     # set_start_method('spawn')
 
-    dataset_name = 'ikea'
+    dataset_name = 'dfaust'
     npoints = 512
     k = 16
     sample_mode = 'nn'
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     extract_pachlets = PatchletsExtractor(k=16, npoints=npoints, sample_mode=sample_mode, add_centroid_jitter=add_centroid_jitter)
 
 
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=8,
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=0,
                                                    pin_memory=True, shuffle=False, drop_last=True)
 
     for batch_ind, data in enumerate(dataloader):

@@ -88,6 +88,7 @@ def index_points(points, idx):
     return new_points
 
 
+# This implementation is very slow and should not be used unless you can't get the CUDA version to compile
 # def farthest_point_sample(xyz, npoint):
 #     """
 #     Input:

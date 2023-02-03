@@ -9,7 +9,7 @@ import torchvision.io
 import plyfile
 import models.pointnet2_utils as pointnet2_utils
 from scipy.spatial import KDTree
-from models.sinkhorn import sinkhorn
+
 
 
 class IKEAActionDataset():
@@ -222,14 +222,12 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
     def __init__(self, dataset_path, db_filename='ikea_annotation_db_full', action_list_filename='atomic_action_list.txt',
                  action_object_relation_filename='action_object_relation_list.txt', train_filename='train_cross_env.txt',
                  test_filename='test_cross_env.txt', transform=None, set='test', camera='dev3', frame_skip=1,
-                 frames_per_clip=64, resize=None, mode='vid', input_type='rgb', n_points=None, use_pointlettes=False,
-                 pointlet_mode='kdtree', cache_capacity=1):
+                 frames_per_clip=64, resize=None, mode='vid', input_type='rgb', n_points=None,
+                 cache_capacity=1):
         super().__init__(dataset_path=dataset_path, db_filename=db_filename, action_list_filename=action_list_filename,
                  action_object_relation_filename=action_object_relation_filename, train_filename=train_filename,
                          test_filename=test_filename)
 
-        self.use_pointlettes = use_pointlettes
-        self.pointlet_mode = pointlet_mode
         self.mode = mode
         self.transform = transform
         self.set = set
@@ -384,60 +382,6 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
         return torch.from_numpy(pic.transpose([3, 0, 1, 2]))
 
 
-    def temporal_sort(self, pc):
-        """
-        DEPRECATED: Compute pointlettes and sort points by their temporal correspondances
-        Parameters
-        ----------
-        pc: point cloud sequence [t X 3 X n]
-
-        Returns
-        -------
-        pc temporally sorted point cloud sequence [t X 3 X n]
-        """
-        pc = pc.permute([0, 2, 1]).cuda()
-        pc2 = torch.roll(pc, 1, dims=0).cuda()  # shift by one frame
-        sqrdists = pointnet2_utils.square_distance(pc[:, :, 0:3], pc2[:, :, 0:3])
-        idx_stack = torch.min(sqrdists, dim=1)[1]
-        pc = torch.gather(pc, 1, idx_stack.unsqueeze(-1).repeat(1, 1, 3))
-        return pc.permute([0, 2, 1]).detach().cpu()
-
-    def get_pointlettes(self, pc_seq):
-        """
-
-        Parameters
-        ----------
-        pc_seq : point cloud sequence [t X 3 X n]
-
-        Returns
-        -------
-        pointlettes: pc temporally sorted point cloud sequence [t X 3 X n]
-        """
-        pc_seq = np.transpose(pc_seq, (0, 2, 1))
-        if self.pointlet_mode == 'kdtree':
-            pointlettes = pc_seq[0][None, :, :]
-            for i, pc in enumerate(pc_seq):
-                if i < len(pc_seq) - 1:
-                    pc1_kdtree = KDTree(pc_seq[i + 1])
-                    idx_corr = pc1_kdtree.query(pc_seq[i], k=1)[1]
-                    sorted_pc = np.take(pc_seq[i + 1], idx_corr, 0)
-                    pointlettes = np.concatenate([pointlettes, sorted_pc[None, :, :]], 0)
-                    pc_seq[i + 1] = sorted_pc
-        elif self.pointlet_mode == 'sinkhorn':  # TOdO avoid copying back and forth from cpu to gpu
-            pc_seq = pc_seq.clone().detach().contiguous().cuda()
-            t, n, feat_d = pc_seq.shape
-            pointlettes = pc_seq[0][None, :, :]
-            for i, pc in enumerate(pc_seq):
-                if i < len(pc_seq) - 1:
-                    with torch.no_grad():
-                        _, x_to_y, y_to_x = sinkhorn(pc_seq[i], pc_seq[i + 1],  max_iters=10)
-                    sorted_pc = torch.gather(pc_seq[i + 1], 0, x_to_y.unsqueeze(-1).repeat(1, feat_d))
-                    pointlettes = torch.cat([pointlettes, sorted_pc[None, :, :]], 0)
-                    pc_seq[i + 1] = sorted_pc
-            pointlettes = pointlettes.detach().cpu().numpy()
-
-        return np.transpose(pointlettes,(0, 2, 1))
-
     def __len__(self):
         # 'Denotes the total number of samples'
         return len(self.clip_set)
@@ -450,9 +394,7 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
                 data = self.load_pc(video_full_path, frame_ind, self.n_points)
             except:
                 raise ValueError( 'video: {}, frames: {}' .format(video_full_path, frame_ind))
-            if self.use_pointlettes:
-                # data = self.temporal_sort(data)
-                data = self.get_pointlettes(data)
+
         else:
             data = self.load_rgb_frames(video_full_path, frame_ind)
             data = torch.permute(data, [3, 0, 1, 2])  # permujte for transform of shape [..., H, W]
@@ -467,22 +409,7 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
 
         return data, labels, vid_idx, frame_pad
 
-    # def __getitem__(self, index):
-    #     # 'Generate one sample of data'
-    #     video_full_path, labels, frame_ind, n_frames_per_clip, vid_idx, frame_pad = self.clip_set[index]
-    #     if self.input_type == 'pc':
-    #         data = self.load_pc(video_full_path, frame_ind, self.n_points)
-    #         if self.use_pointlettes:
-    #             # data = self.temporal_sort(data)
-    #             data = self.get_pointlettes(data)
-    #     else:
-    #         data = self.load_rgb_frames(video_full_path, frame_ind)
-    #         data = torch.permute(data, [3, 0, 1, 2])  # permujte for transform of shape [..., H, W]
-    #         if self.transform is not None:
-    #             data = self.transform(data)
-    #         # imgs = self.video_to_tensor(imgs)
-    #
-    #     return data, torch.from_numpy(labels), vid_idx, frame_pad
+
 
 
 # This dataset loads each full video (frames) separately as a dataset

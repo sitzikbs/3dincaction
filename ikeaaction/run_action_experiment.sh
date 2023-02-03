@@ -17,17 +17,13 @@ BATCH_SIZE=8
 STEPS_PER_UPDATE=20
 FRAMES_PER_CLIP=32
 N_EPOCHS=31
-USE_POINTLETTES=0     # deprecated
-POINTLET_MODE='none'  # deprecated
 N_GAUSSIANS=8         # for 3dmfv
 
 PC_MODEL='pn2_4d'
 N_POINTS=1024
-CORREFORMER='none'    # path or 'none'
 CACHE_CAPACITY=128
-SORT_MODEL='sinkhorn'
 K=32
 
-python train_i3d.py --dataset_path $DATASET_PATH --camera $CAMERA --batch_size $BATCH_SIZE --steps_per_update $STEPS_PER_UPDATE --logdir $LOGDIR --db_filename $DB_FILENAME --frames_per_clip $FRAMES_PER_CLIP --n_epochs $N_EPOCHS --input_type $INPUT_TYPE --n_points $N_POINTS --pc_model $PC_MODEL --use_pointlettes $USE_POINTLETTES --pointlet_mode $POINTLET_MODE --n_gaussians $N_GAUSSIANS --correformer $CORREFORMER --cache_capacity $CACHE_CAPACITY --sort_model $SORT_MODEL --k $K
-python test_i3d.py --dataset_path $DATASET_PATH --device $CAMERA --model_path $LOGDIR --batch_size 3 --db_filename $DATASET_PATH$DB_FILENAME --input_type $INPUT_TYPE --n_points $N_POINTS --pc_model $PC_MODEL --use_pointlettes $USE_POINTLETTES --pointlet_mode $POINTLET_MODE --model '000025.pt' --n_gaussians $N_GAUSSIANS --correformer $CORREFORMER --sort_model $SORT_MODEL --k $K
+python train_i3d.py --dataset_path $DATASET_PATH --camera $CAMERA --batch_size $BATCH_SIZE --steps_per_update $STEPS_PER_UPDATE --logdir $LOGDIR --db_filename $DB_FILENAME --frames_per_clip $FRAMES_PER_CLIP --n_epochs $N_EPOCHS --input_type $INPUT_TYPE --n_points $N_POINTS --pc_model $PC_MODEL --n_gaussians $N_GAUSSIANS --cache_capacity $CACHE_CAPACITY --k $K
+python test_i3d.py --dataset_path $DATASET_PATH --device $CAMERA --model_path $LOGDIR --batch_size 3 --db_filename $DATASET_PATH$DB_FILENAME --input_type $INPUT_TYPE --n_points $N_POINTS --pc_model $PC_MODEL --model '000025.pt' --n_gaussians $N_GAUSSIANS --sort_model $SORT_MODEL --k $K
 python3 ../evaluation/evaluate_ikeaasm.py --results_path $LOGDIR'results/' --dataset_path $DATASET_PATH --mode vid

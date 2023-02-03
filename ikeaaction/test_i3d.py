@@ -18,8 +18,6 @@ import numpy as np
 # from pytorch_i3d import InceptionI3d
 from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
 import importlib.util
-import models.correformer as cf
-from models.my_sinkhorn import SinkhornCorr
 import utils as point_utils
 
 
@@ -39,12 +37,8 @@ parser.add_argument('--device', default='dev3', help='which camera to load')
 parser.add_argument('--model', type=str, default='000000.pt', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
                     default='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
-parser.add_argument('--use_pointlettes', type=int, default=0, help=' toggle to use pointlettes in the data loader'
-                                                                   ' to sort the points temporally')
-parser.add_argument('--pointlet_mode', type=str, default='none', help='choose pointlet creation mode kdtree | sinkhorn')
+
 parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--correformer', type=str, default='none',  help='None or path to correformer model')
-parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 
 parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
                     help='jitter to add to nearest neighbor when generating the patchlets')
@@ -56,9 +50,8 @@ args = parser.parse_args()
 # from pointnet import PointNet4D
 def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, input_type='rgb',
         testset_filename='test_cross_env.txt', trainset_filename='train_cross_env.txt', frame_skip=1,
-        batch_size=8, device='dev3', n_points=None, pc_model='pn1', use_pointlettes=0):
+        batch_size=8, device='dev3', n_points=None, pc_model='pn1'):
 
-    use_pointlettes = True if not args.use_pointlettes == 0 else False
 
     pred_output_filename = os.path.join(output_path, 'pred.npy')
     json_output_filename = os.path.join(output_path, 'action_segments.json')
@@ -70,9 +63,7 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
     test_dataset = Dataset(dataset_path, db_filename=db_filename, test_filename=testset_filename,
                            train_filename=trainset_filename, transform=test_transforms, set='test', camera=device,
                            frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode='img',
-                           input_type=input_type, n_points=n_points, use_pointlettes=use_pointlettes,
-                           pointlet_mode=args.pointlet_mode
-                           )
+                           input_type=input_type, n_points=n_points)
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
@@ -157,12 +148,6 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
     model.cuda()
     model = nn.DataParallel(model)
 
-    # Load correspondance transformer
-    if args.sort_model == 'correformer':
-        sort_model = cf.get_correformer(args.correformer)
-    elif args.sort_model == 'sinkhorn':
-        sort_model = SinkhornCorr(max_iters=10).cuda()
-
     n_examples = 0
 
     # Iterate over data.
@@ -174,10 +159,6 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
         model.train(False)
         # get the inputs
         inputs, labels, vid_idx, frame_pad = data
-        if not args.sort_model == 'none':
-            with torch.no_grad():
-                inputs, _ = point_utils.sort_points(sort_model, inputs.permute(0, 1, 3, 2)[..., :3])
-                inputs = inputs.permute(0, 1, 3, 2)
         # wrap them in Variable
         inputs = inputs.cuda().requires_grad_().contiguous()
         labels = labels.cuda()
@@ -222,5 +203,5 @@ if __name__ == '__main__':
     run(dataset_path=args.dataset_path, db_filename=args.db_filename, model_path=model_path,
         output_path=output_path, frame_skip=args.frame_skip,  input_type=args.input_type, batch_size=args.batch_size,
         device=args.device, n_points=args.n_points, frames_per_clip=args.frames_per_clip, pc_model=args.pc_model,
-        use_pointlettes=args.use_pointlettes)
+        )
     # os.system('python3 ../../evaluation/evaluate.py --results_path {} --dataset_path {} --mode vid'.format(output_path, args.dataset_path))

@@ -15,9 +15,8 @@ from DfaustDataset import DfaustActionClipsDataset as Dataset
 import importlib.util
 import visualization
 import pathlib
-import models.correformer as cf
 import utils as point_utils
-from models.my_sinkhorn import SinkhornCorr
+
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 from torch.multiprocessing import set_start_method
 
@@ -39,12 +38,8 @@ parser.add_argument('--set', type=str, default='test', help='test | train set to
 parser.add_argument('--shuffle_points', type=str, default='fps_each_frame', help='fps e each | none shuffle the input points '
                                                                        'at initialization | for each batch example | no shufll')
 parser.add_argument('--visualize_results', type=int, default=False, help='visualzies the first subsequence in each batch')
-parser.add_argument('--correformer', type=str,
-                    default='none',
-                    help='None or path to correformer model')
 parser.add_argument('--gender', type=str,
                     default='female', help='female | male | all indicating which subset of the dataset to use')
-parser.add_argument('--sort_model', type=str, default='sinkhorn', help='transformer | sinkhorn | none')
 
 parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
                     help='jitter to add to nearest neighbor when generating the patchlets')
@@ -135,11 +130,6 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
     model.cuda()
     model = nn.DataParallel(model)
 
-    # Load correspondance transformer
-    if args.sort_model == 'correformer':
-        sort_model = cf.get_correformer(args.correformer)
-    elif args.sort_model == 'sinkhorn':
-        sort_model = SinkhornCorr(max_iters=10).cuda()
 
     n_examples = 0
 
@@ -152,9 +142,6 @@ def run(dataset_path, model_path, output_path, frames_per_clip=64,  batch_size=8
         model.train(False)
         # get the inputs
         inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
-        if not args.sort_model == 'none':
-            with torch.no_grad():
-                inputs, _ = point_utils.sort_points(sort_model, inputs)
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
         labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 

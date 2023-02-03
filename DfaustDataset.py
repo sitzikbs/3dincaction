@@ -7,11 +7,8 @@ import numpy as np
 import random
 import json
 import pc_transforms as transforms
-import models.correformer as cf
-# from scipy.spatial.distance import cdist
 from scipy.spatial import cKDTree
 import torch
-from tqdm import tqdm
 import models.pointnet2_utils as utils
 
 DATASET_N_POINTS = 6890

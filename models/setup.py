@@ -1,4 +1,5 @@
 # run python setup.py install to compile the cuda fps
+# Adapted from https://github.com/erikwijmans/Pointnet2_PyTorch/tree/master/pointnet2_ops_lib
 import glob
 import os
 import os.path as osp
