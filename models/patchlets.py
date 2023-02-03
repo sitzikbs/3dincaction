@@ -29,13 +29,6 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
         D_ij = ((X_i - X_j) ** 2).sum(-1)
         KNN_fun = D_ij.Kmin_argKmin(k, dim=1)
         distances, idxs = KNN_fun(x1.contiguous(), x2.contiguous())
-    # if method =='geometric':
-    #     with torch.no_grad():
-    #         b, n, d = x1.shape
-    #         batch_x = torch.arange(b, device=x1.device).unsqueeze(1).repeat(1, n).reshape(-1)
-    #         batch_y = batch_x.reshape(-1)
-    #         idxs = torch_cluster.knn(x1.reshape(-1, 3), x2.reshape(-1, 3), k, batch_x, batch_y)[0].reshape(b, n, k)
-    #         distances = torch.zeros_like(idxs)
     return distances, idxs
 
 
