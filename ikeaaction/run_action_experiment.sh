@@ -5,22 +5,23 @@ export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
 #DATASET_PATH='/data1/datasets/ANU_ikea_dataset_smaller/' # on remote
-DATASET_PATH='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/' # on local
+#DATASET_PATH='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/' # on local
+DATASET_PATH='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/' # on local
 INPUT_TYPE='pc'
 CAMERA='dev3'
 #PT_MODEL='charades' # when using images
 DB_FILENAME='ikea_annotation_db_full'
 
 #LOGDIR='/home/sitzikbs/Pycharm_projects/3dinaction/log/debug/'
-LOGDIR='./log/pn2_4d_1024_sinkhorn/'
-BATCH_SIZE=8
-STEPS_PER_UPDATE=20
+LOGDIR='./log/pn1_debug/'
+BATCH_SIZE=2
+STEPS_PER_UPDATE=80
 FRAMES_PER_CLIP=32
-N_EPOCHS=31
+N_EPOCHS=2
 N_GAUSSIANS=8         # for 3dmfv
 
-PC_MODEL='pn2_4d'
-N_POINTS=1024
+PC_MODEL='pn1'
+N_POINTS=4096
 CACHE_CAPACITY=128
 K=32
 

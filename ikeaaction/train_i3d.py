@@ -35,14 +35,14 @@ parser.add_argument('--pc_model', type=str, default='pn1', help='which model to 
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skippig frames')
 parser.add_argument('--steps_per_update', type=int, default=10, help='number of steps per backprop update')
 parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=4, help='number of clips per batch')
+parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=31, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
 parser.add_argument('--db_filename', type=str, default='ikea_annotation_db_full',
                     help='database file name within dataset path')
 parser.add_argument('--logdir', type=str, default='./log/debug/', help='path to model save dir')
 parser.add_argument('--dataset_path', type=str,
-                    default='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/', help='path to dataset')
+                    default='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/', help='path to dataset')
 parser.add_argument('--load_mode', type=str, default='img', help='dataset loader mode to load videos or images: '
                                                                  'vid | img')
 parser.add_argument('--camera', type=str, default='dev3', help='dataset camera view: dev1 | dev2 | dev3 ')
@@ -104,14 +104,14 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
 
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=sampler,
-                                                   num_workers=0, pin_memory=True)
+                                                   num_workers=8, pin_memory=True)
 
     # test_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
     #                        test_filename=testset_filename, transform=test_transforms, set='test', camera=camera,
     #                        frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode=load_mode,
     #                        input_type=input_type, n_points=args.n_points, cache_capacity=args.cache_capacity)
-    test_dataset = Dataset(dataset_path, set='test', camera=camera)
-    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
+    test_dataset = Dataset(dataset_path, set='test')
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=8,
                                                   pin_memory=True)
     num_classes = train_dataset.num_classes
 
@@ -364,8 +364,14 @@ if __name__ == '__main__':
     # need to add argparse
     print("Starting training ...")
     print("Using data from {}".format(args.camera))
-    run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
+    dataset_path = os.path.join(args.dataset_path, str(args.frames_per_clip))
+    run(init_lr=args.lr, dataset_path=dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
         frame_skip=args.frame_skip, db_filename=args.db_filename, batch_size=args.batch_size, camera=args.camera,
         refine=args.refine, refine_epoch=args.refine_epoch, load_mode=args.load_mode, input_type=args.input_type,
         pretrained_model=args.pretrained_model, steps_per_update=args.steps_per_update,
         frames_per_clip=args.frames_per_clip, pc_model=args.pc_model)
+    # run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
+    #     frame_skip=args.frame_skip, db_filename=args.db_filename, batch_size=args.batch_size, camera=args.camera,
+    #     refine=args.refine, refine_epoch=args.refine_epoch, load_mode=args.load_mode, input_type=args.input_type,
+    #     pretrained_model=args.pretrained_model, steps_per_update=args.steps_per_update,
+    #     frames_per_clip=args.frames_per_clip, pc_model=args.pc_model)

@@ -201,8 +201,13 @@ if __name__ == '__main__':
     output_path = os.path.join(args.model_path, 'results')
     os.makedirs(output_path, exist_ok=True)
     model_path = os.path.join(args.model_path, args.model)
-    run(dataset_path=args.dataset_path, db_filename=args.db_filename, model_path=model_path,
+    dataset_path = os.path.join(args.dataset_path, str(args.frames_per_clip))
+    run(dataset_path=dataset_path, db_filename=args.db_filename, model_path=model_path,
         output_path=output_path, frame_skip=args.frame_skip,  input_type=args.input_type, batch_size=args.batch_size,
         device=args.device, n_points=args.n_points, frames_per_clip=args.frames_per_clip, pc_model=args.pc_model,
         )
+    # run(dataset_path=args.dataset_path, db_filename=args.db_filename, model_path=model_path,
+    #     output_path=output_path, frame_skip=args.frame_skip,  input_type=args.input_type, batch_size=args.batch_size,
+    #     device=args.device, n_points=args.n_points, frames_per_clip=args.frames_per_clip, pc_model=args.pc_model,
+    #     )
     # os.system('python3 ../../evaluation/evaluate.py --results_path {} --dataset_path {} --mode vid'.format(output_path, args.dataset_path))
