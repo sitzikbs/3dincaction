@@ -22,15 +22,14 @@ frames_per_clip = args.frames_per_clip
 
 
 sets = ['train', 'test']
+n_points = 4096
 for set in sets:
-    path = os.path.normpath(output_dataset_dir)
-    split_path = path.split(os.sep)
-    split_path[-1] = split_path[-1]+'_'+str(frames_per_clip)
-    output_dataset_dir = os.path.join(output_dataset_dir, str(frames_per_clip))
-    n_points = 4096
-
-    outdir = os.path.join(output_dataset_dir, set)
+    output_dataset_dir_w_frames = os.path.join(output_dataset_dir, str(frames_per_clip))
+    outdir = os.path.join(output_dataset_dir_w_frames, set)
     os.makedirs(outdir, exist_ok=True)
+
+    gt_json_path = os.path.join(args.dataset_path, 'gt_segments.json')
+    os.system('cp %s %s' % (gt_json_path, output_dataset_dir_w_frames))  # copy gt file
 
     dataset = Dataset(dataset_path, db_filename='ikea_annotation_db_full', train_filename='train_cross_env.txt',
                             test_filename='test_cross_env.txt', set=set, camera='dev3', frame_skip=1,
@@ -43,8 +42,11 @@ for set in sets:
 
     out_dict = {'weights': weights,
                 'clip_set': dataset.clip_set,
-                'clip_label_count': dataset.clip_label_count}
-    with open(os.path.join(output_dataset_dir, set+'_aux.pickle'), 'wb') as f:
+                'clip_label_count': dataset.clip_label_count,
+                'num_classes': dataset.num_classes,
+                'video_list': dataset.video_list,
+                'action_list': dataset.action_list}
+    with open(os.path.join(outdir, set+'_aux.pickle'), 'wb') as f:
         pickle.dump(out_dict, f)
 
     for train_batchind, data in enumerate(dataloader):

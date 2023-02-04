@@ -15,7 +15,8 @@ import torch.optim as optim
 from torchvision import transforms
 # import videotransforms
 import numpy as np
-from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
+# from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
+from IKEAActionDatasetClips import IKEAActionDatasetClips as Dataset
 from tensorboardX import SummaryWriter
 
 from models.pytorch_i3d import InceptionI3d
@@ -93,10 +94,11 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
     test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
-    train_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
-                 transform=train_transforms, set='train', camera=camera, frame_skip=frame_skip,
-                            frames_per_clip=frames_per_clip, resize=None, mode=load_mode, input_type=input_type,
-                            n_points=args.n_points, cache_capacity=args.cache_capacity)
+    # train_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
+    #              transform=train_transforms, set='train', camera=camera, frame_skip=frame_skip,
+    #                         frames_per_clip=frames_per_clip, resize=None, mode=load_mode, input_type=input_type,
+    #                         n_points=args.n_points, cache_capacity=args.cache_capacity)
+    train_dataset = Dataset(dataset_path, set='train')
     print("Number of clips in the dataset:{}".format(len(train_dataset)))
     weights = utils.make_weights_for_balanced_classes(train_dataset.clip_set, train_dataset.clip_label_count)
     sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
@@ -104,11 +106,11 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=sampler,
                                                    num_workers=0, pin_memory=True)
 
-    test_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
-                           test_filename=testset_filename, transform=test_transforms, set='test', camera=camera,
-                           frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode=load_mode,
-                           input_type=input_type, n_points=args.n_points, cache_capacity=args.cache_capacity)
-
+    # test_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
+    #                        test_filename=testset_filename, transform=test_transforms, set='test', camera=camera,
+    #                        frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode=load_mode,
+    #                        input_type=input_type, n_points=args.n_points, cache_capacity=args.cache_capacity)
+    test_dataset = Dataset(dataset_path, set='test', camera=camera)
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
     num_classes = train_dataset.num_classes
