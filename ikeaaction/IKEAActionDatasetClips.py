@@ -17,6 +17,10 @@ class IKEAActionDatasetClips(Dataset):
         self.files_path = os.path.join(dataset_path, set)
         self.file_list = self.absolute_file_paths(self.files_path)
         self.file_list.sort()
+        # backwards compatibility
+        with open(os.path.join(self.dataset_path, set+'_aux.pickle'), 'rb') as f:
+            aux_data = pickle.load(f)
+        self.dataset = IKEADatasetBackwardsCompatible(aux_data['clip_set'],  aux_data['clip_label_count'])
         print("{}set contains {} clips".format(set, len(self.file_list)))
 
     def absolute_file_paths(self, directory):
@@ -31,6 +35,11 @@ class IKEAActionDatasetClips(Dataset):
         # data, labels, vid_idx, frame_pad = self.seq_cache.get(index)
 
         return data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
+
+class IKEADatasetBackwardsCompatible():
+    def __init__(self, clip_set, clip_label_count):
+        self.clip_set = clip_set
+        self.clip_label_count = clip_label_count
 
 
 if __name__ == '__main__':
