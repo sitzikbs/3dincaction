@@ -5,13 +5,16 @@ import os
 import argparse
 import numpy as np
 import sys
+
 import torch
 from sklearn.metrics import confusion_matrix
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add utils dir
 import utils
 import eval_utils
-from ikeaaction.IKEAActionDataset import IKEAActionDataset as Dataset
+# from ikeaaction.IKEAActionDataset import IKEAActionDataset as Dataset
+sys.path.append('../ikeaaction')
+from IKEAActionDatasetClips import IKEAActionDatasetClips as Dataset
 import matplotlib.pyplot as plt
 sys.path.append('evaluation')
 from eval_detection import ANETdetection
@@ -30,11 +33,12 @@ args = parser.parse_args()
 
 # load the gt and predicted data
 gt_json_path = os.path.join(args.dataset_path, 'gt_segments.json')
-dataset = Dataset(args.dataset_path, action_segments_filename=gt_json_path)
+dataset = Dataset(args.dataset_path, set='test')
 gt_labels = dataset.action_labels
+
 results_json = os.path.join(args.results_path, 'action_segments.json')
 results_npy = os.path.join(args.results_path, 'pred.npy')
-pred_labels = dataset.get_actions_labels_from_json(results_json, mode='pred')
+# pred_labels = dataset.get_actions_labels_from_json(results_json, mode='pred')
 
 # load the predicted data
 pred_data = np.load(results_npy, allow_pickle=True).item()

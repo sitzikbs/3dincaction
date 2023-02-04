@@ -16,7 +16,8 @@ from torchvision import transforms
 # import videotransforms
 import numpy as np
 # from pytorch_i3d import InceptionI3d
-from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
+# from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
+from IKEAActionDatasetClips import IKEAActionDatasetClips as Dataset
 import importlib.util
 import utils as point_utils
 
@@ -25,7 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input_type', type=str, default='pc', help='rgb | depth, indicating which data to load')
 parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skipping frames')
-parser.add_argument('--frames_per_clip', type=int, default=64, help='number of frames in a clip sequence')
+# parser.add_argument('--frames_per_clip', type=int, default=64, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
 parser.add_argument('--n_points', type=int, default=2048, help='number of points in a point cloud')
 parser.add_argument('--db_filename', type=str,
@@ -48,7 +49,7 @@ args = parser.parse_args()
 
 
 # from pointnet import PointNet4D
-def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, input_type='rgb',
+def run(dataset_path, db_filename, model_path, output_path, input_type='rgb',
         testset_filename='test_cross_env.txt', trainset_filename='train_cross_env.txt', frame_skip=1,
         batch_size=8, device='dev3', n_points=None, pc_model='pn1'):
 
@@ -64,11 +65,12 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
     #                        train_filename=trainset_filename, transform=test_transforms, set='test', camera=device,
     #                        frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode='img',
     #                        input_type=input_type, n_points=n_points)
-    test_dataset = Dataset(dataset_path, set='test', camera=device)
+    test_dataset = Dataset(dataset_path, set='test')
 
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
     num_classes = test_dataset.num_classes
+    frames_per_clip = test_dataset.frames_per_clip
     # setup the model
     checkpoints = torch.load(model_path)
     if input_type == 'flow':
@@ -191,6 +193,7 @@ def run(dataset_path, db_filename, model_path, output_path, frames_per_clip=64, 
     pred_labels_per_video = [np.array(pred_video_labels) for pred_video_labels in pred_labels_per_video]
     logits_per_video = [np.array(pred_video_logits) for pred_video_logits in logits_per_video]
 
+    print("saving results to : " + pred_output_filename)
     np.save(pred_output_filename, {'pred_labels': pred_labels_per_video, 'logits': logits_per_video})
     utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.video_list,
                                                test_dataset.action_list)
@@ -201,10 +204,10 @@ if __name__ == '__main__':
     output_path = os.path.join(args.model_path, 'results')
     os.makedirs(output_path, exist_ok=True)
     model_path = os.path.join(args.model_path, args.model)
-    dataset_path = os.path.join(args.dataset_path, str(args.frames_per_clip))
+    dataset_path = os.path.join(args.dataset_path)
     run(dataset_path=dataset_path, db_filename=args.db_filename, model_path=model_path,
         output_path=output_path, frame_skip=args.frame_skip,  input_type=args.input_type, batch_size=args.batch_size,
-        device=args.device, n_points=args.n_points, frames_per_clip=args.frames_per_clip, pc_model=args.pc_model,
+        device=args.device, n_points=args.n_points, pc_model=args.pc_model,
         )
     # run(dataset_path=args.dataset_path, db_filename=args.db_filename, model_path=model_path,
     #     output_path=output_path, frame_skip=args.frame_skip,  input_type=args.input_type, batch_size=args.batch_size,

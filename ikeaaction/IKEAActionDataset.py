@@ -223,10 +223,10 @@ class IKEAActionVideoClipDataset(IKEAActionDataset):
                  action_object_relation_filename='action_object_relation_list.txt', train_filename='train_cross_env.txt',
                  test_filename='test_cross_env.txt', transform=None, set='test', camera='dev3', frame_skip=1,
                  frames_per_clip=64, resize=None, mode='vid', input_type='rgb', n_points=None,
-                 cache_capacity=1):
+                 cache_capacity=1, action_segments_filename=''):
         super().__init__(dataset_path=dataset_path, db_filename=db_filename, action_list_filename=action_list_filename,
                  action_object_relation_filename=action_object_relation_filename, train_filename=train_filename,
-                         test_filename=test_filename)
+                         test_filename=test_filename, action_segments_filename=action_segments_filename)
 
         self.mode = mode
         self.transform = transform

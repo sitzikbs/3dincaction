@@ -87,6 +87,7 @@ def convert_frame_logits_to_segment_json(logits, json_filename, video_name_list,
         results[vid_name] = list_of_result_dicts
     json_dict_to_write["results"] = results
     json_dict_to_write["external_data"] = {"details": details}
+    print("Saving file: " + json_dict_to_write)
     with open(json_filename, 'w') as outfile:
         json.dump(json_dict_to_write, outfile)
 

@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
 parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skippig frames')
 parser.add_argument('--steps_per_update', type=int, default=10, help='number of steps per backprop update')
-parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
+# parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
 parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
 parser.add_argument('--n_epochs', type=int, default=31, help='number of epochs to train')
 parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
@@ -68,7 +68,7 @@ wandb.define_metric("train/step")
 wandb.define_metric("train/*", step_metric="train/step")
 wandb.define_metric("test/*", step_metric="train/step")
 
-def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/sitzikbs/6TB/ANU_ikea_dataset/',
+def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ikea_dataset/',
         train_filename='train_cross_env.txt', testset_filename='test_cross_env.txt',
         db_filename='../ikea_dataset_frame_labeler/ikea_annotation_db', logdir='',
         frame_skip=1, batch_size=8, camera='dev3', refine=False, refine_epoch=0, load_mode='vid',
@@ -114,7 +114,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/media/
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=8,
                                                   pin_memory=True)
     num_classes = train_dataset.num_classes
-
+    frames_per_clip = train_dataset.frames_per_clip
     if input_type == 'rgb':
         model = InceptionI3d(157, in_channels=3)
         model.load_state_dict(torch.load('pt_models/rgb_' + pretrained_model + '.pt'))
@@ -364,12 +364,12 @@ if __name__ == '__main__':
     # need to add argparse
     print("Starting training ...")
     print("Using data from {}".format(args.camera))
-    dataset_path = os.path.join(args.dataset_path, str(args.frames_per_clip))
-    run(init_lr=args.lr, dataset_path=dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
+    # dataset_path = os.path.join(args.dataset_path, str(args.frames_per_clip))
+    run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
         frame_skip=args.frame_skip, db_filename=args.db_filename, batch_size=args.batch_size, camera=args.camera,
         refine=args.refine, refine_epoch=args.refine_epoch, load_mode=args.load_mode, input_type=args.input_type,
         pretrained_model=args.pretrained_model, steps_per_update=args.steps_per_update,
-        frames_per_clip=args.frames_per_clip, pc_model=args.pc_model)
+        pc_model=args.pc_model)
     # run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
     #     frame_skip=args.frame_skip, db_filename=args.db_filename, batch_size=args.batch_size, camera=args.camera,
     #     refine=args.refine, refine_epoch=args.refine_epoch, load_mode=args.load_mode, input_type=args.input_type,

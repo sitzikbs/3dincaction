@@ -26,6 +26,8 @@ class IKEAActionDatasetClips(Dataset):
         self.num_classes = aux_data['num_classes']
         self.video_list = aux_data['video_list']
         self.action_list = aux_data['action_list']
+        self.frames_per_clip = aux_data['frames_per_clip']
+        self.action_labels = aux_data['action_labels']
         print("{}set contains {} clips".format(set, len(self.file_list)))
 
     def absolute_file_paths(self, directory):
