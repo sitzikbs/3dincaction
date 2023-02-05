@@ -280,7 +280,7 @@ if __name__ == '__main__':
     os.system('cp %s %s' % (args.config, os.path.join(logdir, 'config.yaml')))  # backup the models files
 
     wandb_run = wandb.init(project='IKEA ASM', save_code=True)
-    wandb_run.name = cfg['IDENTIFIER']
+    wandb_run.name = args.identifier
     wandb.config.update(cfg)  # adds all of the arguments as config variables
     wandb.run.log_code("../")
     wandb.define_metric("train/step")
