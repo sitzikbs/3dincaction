@@ -1,8 +1,8 @@
+import sys
 sys.path.append('../')
 import i3d_utils as utils
 import torch
 import os
-import sys
 import pickle
 import argparse
 from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
