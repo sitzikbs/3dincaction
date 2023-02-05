@@ -7,4 +7,5 @@
 **/build/
 **/dist/
 **/wandb/
+**config*
 temp.py

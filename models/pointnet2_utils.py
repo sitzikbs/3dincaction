@@ -151,7 +151,7 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
     B, N, C = xyz.shape
     S = npoint
     fps_idx = farthest_point_sample(xyz, npoint) # [B, npoint, C]
-    new_xyz = index_points(xyz, fps_idx)
+    new_xyz = index_points(xyz, fps_idx.to(torch.int64))
 
     # idx = query_ball_point(radius, nsample, xyz, new_xyz)
     dists = square_distance(new_xyz, xyz)  # B x npoint x N
@@ -273,7 +273,7 @@ class PointNetSetAbstraction(nn.Module):
         """
         b, t, k, n = xyz.shape
         xyz = xyz.reshape(-1, k, n)
-        xyz = xyz.permute(0, 2, 1)
+        xyz = xyz.permute(0, 2, 1).contiguous()
         if points is not None:
             points = points.permute(0, 1, 3, 2)
             points = points.reshape(-1, points.shape[-2], points.shape[-1])

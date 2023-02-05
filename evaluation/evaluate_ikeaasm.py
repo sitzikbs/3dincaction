@@ -28,7 +28,7 @@ parser.add_argument('--identifier', type=str, default='debug', help='unique run 
 args = parser.parse_args()
 
 
-cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, './config.yaml')))
+cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, 'config.yaml')))
 results_path = os.path.join(args.logdir, args.identifier, 'results/')
 
 # load the gt and predicted data
