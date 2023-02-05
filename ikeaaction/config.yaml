@@ -1,5 +1,5 @@
 MODEL:
-  pc_model: 'pn1' # which model to use for point cloud processing
+  pc_model: 'pn2' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   PATCHLET:

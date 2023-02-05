@@ -155,7 +155,7 @@ def run(cfg, logdir):
             num_iter += 1
             # get the inputs
             inputs, labels, vid_idx, frame_pad = data
-            inputs = inputs.cuda().requires_grad_().contiguous()
+            inputs = inputs.cuda().requires_grad_()
             labels = labels.cuda()
 
             inputs = inputs[:, :, 0:3, :]
