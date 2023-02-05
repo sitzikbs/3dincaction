@@ -7,7 +7,6 @@ import torch
 import json
 import torchvision.io
 import plyfile
-import models.pointnet2_utils as pointnet2_utils
 from scipy.spatial import KDTree
 
 
