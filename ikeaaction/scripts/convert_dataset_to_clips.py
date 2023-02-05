@@ -1,10 +1,10 @@
+sys.path.append('../')
 import i3d_utils as utils
 import torch
 import os
 import sys
 import pickle
 import argparse
-sys.path.append('../')
 from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
 
 parser = argparse.ArgumentParser()
