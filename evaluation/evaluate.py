@@ -17,26 +17,38 @@ sys.path.append('evaluation')
 from eval_detection import ANETdetection
 from eval_classification import ANETclassification
 import sklearn
+import yaml
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--results_path', type=str,
+#                     default='../log/pn1_f32_p1024_shuffle_once/results/',
+#                     help='label prediction file')
+# parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/dfaust/',
+#                     help='path to ground truth action segments json file')
+# parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate')
+# parser.add_argument('--gender', type=str,
+#                     default='all', help='female | male | all indicating which subset of the dataset to use')
+# parser.add_argument('--gt_segments_json_filename', type=str, default='gt_segments',
+#                     help='name of gt json filename to load')
+# args = parser.parse_args()
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--results_path', type=str,
-                    default='../log/pn1_f32_p1024_shuffle_once/results/',
-                    help='label prediction file')
-parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/dfaust/',
-                    help='path to ground truth action segments json file')
-parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate')
-parser.add_argument('--gender', type=str,
-                    default='all', help='female | male | all indicating which subset of the dataset to use')
-parser.add_argument('--gt_segments_json_filename', type=str, default='gt_segments',
-                    help='name of gt json filename to load')
+parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
+parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
 args = parser.parse_args()
 
+cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, 'config.yaml')))
+results_path = os.path.join(args.logdir, args.identifier, 'results/')
+dataset_path = cfg['DATA']['dataset_path']
+subset = cfg['TESTING']['set']
+gender = cfg['DATA']['gender']
+
 # load the gt and predicted data
-gt_json_path = os.path.join(args.dataset_path, args.gt_segments_json_filename)
-dataset = Dataset(args.dataset_path, set=args.set, gender=args.gender)
+gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments_'+gender+'.json')
+dataset = Dataset(dataset_path, set=subset, gender=gender)
 gt_labels = dataset.action_dataset.label_per_frame
-results_json = os.path.join(args.results_path, args.set + '_action_segments.json')
-results_npy = os.path.join(args.results_path, args.set + '_pred.npy')
+
+results_json = os.path.join(results_path, subset + '_action_segments.json')
+results_npy = os.path.join(results_path, subset + '_pred.npy')
 pred_labels = dataset.get_actions_labels_from_json(results_json, mode='pred')
 
 # load the predicted data
@@ -92,7 +104,7 @@ print(balanced_score_str)
 
 
 # output the dataset total score
-with open(os.path.join(args.results_path, 'scores.txt'), 'w') as file:
+with open(os.path.join(results_path, 'scores.txt'), 'w') as file:
     file.writelines(localization_score_str)
     file.writelines(classification_score_str)
     file.writelines(scores_str)
@@ -111,5 +123,5 @@ fig, ax = utils.plot_confusion_matrix(cm=c_matrix,
                       cmap=None,
                       normalize=True)
 
-plt.savefig(os.path.join(args.results_path, 'confusion_matrix.png'))
+plt.savefig(os.path.join(results_path, 'confusion_matrix.png'))
 

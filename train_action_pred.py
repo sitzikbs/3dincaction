@@ -2,7 +2,7 @@
 # train 3DInAction on Dfaust dataset
 
 import os
-
+import yaml
 import argparse
 import i3d_utils as utils
 import torch
@@ -21,68 +21,47 @@ from models.patchlets import PointNet2Patchlets, PointNet2Patchlets_v2
 
 from torch.multiprocessing import set_start_method
 import wandb
-wandb.init()
+
 
 np.random.seed(0)
 torch.manual_seed(0)
-
 parser = argparse.ArgumentParser()
-parser.add_argument('--pc_model', type=str, default='pn2_patchlets', help='which model to use for point cloud processing: pn1 | pn2 ')
-parser.add_argument('--steps_per_update', type=int, default=1, help='number of steps per backprop update')
-parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
-parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs to train')
-parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--logdir', type=str, default='./log/debug/', help='path to model save dir')
-parser.add_argument('--dataset_path', type=str,
-                    default='/home/sitzikbs/Datasets/dfaust/', help='path to dataset')
-parser.add_argument('--refine', action="store_true", help='flag to refine the model')
-parser.add_argument('--refine_epoch', type=int, default=0, help='refine model from this epoch')
-parser.add_argument('--pretrained_model', type=str, default=None, help='path to pretrained model')
-parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
-parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--shuffle_points', type=str, default='fps_each_frame', help=' each | none | fps_each_frame| fps_each '
-                                                                       'shuffle the input points '
-                                                                       'at initialization | for each batch example | no shufll')
-parser.add_argument('--sampler', type=str, default='weighted', help='weighted | none how to sample the clips ')
-parser.add_argument('--data_augmentation', type=str, nargs='+', default=['none'], help='apply input data point augmentations')
-parser.add_argument('--gender', type=str,
-                    default='female', help='female | male | all indicating which subset of the dataset to use')
-
-parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
-                    help='jitter to add to nearest neighbor when generating the patchlets')
-parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn | randn | mean type of patchlet sampling')
-parser.add_argument('--k', type=int, default=16, help='number of nearest neighbors')
+parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
+parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
+parser.add_argument('--config', type=str, default='./config_dfaust.yaml', help='path to configuration yaml file')
 args = parser.parse_args()
 
-wandb.config.update(args) # adds all of the arguments as config variables
-wandb.run.log_code(".")
-# define our custom x axis metric
-wandb.define_metric("train/step")
-wandb.define_metric("train/*", step_metric="train/step")
-wandb.define_metric("test/*", step_metric="train/step")
 
-def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/sitzikbs/Datasets/dfaust/',
-        logdir='', batch_size=8, refine=False, refine_epoch=0,
-        pretrained_model='charades', steps_per_update=1, pc_model='pn1'):
-    data_augmentation = ['jitter'] if args.data_augmentation == 1 else False
+def run(cfg, logdir):
+    max_steps = cfg['TRAINING']['n_epochs'] + 1
+    lr = cfg['TRAINING']['lr']
+    dataset_path = cfg['DATA']['dataset_path']
+    batch_size = cfg['TRAINING']['batch_size']
+    data_aug_train = cfg['TRAINING']['aug']
+    refine, refine_epoch = cfg['TRAINING']['refine'], cfg['TRAINING']['refine_epoch']
+    pretrained_model = cfg['TRAINING']['pretrained_model']
+    data_aug_test = cfg['TESTING']['aug']
+    pc_model = cfg['MODEL']['pc_model']
+    shuffle_points = cfg['DATA']['shuffle_points']
+    frames_per_clip = cfg['DATA']['frames_per_clip']
+    n_points = cfg['DATA']['n_points']
+    gender = cfg['DATA']['gender']
+    data_sampler = cfg['DATA']['data_sampler']
+    num_steps_per_update = cfg['TRAINING']['steps_per_update']
 
-    os.makedirs(logdir, exist_ok=True)
+
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('./models/pointnet.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/pytorch_3dmfv.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('./models/patchlets.py', logdir))  # backup the models files
 
-    params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
-    torch.save(args, params_filename)
-
     # setup dataset
-    train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=args.n_points,
-                            shuffle_points=args.shuffle_points, data_augmentation=data_augmentation, gender=args.gender)
+    train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=n_points,
+                            shuffle_points=shuffle_points, data_augmentation=data_aug_train, gender=gender)
     print("Number of clips in the trainingset:{}".format(len(train_dataset)))
 
-    if args.sampler == 'weighted':
+    if data_sampler == 'weighted':
         weights = train_dataset.make_weights_for_balanced_classes()
         sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
         train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
@@ -91,8 +70,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
         train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0,
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
-    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=args.n_points,
-                           shuffle_points=args.shuffle_points, gender=args.gender, data_augmentation=data_augmentation)
+    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=n_points,
+                           shuffle_points=shuffle_points, gender=gender, data_augmentation=data_aug_test)
     print("Number of clips in the testset:{}".format(len(test_dataset)))
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)
@@ -111,11 +90,13 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     elif pc_model == 'pn2_4d_basic':
         model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_patchlets':
-        model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip, sample_mode=args.patchlet_sample_mode,
-                                          add_centroid_jitter=args.patchlet_centroid_jitter,
-                                      k=args.k)
+        model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip,
+                                      sample_mode=cfg['MODEL']['PATCHLET']['patchlet_sample_mode'],
+                                      add_centroid_jitter=cfg['MODEL']['PATCHLET']['patchlet_centroid_jitter'],
+                                      k=cfg['MODEL']['PATCHLET']['k'])
     elif pc_model == '3dmfv':
-        model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=num_classes, n_frames=frames_per_clip)
+        model = FourDmFVNet(n_gaussians=cfg['MODEL']['3DMFV']['n_gaussians'], num_classes=num_classes,
+                            n_frames=frames_per_clip)
     else:
         raise ValueError("point cloud architecture not supported. Check the pc_model input")
 
@@ -135,7 +116,6 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     model.cuda()
     model = nn.DataParallel(model)
 
-    lr = init_lr
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1E-6)
     # lr_sched = optim.lr_scheduler.MultiStepLR(optimizer, [50, 100, 150, 200])
     lr_sched = optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
@@ -147,10 +127,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
     train_writer = SummaryWriter(os.path.join(logdir, 'train'))
     test_writer = SummaryWriter(os.path.join(logdir, 'test'))
 
-    num_steps_per_update = steps_per_update # 4 * 5 # accum gradient - try to have number of examples per update match original code 8*5*4
     steps = 0
-
-    # train it
     n_examples = 0
     train_num_batch = len(train_dataloader)
     test_num_batch = len(test_dataloader)
@@ -205,7 +182,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             loss.backward()
 
             acc = utils.accuracy_v2(torch.argmax(per_frame_logits, dim=1), torch.argmax(labels, dim=1))
-            # acc = utils.accuracy(per_frame_logits, labels)
+
 
             avg_acc.append(acc.item())
 
@@ -247,13 +224,8 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 
                 with torch.no_grad():
 
-                    # inputs = inputs[:, :, 0:3, :]
-                    # t = inputs.size(1)
                     out_dict = model(inputs)
                     per_frame_logits = out_dict['pred']
-                    # per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear', align_corners=True)
-
-
                     # compute localization loss
                     loc_loss = F.binary_cross_entropy_with_logits(per_frame_logits, labels)
 
@@ -291,7 +263,7 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
             torch.save({"model_state_dict": model.module.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
                         "lr_state_dict": lr_sched.state_dict()},
-                       logdir + str(steps).zfill(6) + '.pt')
+                       os.path.join(logdir, str(steps).zfill(6) + '.pt'))
 
         steps += 1
         lr_sched.step()
@@ -301,9 +273,20 @@ def run(init_lr=0.001, max_steps=64e3, frames_per_clip=16, dataset_path='/home/s
 
 if __name__ == '__main__':
     # set_start_method('spawn')
+    cfg = yaml.safe_load(open(args.config))
+    logdir = os.path.join(args.logdir, args.identifier)
+    os.makedirs(logdir, exist_ok=True)
+    os.system('cp %s %s' % (args.config, os.path.join(logdir, 'config.yaml')))  # backup the models files
+
+    wandb_run = wandb.init(project='DFAUST', save_code=True)
+    wandb_run.name = args.identifier
+    wandb.config.update(args)  # adds all of the arguments as config variables
+    wandb.run.log_code(".")
+    # define our custom x axis metric
+    wandb.define_metric("train/step")
+    wandb.define_metric("train/*", step_metric="train/step")
+    wandb.define_metric("test/*", step_metric="train/step")
+
     # need to add argparse
     print("Starting training ...")
-    run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs+1,
-        batch_size=args.batch_size,  refine=args.refine, refine_epoch=args.refine_epoch,
-        pretrained_model=args.pretrained_model, steps_per_update=args.steps_per_update,
-        frames_per_clip=args.frames_per_clip, pc_model=args.pc_model)
+    run(cfg, logdir)

@@ -62,12 +62,12 @@ def run(cfg, logdir, model_path, output_path):
         spec.loader.exec_module(pointnet)
         model = pointnet.PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn2':
-            spec = importlib.util.spec_from_file_location("PointNetPP4D",
+            spec = importlib.util.spec_from_file_location("PointNet2",
                                                           os.path.join(logdir, "pointnet2_cls_ssg.py"))
             pointnet_pp = importlib.util.module_from_spec(spec)
-            sys.modules["PointNetPP4D"] = pointnet_pp
+            sys.modules["PointNet2"] = pointnet_pp
             spec.loader.exec_module(pointnet_pp)
-            model = pointnet_pp.PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
+            model = pointnet_pp.PointNet2(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_4d':
             spec = importlib.util.spec_from_file_location("PointNetPP4D",
                                                           os.path.join(logdir, "pointnet2_cls_ssg.py"))
@@ -148,7 +148,6 @@ def run(cfg, logdir, model_path, output_path):
 
 
 if __name__ == '__main__':
-    # need to add argparse
     cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, 'config.yaml')))
     logdir = os.path.join(args.logdir, args.identifier)
     output_path = os.path.join(logdir, 'results')

@@ -35,7 +35,7 @@ args = parser.parse_args()
 
 
 def run(cfg, logdir):
-    max_steps = 64e3
+    max_steps = cfg['TRAINING']['n_epochs'] + 1
     lr = cfg['TRAINING']['lr']
     dataset_path = cfg['DATA']['dataset_path']
     batch_size = cfg['TRAINING']['batch_size']
