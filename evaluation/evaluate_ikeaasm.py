@@ -27,24 +27,18 @@ parser.add_argument('--logdir', type=str, default='./log/', help='path to model 
 parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
 args = parser.parse_args()
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--results_path', type=str,
-#                     default='../log/pointnet_baseline/results/',
-#                     help='label prediction file')
-# parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/',
-#                     help='path to ground truth action segments json file')
-# parser.add_argument('--mode', type=str, default='frame', help='dataset format mode frame | vid')
-# args = parser.parse_args()
+
 cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, './config.yaml')))
+results_path = os.path.join(args.logdir, args.identifier, 'results/')
+
 # load the gt and predicted data
 gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments.json')
 dataset = Dataset(cfg['DATA']['dataset_path'], set='test')
 gt_labels = dataset.action_labels
 
-results_json = os.path.join(args.results_path, 'action_segments.json')
-results_npy = os.path.join(args.results_path, 'pred.npy')
-# pred_labels = dataset.get_actions_labels_from_json(results_json, mode='pred')
-
+results_json = os.path.join(results_path, 'action_segments.json')
+results_npy = os.path.join(results_path, 'pred.npy')
+#
 # load the predicted data
 pred_data = np.load(results_npy, allow_pickle=True).item()
 pred_labels = pred_data['pred_labels']

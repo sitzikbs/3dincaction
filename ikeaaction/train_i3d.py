@@ -30,6 +30,7 @@ import wandb
 parser = argparse.ArgumentParser()
 parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
 parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
+parser.add_argument('--config', type=str, default='./config.yaml', help='path to configuration yaml file')
 args = parser.parse_args()
 
 
@@ -272,11 +273,11 @@ def run(cfg, logdir):
 
 
 if __name__ == '__main__':
-    cfg = yaml.safe_load(open('./config.yaml'))
+    cfg = yaml.safe_load(open(args.config))
     logdir = os.path.join(args.logdir, args.identifier)
 
     os.makedirs(logdir, exist_ok=True)
-    os.system('cp %s %s' % ('./config.yaml', os.path.join(logdir, 'config.yaml')))  # backup the models files
+    os.system('cp %s %s' % (args.config, os.path.join(logdir, 'config.yaml')))  # backup the models files
 
     wandb_run = wandb.init(project='IKEA ASM', save_code=True)
     wandb_run.name = cfg['IDENTIFIER']
