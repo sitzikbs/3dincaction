@@ -21,6 +21,6 @@ TESTING:
 
 
 DATA:
-  dataset_path: '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
+  dataset_path: '/data1/datasets/ANU_ikea_dataset_smaller_clips/32/'
   frame_skip: 1
-  n_points: 1024
+  n_points: 4096

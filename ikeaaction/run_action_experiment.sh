@@ -6,7 +6,8 @@ export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
 IDENTIFIER='debug'
 CONFIG='./config.yaml'
+LOGDIR='./log/'
 
-python train_i3d.py --identifier $IDENTIFIER --config $CONFIG
-python test_i3d.py --identifier $IDENTIFIER --model_ckpt '000000.pt'
-python3 ../evaluation/evaluate_ikeaasm.py --identifier $IDENTIFIER
+python train_i3d.py --identifier $IDENTIFIER --config $CONFIG --logdir $LOGDIR
+python test_i3d.py --identifier $IDENTIFIER --model_ckpt '000000.pt' --logdir $LOGDIR
+python3 ../evaluation/evaluate_ikeaasm.py --identifier $IDENTIFIER --logdir $LOGDIR

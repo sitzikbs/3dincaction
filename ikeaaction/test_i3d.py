@@ -149,7 +149,7 @@ def run(cfg, logdir, model_path, output_path):
 
 if __name__ == '__main__':
     # need to add argparse
-    cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, './config.yaml')))
+    cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, 'config.yaml')))
     logdir = os.path.join(args.logdir, args.identifier)
     output_path = os.path.join(logdir, 'results')
     os.makedirs(output_path, exist_ok=True)
