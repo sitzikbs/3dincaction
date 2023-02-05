@@ -1,10 +1,10 @@
-# Author: Yizhak Ben-Shabat (Itzik), 2022
+# Author: Yizhak Ben-Shabat (Itzik), 2023
 # train action recognition on the ikea ASM dataset
 
 import os
 import sys
+import yaml
 sys.path.append('../')
-# import sys
 import argparse
 import i3d_utils as utils
 import utils as point_utils
@@ -13,9 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import transforms
-# import videotransforms
 import numpy as np
-# from IKEAActionDataset import IKEAActionVideoClipDataset as Dataset
 from IKEAActionDatasetClips import IKEAActionDatasetClips as Dataset
 from tensorboardX import SummaryWriter
 
@@ -27,77 +25,34 @@ from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 from models.patchlets import PointNet2Patchlets_v2
 
 import wandb
-wandb.init()
+
 
 parser = argparse.ArgumentParser()
-# parser.add_argument('--mode', type=str, default='rgb', help='rgb or flow')
-parser.add_argument('--pc_model', type=str, default='pn1', help='which model to use for point cloud processing: pn1 | pn2 ')
-parser.add_argument('--frame_skip', type=int, default=1, help='reduce fps by skippig frames')
-parser.add_argument('--steps_per_update', type=int, default=10, help='number of steps per backprop update')
-# parser.add_argument('--frames_per_clip', type=int, default=32, help='number of frames in a clip sequence')
-parser.add_argument('--batch_size', type=int, default=2, help='number of clips per batch')
-parser.add_argument('--n_epochs', type=int, default=31, help='number of epochs to train')
-parser.add_argument('--n_points', type=int, default=1024, help='number of points in a point cloud')
-parser.add_argument('--db_filename', type=str, default='ikea_annotation_db_full',
-                    help='database file name within dataset path')
-parser.add_argument('--logdir', type=str, default='./log/debug/', help='path to model save dir')
-parser.add_argument('--dataset_path', type=str,
-                    default='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/', help='path to dataset')
-parser.add_argument('--load_mode', type=str, default='img', help='dataset loader mode to load videos or images: '
-                                                                 'vid | img')
-parser.add_argument('--camera', type=str, default='dev3', help='dataset camera view: dev1 | dev2 | dev3 ')
-parser.add_argument('--refine', action="store_true", help='flag to refine the model')
-parser.add_argument('--refine_epoch', type=int, default=0, help='refine model from this epoch')
-parser.add_argument('--input_type', type=str, default='pc', help='pc | depth | rgb | flow support will be added later')
-parser.add_argument('--pretrained_model', type=str, default=None, help='path to pretrained model')
-parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
-parser.add_argument('--n_gaussians', type=int, default=8, help='number of gaussians for 3DmFV representation')
-parser.add_argument('--cache_capacity', type=int, default=512, help='number of sequences to store in cache for faster '
-                                                                  'loading. 0 will cache all of the dataset')
-
-parser.add_argument('--patchlet_centroid_jitter', type=float, default=0.005,
-                    help='jitter to add to nearest neighbor when generating the patchlets')
-parser.add_argument('--patchlet_sample_mode', type=str, default='nn', help='nn | randn | mean type of patchlet sampling')
-parser.add_argument('--k', type=int, default=16, help='number of nearest neighbors')
+parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
+parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
 args = parser.parse_args()
 
-wandb.config.update(args) # adds all of the arguments as config variables
-wandb.run.log_code(".")
-# define our custom x axis metric
-wandb.define_metric("train/step")
-wandb.define_metric("train/*", step_metric="train/step")
-wandb.define_metric("test/*", step_metric="train/step")
 
-def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ikea_dataset/',
-        train_filename='train_cross_env.txt', testset_filename='test_cross_env.txt',
-        db_filename='../ikea_dataset_frame_labeler/ikea_annotation_db', logdir='',
-        frame_skip=1, batch_size=8, camera='dev3', refine=False, refine_epoch=0, load_mode='vid',
-        input_type='rgb', pretrained_model='charades', steps_per_update=1, pc_model='pn1'):
+def run(cfg, logdir):
+    max_steps = 64e3
+    lr = cfg['TRAINING']['lr']
+    dataset_path = cfg['DATA']['dataset_path']
+    batch_size = cfg['TRAINING']['batch_size']
+    refine, refine_epoch = cfg['TRAINING']['refine'], cfg['TRAINING']['refine_epoch']
+    pretrained_model = cfg['TRAINING']['pretrained_model']
+    pc_model = cfg['MODEL']['pc_model']
+    num_steps_per_update = cfg['TRAINING']['steps_per_update']
 
-    os.makedirs(logdir, exist_ok=True)
+
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('../models/pytorch_i3d.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pointnet.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/patchlets.py', logdir))  # backup the models files
-    params_filename = os.path.join(logdir, 'params.pth')  # backup parameters file
-    torch.save(args, params_filename)
 
-    # setup dataset
-    # train_transforms = transforms.Compose([videotransforms.RandomCrop(224),
-    #                                        videotransforms.RandomHorizontalFlip(),
-    # ])
-    train_transforms = transforms.Compose([transforms.RandomCrop(224),
-                                           transforms.RandomHorizontalFlip(p=0.5)
-                                           ])
-    # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
-    test_transforms = transforms.Compose([transforms.CenterCrop(224)])
+    # TODO add transforms to training
 
-    # train_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
-    #              transform=train_transforms, set='train', camera=camera, frame_skip=frame_skip,
-    #                         frames_per_clip=frames_per_clip, resize=None, mode=load_mode, input_type=input_type,
-    #                         n_points=args.n_points, cache_capacity=args.cache_capacity)
     train_dataset = Dataset(dataset_path, set='train')
     print("Number of clips in the dataset:{}".format(len(train_dataset)))
     weights = utils.make_weights_for_balanced_classes(train_dataset.clip_set, train_dataset.clip_label_count)
@@ -106,47 +61,34 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=sampler,
                                                    num_workers=8, pin_memory=True)
 
-    # test_dataset = Dataset(dataset_path, db_filename=db_filename, train_filename=train_filename,
-    #                        test_filename=testset_filename, transform=test_transforms, set='test', camera=camera,
-    #                        frame_skip=frame_skip, frames_per_clip=frames_per_clip, resize=None, mode=load_mode,
-    #                        input_type=input_type, n_points=args.n_points, cache_capacity=args.cache_capacity)
+
     test_dataset = Dataset(dataset_path, set='test')
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=8,
                                                   pin_memory=True)
     num_classes = train_dataset.num_classes
     frames_per_clip = train_dataset.frames_per_clip
-    if input_type == 'rgb':
-        model = InceptionI3d(157, in_channels=3)
-        model.load_state_dict(torch.load('pt_models/rgb_' + pretrained_model + '.pt'))
-        model.replace_logits(num_classes)
-    elif input_type == 'depth':
-        model = InceptionI3d(157, in_channels=3)
-        checkpoints = torch.load(pretrained_model)
-        model.load_state_dict(checkpoints["model_state_dict"])  # load trained model
-        model.replace_logits(num_classes)
-    elif input_type == 'pc':
-        k = 157 if pretrained_model is not None else num_classes
-        if pc_model == 'pn1':
-            model = PointNet1(k=k, feature_transform=True)
-        elif pc_model == 'pn1_4d':
-            model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
-        elif pc_model == 'pn1_4d_basic':
-            model = PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
-        elif pc_model == 'pn2':
-            model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
-        elif pc_model == 'pn2_4d':
-            model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
-        elif pc_model == 'pn2_4d_basic':
-            model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
-        elif pc_model == 'pn2_patchlets':
-            model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip, sample_mode=args.patchlet_sample_mode,
-                                          add_centroid_jitter=args.patchlet_centroid_jitter, k=args.k)
-        elif pc_model == '3dmfv':
-            model = FourDmFVNet(n_gaussians=args.n_gaussians, num_classes=k, n_frames=frames_per_clip)
-        else:
-            raise ValueError("point cloud architecture not supported. Check the pc_model input")
+
+    if pc_model == 'pn1':
+        model = PointNet1(k=num_classes, feature_transform=True)
+    elif pc_model == 'pn1_4d':
+        model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+    elif pc_model == 'pn1_4d_basic':
+        model = PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+    elif pc_model == 'pn2':
+        model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'pn2_4d':
+        model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'pn2_4d_basic':
+        model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'pn2_patchlets':
+        model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip,
+                                      sample_mode=cfg['MODEL']['PATCHLET']['patchlet_sample_mode'],
+                                      add_centroid_jitter=cfg['MODEL']['PATCHLET']['patchlet_centroid_jitter'],
+                                      k=cfg['MODEL']['PATCHLET']['k'])
+    elif pc_model == '3dmfv':
+        model = FourDmFVNet(n_gaussians=cfg['MODEL']['3DMFV']['n_gaussians'], num_classes=num_classes, n_frames=frames_per_clip)
     else:
-        raise ValueError("Unsupported input type")
+        raise ValueError("point cloud architecture not supported. Check the pc_model input")
 
 
     if pretrained_model is not None:
@@ -154,20 +96,6 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
         model.load_state_dict(checkpoints["model_state_dict"])  # load trained model
         model.replace_logits(num_classes)
 
-    if not input_type == 'pc':
-        for name, param in model.named_parameters():  # freeze i3d parameters
-            if 'logits' in name:
-                param.requires_grad = True
-            elif 'Mixed_5c' in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
-    # elif pc_model == 'pn1':
-    #     for name, param in model.named_parameters():  # freeze i3d parameters
-    #         if 'fc3' in name:
-    #             param.requires_grad = True
-    #         else:
-    #             param.requires_grad = False
     else:
         for name, param in model.named_parameters():
             param.requires_grad = True
@@ -182,7 +110,6 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
     model.cuda()
     model = nn.DataParallel(model)
 
-    lr = init_lr
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1E-6)
     lr_sched = optim.lr_scheduler.MultiStepLR(optimizer, [10, 20, 30, 40])
 
@@ -193,10 +120,7 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
     train_writer = SummaryWriter(os.path.join(logdir, 'train'))
     test_writer = SummaryWriter(os.path.join(logdir, 'test'))
 
-    num_steps_per_update = steps_per_update # 4 * 5 # accum gradient - try to have number of examples per update match original code 8*5*4
-    # eval_steps  = 5
     steps = 0
-    # train it
     n_examples = 0
     train_num_batch = len(train_dataloader)
     test_num_batch = len(test_dataloader)
@@ -212,8 +136,8 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
             continue
         else:
             refine_flag = False
-        # Each epoch has a training and validation phase
 
+        # Each epoch has a training and validation phase
         test_batchind = -1
         test_fraction_done = 0.0
         test_enum = enumerate(test_dataloader, 0)
@@ -233,18 +157,12 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
             inputs = inputs.cuda().requires_grad_().contiguous()
             labels = labels.cuda()
 
-            if input_type == 'pc':
-                inputs = inputs[:, :, 0:3, :]
-                t = inputs.size(1)
-                out_dict = model(inputs)
-                per_frame_logits = out_dict['pred']
-                if pc_model == 'pn1':
-                    trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
-                # per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear', align_corners=True)
-            else:
-                t = inputs.size(2)
-                per_frame_logits = model(inputs)
-                per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear', align_corners=True)
+            inputs = inputs[:, :, 0:3, :]
+            out_dict = model(inputs)
+            per_frame_logits = out_dict['pred']
+            if pc_model == 'pn1':
+                trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
+
 
             # compute localization loss
             loc_loss = F.binary_cross_entropy_with_logits(per_frame_logits, labels)
@@ -261,7 +179,6 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
             loss.backward()
 
             acc = utils.accuracy_v2(torch.argmax(per_frame_logits, dim=1), torch.argmax(labels, dim=1))
-            # acc = utils.accuracy(per_frame_logits, labels)
 
             avg_acc.append(acc.item())
 
@@ -303,18 +220,12 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
                 labels = labels.cuda()
 
                 with torch.no_grad():
-                    if input_type == 'pc':
-                        inputs = inputs[:, :, 0:3, :]
-                        t = inputs.size(1)
-                        out_dict = model(inputs)
-                        per_frame_logits = out_dict['pred']
-                        if pc_model == 'pn1':
-                            trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
-                        # per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear', align_corners=True)
-                    else:
-                        t = inputs.size(2)
-                        per_frame_logits = model(inputs)
-                        per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear', align_corners=True)
+
+                    inputs = inputs[:, :, 0:3, :]
+                    out_dict = model(inputs)
+                    per_frame_logits = out_dict['pred']
+                    if pc_model == 'pn1':
+                        trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
 
                     # compute localization loss
                     loc_loss = F.binary_cross_entropy_with_logits(per_frame_logits, labels)
@@ -352,7 +263,7 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
             torch.save({"model_state_dict": model.module.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
                         "lr_state_dict": lr_sched.state_dict()},
-                       logdir + str(steps).zfill(6) + '.pt')
+                       os.path.join(logdir,str(steps).zfill(6) + '.pt'))
 
         steps += 1
         lr_sched.step()
@@ -361,17 +272,20 @@ def run(init_lr=0.001, max_steps=64e3, dataset_path='/media/sitzikbs/6TB/ANU_ike
 
 
 if __name__ == '__main__':
+    cfg = yaml.safe_load(open('./config.yaml'))
+    logdir = os.path.join(args.logdir, args.identifier)
+
+    os.makedirs(logdir, exist_ok=True)
+    os.system('cp %s %s' % ('./config.yaml', os.path.join(logdir, 'config.yaml')))  # backup the models files
+
+    wandb_run = wandb.init(project='IKEA ASM', save_code=True)
+    wandb_run.name = cfg['IDENTIFIER']
+    wandb.config.update(cfg)  # adds all of the arguments as config variables
+    wandb.run.log_code("../")
+    wandb.define_metric("train/step")
+    wandb.define_metric("train/*", step_metric="train/step")
+    wandb.define_metric("test/*", step_metric="train/step")
+
     # need to add argparse
     print("Starting training ...")
-    print("Using data from {}".format(args.camera))
-    # dataset_path = os.path.join(args.dataset_path, str(args.frames_per_clip))
-    run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
-        frame_skip=args.frame_skip, db_filename=args.db_filename, batch_size=args.batch_size, camera=args.camera,
-        refine=args.refine, refine_epoch=args.refine_epoch, load_mode=args.load_mode, input_type=args.input_type,
-        pretrained_model=args.pretrained_model, steps_per_update=args.steps_per_update,
-        pc_model=args.pc_model)
-    # run(init_lr=args.lr, dataset_path=args.dataset_path, logdir=args.logdir, max_steps=args.n_epochs,
-    #     frame_skip=args.frame_skip, db_filename=args.db_filename, batch_size=args.batch_size, camera=args.camera,
-    #     refine=args.refine, refine_epoch=args.refine_epoch, load_mode=args.load_mode, input_type=args.input_type,
-    #     pretrained_model=args.pretrained_model, steps_per_update=args.steps_per_update,
-    #     frames_per_clip=args.frames_per_clip, pc_model=args.pc_model)
+    run(cfg, logdir)

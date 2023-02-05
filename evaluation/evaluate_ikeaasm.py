@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add utils dir
 import utils
 import eval_utils
+import yaml
 # from ikeaaction.IKEAActionDataset import IKEAActionDataset as Dataset
 sys.path.append('../ikeaaction')
 from IKEAActionDatasetClips import IKEAActionDatasetClips as Dataset
@@ -22,18 +23,22 @@ from eval_classification import ANETclassification
 import sklearn
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--results_path', type=str,
-                    default='../log/pointnet_baseline/results/',
-                    help='label prediction file')
-parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/',
-                    help='path to ground truth action segments json file')
-parser.add_argument('--testset_filename', type=str, default='test_cross_env.txt', help='test file list')
-parser.add_argument('--mode', type=str, default='frame', help='dataset format mode frame | vid')
+parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
+parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
 args = parser.parse_args()
 
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--results_path', type=str,
+#                     default='../log/pointnet_baseline/results/',
+#                     help='label prediction file')
+# parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/datasets/ANU_ikea_dataset_smaller/',
+#                     help='path to ground truth action segments json file')
+# parser.add_argument('--mode', type=str, default='frame', help='dataset format mode frame | vid')
+# args = parser.parse_args()
+cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, './config.yaml')))
 # load the gt and predicted data
-gt_json_path = os.path.join(args.dataset_path, 'gt_segments.json')
-dataset = Dataset(args.dataset_path, set='test')
+gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments.json')
+dataset = Dataset(cfg['DATA']['dataset_path'], set='test')
 gt_labels = dataset.action_labels
 
 results_json = os.path.join(args.results_path, 'action_segments.json')
