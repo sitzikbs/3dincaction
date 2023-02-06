@@ -43,10 +43,11 @@ dataset_name = 'dfaust'
 outdir = os.path.join('./log/sequence_images/', dataset_name)
 os.makedirs(outdir, exist_ok=True)
 view = 'front'
-show_patchlets, show_full_pc, reduce_opacity = False, True, False
+show_patchlets, show_full_pc, reduce_opacity = True, True, False
 # n_sequences = 1
 sequence_id = [14]
-patchlet_ids = [2, 50, 100]
+# patchlet_ids = [2, 50, 100]
+patchlet_ids = [0, 10, 100]
 frames_per_clip = 64
 
 
@@ -61,7 +62,7 @@ else:
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
 
 extract_pachlets = PatchletsExtractor(k=24, npoints=512, sample_mode='nn',
-                                      add_centroid_jitter=0.0)
+                                      add_centroid_jitter=0.0, downsample_method='var')
 
 
 for batch_ind, data in enumerate(dataloader):

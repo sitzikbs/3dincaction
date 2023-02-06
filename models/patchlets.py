@@ -108,27 +108,24 @@ class PatchletsExtractor(nn.Module):
             if self.downsample_method == 'fps':
                 #select a subset of the points using fps for maximum coverage
                 selected_idxs = utils.farthest_point_sample(point_seq[:, 0].contiguous(), self.npoints).to(torch.int64)
-                patchlet_points = utils.index_points(patchlet_points,
-                                                     selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1,
-                                                                                                          self.npoints))
-                patchlet_feats = utils.index_points(patchlet_feats,
-                                                    selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1,
-                                                                                                         self.npoints))
-                distances = utils.index_points(distances,
-                                               selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
-                idxs = utils.index_points(idxs, selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
-                patchlets = utils.index_points(patchlets,
-                                               selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints))
+                selected_idxs = selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints)
+                patchlet_points = utils.index_points(patchlet_points, selected_idxs)
+                patchlet_feats = utils.index_points(patchlet_feats, selected_idxs)
+                distances = utils.index_points(distances, selected_idxs)
+                idxs = utils.index_points(idxs, selected_idxs)
+                patchlets = utils.index_points(patchlets, selected_idxs)
                 n = self.npoints
             else:
                 # select a subset of the points with the largest point variance for maximum temporal movement
-                patchlet_variance = torch.linalg.norm(torch.var(patchlet_points, -2), dim=2)
+                temporal_patchlet_points = patchlet_points.reshape(b, t, n, self.k, d).permute(0, 2, 1, 3, 4).reshape(b,n,-1,d)
+                patchlet_variance = torch.linalg.norm(torch.var(temporal_patchlet_points, -2), dim=-1)
                 _, selected_idxs = torch.topk(patchlet_variance, self.npoints)
-                patchlet_points = utils.index_points(patchlet_points, selected_idxs).reshape(-1, self.npoints)
-                patchlet_feats = utils.index_points(patchlet_feats, selected_idxs.reshape(-1, self.npoints))
-                distances = utils.index_points(distances, selected_idxs.reshape(-1, self.npoints))
-                idxs = utils.index_points(idxs, selected_idxs).reshape(-1, self.npoints)
-                patchlets = utils.index_points(patchlets, selected_idxs).reshape(-1, self.npoints)
+                selected_idxs = selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints)
+                patchlet_points = utils.index_points(patchlet_points, selected_idxs)#.reshape(-1, self.npoints)
+                patchlet_feats = utils.index_points(patchlet_feats, selected_idxs)#.reshape(-1, self.npoints))
+                distances = utils.index_points(distances, selected_idxs)#.reshape(-1, self.npoints)
+                idxs = utils.index_points(idxs, selected_idxs)#.reshape(-1, self.npoints)
+                patchlets = utils.index_points(patchlets, selected_idxs)#.reshape(-1, self.npoints)
                 n = self.npoints
 
 
