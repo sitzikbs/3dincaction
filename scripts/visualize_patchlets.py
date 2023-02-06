@@ -24,7 +24,7 @@ if __name__ == "__main__":
     else:
         dataset_path = '/home/sitzikbs/Datasets/dfaust/'
         dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=64, set='train', n_points=1024,
-                                shuffle_points='fps_each_frame', gender='female', data_augmentation=dfaust_augmentation )
+                                shuffle_points='fps_each', gender='female', data_augmentation=dfaust_augmentation )
 
 
     extract_pachlets = PatchletsExtractor(k=16, npoints=npoints, sample_mode=sample_mode, add_centroid_jitter=add_centroid_jitter)

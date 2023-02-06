@@ -1,7 +1,13 @@
 import pyvista as pv
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
+COLOR_PALLET = {'darkred': [0.7,0.1,0.1], 'darkgreen': [0.1, 0.7, 0.1], 'dblue': [0.2,0.2,0.8],
+                'maroon': [0.76,.13,.28],
+                'burntorange': [0.81,.33,0], 'cyan': [0.0,0.7,0.94], 'salmon': [0.99,0.51,0.46],
+                'green':[0.03,0.91,0.43] }
+CAMLOC = {'iso': (1, 1, 1), 'front': (0, 0, 2), 'side': (2, 0, 0), 'top': (0, 2, 0)}
 
 class MeshCustomRoutine:
     def __init__(self, vert_seq, faces, mesh_obj, text, pl, color):
@@ -485,3 +491,63 @@ def plot_attention_maps(attention_maps, points, point_idx=0, title_text='', poin
     fig.suptitle(title_text)
 
     plt.show()
+
+
+def export_pc_seq(verts, patchlet_points, text=None, color=None, cmap=None, point_size=50, output_path='./',
+                  show_patchlets=True, show_full_pc=True, reduce_opacity=False, view='iso'):
+
+    if show_patchlets and show_full_pc:
+        id_str = 'both'
+    elif show_patchlets:
+        id_str = 'patchlets'
+    else:
+        id_str = 'point_cloud'
+
+    output_path = os.path.join(output_path, id_str, view)
+    t = len(verts)
+    alpha = 1.0
+    os.makedirs(output_path, exist_ok=True)
+    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan']]
+    if cmap is not None:
+        pv.global_theme.cmap = cmap
+    else:
+        pv.global_theme.cmap = 'cet_glasbey_bw'
+
+    if color is None:
+        # color = [0.92, 0.22, 0.12]
+        color = [0.7, 0.33, 0.1]
+
+    #Export visualiztaion
+    for i in range(t):
+        pl = pv.Plotter(off_screen=True)
+        # pl.camera.position = (0, 0, 2)
+        pl.camera.position = CAMLOC[view]
+        pl.camera.focal_point = (0, 0, 0)
+        pl.camera.up = (0.0, 1.0, 0.0)
+        pl.camera.zoom(0.5)
+        pl.set_background('white', top='white')
+        pc = pv.PolyData(verts[i])
+        if show_full_pc:
+            if reduce_opacity:
+                alpha = np.clip(0.99 - 2*i/t, 0., 1.)
+            pl.add_mesh(pc, render_points_as_spheres=True, color=color, point_size=point_size, pbr=True,
+                        roughness=0.9, diffuse=1.0, metallic=0.05, opacity=alpha)
+        if show_patchlets:
+            for j, patchlet_pc in enumerate(patchlet_points):
+                pc = pv.PolyData(patchlet_pc[i])
+                pl.add_mesh(pc, render_points_as_spheres=True, color=color_list[j], point_size=point_size, pbr=True,
+                            roughness=0.9, diffuse=1.0, metallic=0.05)
+
+        # set up lighting
+        light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
+        pl.add_light(light)
+
+        pl.show(screenshot=os.path.join(output_path, str(i).zfill(6) + '.png'))
