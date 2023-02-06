@@ -43,15 +43,15 @@ dataset_name = 'dfaust'
 outdir = os.path.join('./log/sequence_images/', dataset_name)
 os.makedirs(outdir, exist_ok=True)
 view = 'front'
-show_patchlets, show_full_pc, reduce_opacity = True, True, False
+show_patchlets, show_full_pc, reduce_opacity = False, True, False
 # n_sequences = 1
-sequence_id = 14
-patchlet_ids = [2, 50, 128]
+sequence_id = [14]
+patchlet_ids = [2, 50, 100]
 frames_per_clip = 64
 
 
 if dataset_name == 'ikea':
-    dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/64/'
+    dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
     dataset = IKEAActionDatasetClips(dataset_path, set='test')
 else:
     dataset_path = '/home/sitzikbs/Datasets/dfaust/'
@@ -74,10 +74,13 @@ for batch_ind, data in enumerate(dataloader):
 
 
     # if n_sequences == 0 or batch_ind < n_sequences:
-    if sequence_id == batch_ind:
+    if batch_ind in sequence_id:
         patchlet_dict = extract_pachlets(point_seq.cuda())
         patchlet_points = [patchlet_dict['patchlet_points'].squeeze()[:, id].cpu().numpy() for id in patchlet_ids]
-        point_seq = remove_patchlet_points_from_pc(point_seq.squeeze().cpu().numpy(), patchlet_points)
+        if show_patchlets == True:
+            point_seq = remove_patchlet_points_from_pc(point_seq.squeeze().cpu().numpy(), patchlet_points)
+        else:
+            point_seq = point_seq.squeeze().cpu().numpy()
         # patchlet_idxs = [patchlet_dict['idx'].squeeze()[:, id].cpu().numpy() for id in patchlet_ids]
         # point_seq = remove_patchlet_points_from_pc(patchlet_dict['x_current'].squeeze().cpu().numpy(), patchlet_idxs)
 

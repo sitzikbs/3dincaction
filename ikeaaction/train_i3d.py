@@ -22,7 +22,7 @@ from models.pointnet import PointNet4D, feature_transform_regularizer, PointNet1
 from models.pointnet2_cls_ssg import PointNetPP4D
 from models.pytorch_3dmfv import FourDmFVNet
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
-from models.patchlets import PointNet2Patchlets_v2
+from models.patchlets import PointNet2Patchlets
 
 import wandb
 
@@ -82,10 +82,7 @@ def run(cfg, logdir):
     elif pc_model == 'pn2_4d_basic':
         model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_patchlets':
-        model = PointNet2Patchlets_v2(num_class=num_classes, n_frames=frames_per_clip,
-                                      sample_mode=cfg['MODEL']['PATCHLET']['patchlet_sample_mode'],
-                                      add_centroid_jitter=cfg['MODEL']['PATCHLET']['patchlet_centroid_jitter'],
-                                      k=cfg['MODEL']['PATCHLET']['k'])
+        model = PointNet2Patchlets(cfg=cfg['MODEL']['PATCHLET'], num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=cfg['MODEL']['3DMFV']['n_gaussians'], num_classes=num_classes, n_frames=frames_per_clip)
     else:
