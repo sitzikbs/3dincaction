@@ -68,10 +68,10 @@ class PatchletsExtractor(nn.Module):
         patchlet_feats = torch.empty(b, t, n, self.k, d_feat, device=point_seq.device)
 
         # loop over the data to reorder the indices to form the patchlets
-        x_current = x1[:, 0]
+        x_current = x2[:, 0]
         feat_seq_2 = torch.cat([feat_seq[:, [0]], feat_seq], dim=1)[:, :-1]
         for i in range(0, t):
-            x_next = x2[:, i]
+            x_next = x1[:, i]
             distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='keops')
             if self.sample_mode == 'nn':
                 x_current = utils.index_points(x_next, idxs)[:, :, 0, :]
