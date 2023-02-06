@@ -1,0 +1,31 @@
+MODEL:
+  pc_model: 'pn2' # which model to use for point cloud processing
+  3DMFV:
+    n_gaussians: 8
+  PATCHLET:
+    patchlet_centroid_jitter: 0.005
+    patchlet_sample_mode: 'nn'  # nn | randn | mean type of patchlet sampling
+    k: 16
+
+TRAINING:
+  lr: 0.001
+  steps_per_update: 1
+  batch_size: 2
+  n_epochs: 30
+  refine: False
+  refine_epoch: 0
+  pretrained_model: null
+  aug: ['jitter']
+
+TESTING:
+  batch_size: 2
+  aug: ['jitter']
+
+DATA:
+  dataset_path: '/data1/datasets/dfaust/'
+  frames_per_clip: 32
+  frame_skip: 1
+  n_points: 1024
+  shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each'
+  gender: 'all'
+  data_sampler: 'weighted'
