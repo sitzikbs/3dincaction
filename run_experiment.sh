@@ -4,7 +4,7 @@ GPU_IDX=0
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
-IDENTIFIER='pn1_jitter'
+IDENTIFIER='pn2_patchlets_var'
 CONFIG='./config_dfaust.yaml'
 LOGDIR='./log/jitter/f32/baselines/'
 
