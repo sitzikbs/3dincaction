@@ -70,7 +70,7 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
 if __name__ == '__main__':
 
     # linux:
-    src_dataset = r'/data1/datasets/HoloLens/'
+    src_dataset = r'/data1/datasets/Hololens/'
     target_dataset = r'/data1/datasets/ikeaego_small/'
     # src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
     # target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
