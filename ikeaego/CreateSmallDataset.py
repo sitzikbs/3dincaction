@@ -51,7 +51,7 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     print("Done. conversion took {}".format(end - start))
 
 
-def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, parallelize=False):
+def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, parallelize=False, workers=32):
     assert os.path.exists(src_dataset)
 
     src_file_list = glob.glob(src_dataset + '*/*_recDir*/norm/Depth Long Throw/*.ply')
@@ -59,7 +59,7 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
     print(src_file_list)
     print(target_file_list)
     if parallelize:
-        num_cores = multiprocessing.cpu_count()
+        num_cores = workers
         Parallel(n_jobs=num_cores)(delayed(SampleAndSave)(src_file_path, target_file_path, num_points, use_fps)
                                    for src_file_path, target_file_path in zip(src_file_list, target_file_list))
     else:
