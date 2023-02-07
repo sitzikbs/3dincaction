@@ -272,11 +272,13 @@ def run(cfg, logdir):
 if __name__ == '__main__':
     cfg = yaml.safe_load(open(args.config))
     logdir = os.path.join(args.logdir, args.identifier)
+    wandb_run = wandb.init(project='IKEA ASM', save_code=True)
 
     os.makedirs(logdir, exist_ok=True)
-    os.system('cp %s %s' % (args.config, os.path.join(logdir, 'config.yaml')))  # backup the models files
+    cfg['WANDB'] = {'id': wandb_run.id, 'project': wandb_run.project, 'entity': wandb_run.entity}
+    with open(os.path.join(logdir, 'config.yaml'), 'w') as outfile:
+        yaml.dump(cfg, outfile, default_flow_style=False)
 
-    wandb_run = wandb.init(project='IKEA ASM', save_code=True)
     wandb_run.name = args.identifier
     wandb.config.update(cfg)  # adds all of the arguments as config variables
     wandb.run.log_code("../")

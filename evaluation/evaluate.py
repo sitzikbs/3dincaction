@@ -14,29 +14,23 @@ import eval_utils
 from DfaustDataset import DfaustActionClipsDataset as Dataset
 import matplotlib.pyplot as plt
 sys.path.append('evaluation')
+sys.path.append('../')
 from eval_detection import ANETdetection
 from eval_classification import ANETclassification
 import sklearn
 import yaml
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--results_path', type=str,
-#                     default='../log/pn1_f32_p1024_shuffle_once/results/',
-#                     help='label prediction file')
-# parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/dfaust/',
-#                     help='path to ground truth action segments json file')
-# parser.add_argument('--set', type=str, default='test', help='test | train set to evaluate')
-# parser.add_argument('--gender', type=str,
-#                     default='all', help='female | male | all indicating which subset of the dataset to use')
-# parser.add_argument('--gt_segments_json_filename', type=str, default='gt_segments',
-#                     help='name of gt json filename to load')
-# args = parser.parse_args()
+import wandb
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
+parser.add_argument('--logdir', type=str, default='../log/', help='path to model save dir')
 parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
 args = parser.parse_args()
 
 cfg = yaml.safe_load(open(os.path.join(args.logdir, args.identifier, 'config.yaml')))
+run = wandb.init(entity=cfg['WANDB']['entity'], project=cfg['WANDB']['project'], id=cfg['WANDB']['id'], resume='must')
+wandb.define_metric("eval/step")
+wandb.define_metric("eval/*", step_metric="eval/step")
+
 results_path = os.path.join(args.logdir, args.identifier, 'results/')
 dataset_path = cfg['DATA']['dataset_path']
 subset = cfg['TESTING']['set']
@@ -73,8 +67,9 @@ localization_score_str = "Action localization scores: \n" \
 # Compute classification mAP
 anet_classification = ANETclassification(gt_json_path, results_json, subset='testing', verbose=True)
 anet_classification.evaluate()
+mAP = anet_classification.ap.mean()
 classification_score_str = "Action classification scores: \n" \
-                            "mAP = {} \n".format(anet_classification.ap.mean())
+                            "mAP = {} \n".format(mAP)
 
 # Compute accuracy
 acc1_per_vid = []
@@ -87,8 +82,8 @@ for vid_idx in range(len(logits)):
     acc1_per_vid.append(acc1.item())
     acc3_per_vid.append(acc3.item())
     gt_single_labels.append(single_label_per_frame)
-
-scores_str = 'top1, top3 accuracy: {} & {}\n'.format(round(np.mean(acc1_per_vid), 2), round(np.mean(acc3_per_vid), 2))
+top1, top3 = round(np.mean(acc1_per_vid), 2), round(np.mean(acc3_per_vid), 2)
+scores_str = 'top1, top3 accuracy: {} & {}\n'.format(top1, top3)
 
 print(scores_str)
 balanced_acc_per_vid = []
@@ -99,7 +94,8 @@ for vid_idx in range(len(logits)):
                                                   sample_weight=None, adjusted=False)
     balanced_acc_per_vid.append(acc)
 
-balanced_score_str = 'balanced accuracy: {}'.format(round(np.mean(balanced_acc_per_vid)*100, 2))
+balanced_score = round(np.mean(balanced_acc_per_vid)*100, 2)
+balanced_score_str = 'balanced accuracy: {}'.format(balanced_score)
 print(balanced_score_str)
 
 
@@ -122,6 +118,12 @@ fig, ax = utils.plot_confusion_matrix(cm=c_matrix,
                       title='Confusion matrix',
                       cmap=None,
                       normalize=True)
+img_out_filename = os.path.join(results_path, 'confusion_matrix.png')
+plt.savefig(img_out_filename)
+img = plt.imread(img_out_filename)
 
-plt.savefig(os.path.join(results_path, 'confusion_matrix.png'))
-
+columns = ["top 1", "top 3", "macro", "mAP"]
+results_table = wandb.Table(columns=columns, data=[[top1, top3, balanced_score, mAP]])
+images = wandb.Image(img, caption="Confusion matrix")
+wandb.log({"eval/confusion matrix": images,
+           "eval/Results summary": results_table})
