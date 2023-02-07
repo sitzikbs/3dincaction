@@ -49,7 +49,7 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     start = time.process_time()
     target_dir = os.path.dirname(os.path.abspath(target_file_path))
     if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
+        os.makedirs(target_dir, exist_ok=True)
 
     plydata = plyfile.PlyData.read(src_file_path)
     d = np.asarray(plydata['vertex'].data)
