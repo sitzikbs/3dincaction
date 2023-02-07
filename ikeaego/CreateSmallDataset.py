@@ -12,6 +12,7 @@ import sys
 sys.path.append('../')
 from models.pointnet2_utils import farthest_point_sample, index_points
 import torch
+from torch.multiprocessing import set_start_method
 
 def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     '''
@@ -49,6 +50,7 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     end = time.process_time()
     print("Done. conversion took {}".format(end - start))
 
+
 def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, parallelize=False):
     assert os.path.exists(src_dataset)
 
@@ -65,10 +67,8 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
             SampleAndSave(src_file_path, target_file_path, num_points, use_fps)
 
 
-
-
 if __name__ == '__main__':
-
+    set_start_method('spawn')
     # linux:
     src_dataset = r'/data1/datasets/Hololens/'
     target_dataset = r'/data1/datasets/ikeaego_small/'
