@@ -12,7 +12,7 @@ import sys
 sys.path.append('../')
 from models.pointnet2_utils import farthest_point_sample, index_points
 import torch
-from torch.multiprocessing import set_start_method
+# from torch.multiprocessing import set_start_method
 
 def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     '''
@@ -33,9 +33,10 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     d = np.asarray(plydata['vertex'].data)
     pc = np.column_stack([d[p.name] for p in plydata['vertex'].properties])
     if use_fps:
-        pc_tensor = torch.tensor(pc, dtype=torch.float32).unsqueeze(0).cuda()
-        idxs = farthest_point_sample(pc_tensor[:, :, :3].contiguous(), num_points)
-        sampled_points = index_points(pc_tensor, idxs.to(torch.int64)).squeeze().cpu().numpy()
+        with torch.no_grad():
+            pc_tensor = torch.tensor(pc, dtype=torch.float32).unsqueeze(0).cuda()
+            idxs = farthest_point_sample(pc_tensor[:, :, :3].contiguous(), num_points)
+            sampled_points = index_points(pc_tensor, idxs.to(torch.int64)).squeeze().cpu().numpy()
     else:
         idxs = np.random.shuffle(np.arange(len(pc)))
         sampled_points = pc[idxs[:len(pc)]]
@@ -68,7 +69,7 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
 
 
 if __name__ == '__main__':
-    set_start_method('spawn')
+    # set_start_method('spawn')
     # linux:
     src_dataset = r'/data1/datasets/Hololens/'
     target_dataset = r'/data1/datasets/ikeaego_small/'
