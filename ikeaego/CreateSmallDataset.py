@@ -13,6 +13,37 @@ sys.path.append('../')
 from models.pointnet2_utils import farthest_point_sample, index_points
 import torch
 from torch.multiprocessing import set_start_method
+import numpy as np
+import numexpr as ne
+
+
+def fps_ne(points, npoint):
+    # returns farthers point distance sampling
+    # shuffle each sequence individually but keep correspondance throughout the sequence
+    """
+    Input:
+        points: pointcloud data, [N, 3]
+    Return:
+        points: farthest sampled pointcloud, [npoint]
+    """
+    xyz = points[:, :3]
+    N, C = xyz.shape
+    centroids = np.zeros(npoint)
+    distance = np.ones(N) * 1e10
+    farthest = np.random.randint(0, N)
+    idxs = np.array(farthest)[None]
+
+    for i in range(npoint-1):
+        centroids[i] = farthest
+        centroid = xyz[farthest, :]
+        dist = ne.evaluate('sum((xyz - centroid) ** 2, 1)')
+        mask = dist < distance
+        distance[mask] = dist[mask]
+        farthest = np.array(np.argmax(distance, -1))[None]
+        idxs = np.concatenate([idxs, farthest])
+
+
+    return points[idxs, :]
 
 def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     '''
@@ -33,10 +64,7 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     d = np.asarray(plydata['vertex'].data)
     pc = np.column_stack([d[p.name] for p in plydata['vertex'].properties])
     if use_fps:
-        with torch.no_grad():
-            pc_tensor = torch.tensor(pc, dtype=torch.float32).unsqueeze(0).cuda()
-            idxs = farthest_point_sample(pc_tensor[:, :, :3].contiguous(), num_points)
-            sampled_points = index_points(pc_tensor, idxs.to(torch.int64)).squeeze().cpu().numpy()
+        sampled_points = fps_ne(pc, num_points)
     else:
         idxs = np.random.shuffle(np.arange(len(pc)))
         sampled_points = pc[idxs[:len(pc)]]
@@ -69,12 +97,12 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
 
 
 if __name__ == '__main__':
-    set_start_method('spawn')
-    # linux:
-    src_dataset = r'/data1/datasets/Hololens/'
-    target_dataset = r'/data1/datasets/ikeaego_small/'
-    # src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
-    # target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
+    # set_start_method('spawn')
+
+    # src_dataset = r'/data1/datasets/Hololens/'
+    # target_dataset = r'/data1/datasets/ikeaego_small/'
+    src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
+    target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
     use_fps = True
     num_points = 4096
     parallelize = True
