@@ -47,6 +47,8 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     plyfile.PlyData([el], text="").write(target_file_path)
 
 def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, parallelize=False):
+    assert os.path.exists(src_dataset)
+
     src_file_list = glob.glob(src_dataset + '*/*_recDir*/norm/Depth Long Throw/*.ply')
     target_file_list = [file_path.replace(src_dataset, target_dataset) for file_path in src_file_list]
     print(src_file_list)
@@ -68,10 +70,10 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
 if __name__ == '__main__':
 
     # linux:
-    src_dataset = r'/data1/datasets/HoloLens/'
-    target_dataset = r'/data1/datasets/ikeaego_small/'
-    # src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
-    # target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
+    # src_dataset = r'/data1/datasets/HoloLens/'
+    # target_dataset = r'/data1/datasets/ikeaego_small/'
+    src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
+    target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
     use_fps = True
     num_points = 4096
     parallelize = True
