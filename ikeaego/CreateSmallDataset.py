@@ -1,18 +1,9 @@
-from pathlib import Path
 from glob import glob
-import numpy as np
 import os
 import plyfile
 import time
-from multiprocessing import Pool, TimeoutError
 from joblib import Parallel, delayed
-import multiprocessing
 import glob
-import sys
-sys.path.append('../')
-from models.pointnet2_utils import farthest_point_sample, index_points
-import torch
-from torch.multiprocessing import set_start_method
 import numpy as np
 import numexpr as ne
 
@@ -97,12 +88,10 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
 
 
 if __name__ == '__main__':
-    # set_start_method('spawn')
-
-    # src_dataset = r'/data1/datasets/Hololens/'
-    # target_dataset = r'/data1/datasets/ikeaego_small/'
-    src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
-    target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
+    src_dataset = r'/data1/datasets/Hololens/'
+    target_dataset = r'/data1/datasets/ikeaego_small/'
+    # src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
+    # target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
     use_fps = True
     num_points = 4096
     parallelize = True
