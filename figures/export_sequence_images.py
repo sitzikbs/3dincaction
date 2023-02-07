@@ -42,7 +42,7 @@ def remove_patchlet_points_from_pc(point_seq, patchlet_point_list):
 dataset_name = 'dfaust'
 outdir = os.path.join('./log/sequence_images/', dataset_name)
 os.makedirs(outdir, exist_ok=True)
-view = 'front'
+view = 'iso'
 show_patchlets, show_full_pc, reduce_opacity = True, True, False
 # n_sequences = 1
 sequence_id = [14]
@@ -72,8 +72,6 @@ for batch_ind, data in enumerate(dataloader):
     else:
         point_seq = data['points']
 
-
-
     # if n_sequences == 0 or batch_ind < n_sequences:
     if batch_ind in sequence_id:
         patchlet_dict = extract_pachlets(point_seq.cuda())
@@ -90,6 +88,8 @@ for batch_ind, data in enumerate(dataloader):
                                     point_size=15, output_path=os.path.join(outdir, str(batch_ind).zfill(6)),
                                     show_patchlets=show_patchlets, show_full_pc=show_full_pc,
                                     reduce_opacity=reduce_opacity, view=view)
+        visualization.export_patchlet_seq(patchlet_points, point_size=15,
+                                          output_path=os.path.join(outdir, str(batch_ind).zfill(6)), view=view)
 
 
 

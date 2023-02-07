@@ -551,3 +551,36 @@ def export_pc_seq(verts, patchlet_points, text=None, color=None, cmap=None, poin
         pl.add_light(light)
 
         pl.show(screenshot=os.path.join(output_path, str(i).zfill(6) + '.png'))
+
+
+def export_patchlet_seq(patchlet_points, point_size=50, output_path='./', view='iso'):
+    # plot a set of patchlets temporally in a single image
+    output_path = os.path.join(output_path)
+    os.makedirs(output_path, exist_ok=True)
+    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan']]
+
+
+    pl = pv.Plotter(off_screen=True)
+    pl.camera.position = CAMLOC[view]
+    pl.camera.focal_point = (0, 0, 0)
+    pl.camera.up = (0.0, 1.0, 0.0)
+    pl.camera.zoom(0.5)
+    pl.set_background('white', top='white')
+    for j, patchlet_pc in enumerate(patchlet_points):
+        pc = pv.PolyData(patchlet_pc.reshape(-1, 3))
+        pl.add_mesh(pc, render_points_as_spheres=True, color=color_list[j], point_size=point_size, pbr=True,
+                    roughness=0.9, diffuse=1.0, metallic=0.05)
+
+    # set up lighting
+    light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
+    pl.add_light(light)
+    light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
+    pl.add_light(light)
+    light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
+    pl.add_light(light)
+    light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
+    pl.add_light(light)
+    light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
+    pl.add_light(light)
+
+    pl.show(screenshot=os.path.join(output_path, 'patchlet_seq_' + view + '.png'))
