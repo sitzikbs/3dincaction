@@ -22,7 +22,8 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     :param num_points: int, number of points to samlpe
     :return:
     '''
-
+    print("Converting {}".format(src_file_path))
+    start = time.process_time()
     target_dir = os.path.dirname(os.path.abspath(target_file_path))
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
@@ -45,6 +46,8 @@ def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
                                   ('red', 'B'), ('green', 'B'), ('blue', 'B')])
     el = plyfile.PlyElement.describe(vertex, 'vertex')
     plyfile.PlyData([el], text="").write(target_file_path)
+    end = time.process_time()
+    print("Done. conversion took {}".format(end - start))
 
 def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, parallelize=False):
     assert os.path.exists(src_dataset)
@@ -59,11 +62,8 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
                                    for src_file_path, target_file_path in zip(src_file_list, target_file_list))
     else:
         for src_file_path, target_file_path in zip(src_file_list, target_file_list):
-            print("Converting {}".format(src_file_path))
-            start = time.process_time()
             SampleAndSave(src_file_path, target_file_path, num_points, use_fps)
-            end = time.process_time()
-            print("Done. conversion took {}".format(end - start))
+
 
 
 
