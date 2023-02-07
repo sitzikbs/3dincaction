@@ -12,7 +12,7 @@ import sys
 sys.path.append('../')
 from models.pointnet2_utils import farthest_point_sample, index_points
 import torch
-# from torch.multiprocessing import set_start_method
+from torch.multiprocessing import set_start_method
 
 def SampleAndSave(src_file_path, target_file_path, use_fps, num_points):
     '''
@@ -69,7 +69,7 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
 
 
 if __name__ == '__main__':
-    # set_start_method('spawn')
+    set_start_method('spawn')
     # linux:
     src_dataset = r'/data1/datasets/Hololens/'
     target_dataset = r'/data1/datasets/ikeaego_small/'
