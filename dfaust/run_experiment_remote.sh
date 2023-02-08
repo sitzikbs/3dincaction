@@ -3,6 +3,7 @@
 GPU_IDX=2
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
+export OMP_NUM_THREADS=8
 
 IDENTIFIER='pn2_patchlets'
 CONFIG='./config_dfaust_remote.yaml'

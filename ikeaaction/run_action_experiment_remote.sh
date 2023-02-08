@@ -3,6 +3,7 @@
 GPU_IDX=0
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
+export OMP_NUM_THREADS=8
 
 IDENTIFIER='pn1'
 CONFIG='./config_remote.yaml'
