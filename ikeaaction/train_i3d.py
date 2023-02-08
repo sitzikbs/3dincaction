@@ -261,7 +261,7 @@ def run(cfg, logdir):
             torch.save({"model_state_dict": model.module.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
                         "lr_state_dict": lr_sched.state_dict()},
-                       os.path.join(logdir,str(steps).zfill(6) + '.pt'))
+                       os.path.join(logdir, str(steps).zfill(6) + '.pt'))
 
         steps += 1
         lr_sched.step()
