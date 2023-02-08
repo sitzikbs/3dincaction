@@ -115,10 +115,13 @@ class PatchletsExtractor(nn.Module):
                 idxs = utils.index_points(idxs, selected_idxs)
                 patchlets = utils.index_points(patchlets, selected_idxs)
                 n = self.npoints
-            else:
+            elif self.downsample_method == 'var' or self.downsample_method == 'mean_var_t':
                 # select a subset of the points with the largest point variance for maximum temporal movement
-                temporal_patchlet_points = patchlet_points.reshape(b, t, n, self.k, d).permute(0, 2, 1, 3, 4).reshape(b,n,-1,d)
-                patchlet_variance = torch.linalg.norm(torch.var(temporal_patchlet_points, -2), dim=-1)
+                if self.downsample_method == 'var':
+                    temporal_patchlet_points = patchlet_points.reshape(b, t, n, self.k, d).permute(0, 2, 1, 3, 4).reshape(b,n,-1,d)
+                    patchlet_variance = torch.linalg.norm(torch.var(temporal_patchlet_points, -2), dim=-1)
+                else:
+                    patchlet_variance = torch.linalg.norm(torch.var(torch.mean(patchlet_points.reshape(b, t, n, self.k, d), -2), 1), dim=-1)
                 _, selected_idxs = torch.topk(patchlet_variance, self.npoints)
                 selected_idxs = selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints)
                 patchlet_points = utils.index_points(patchlet_points, selected_idxs)#.reshape(-1, self.npoints)

@@ -281,7 +281,7 @@ if __name__ == '__main__':
         yaml.dump(cfg, outfile, default_flow_style=False)
 
     wandb_run.name = args.identifier
-    wandb.config.update(args)  # adds all of the arguments as config variables
+    wandb.config.update(cfg)  # adds all of the arguments as config variables
     wandb.run.log_code(".")
     # define our custom x axis metric
     wandb.define_metric("train/step")

@@ -9,7 +9,7 @@ from DfaustDataset import DfaustActionClipsDataset
 from ikeaaction.IKEAActionDatasetClips import IKEAActionDatasetClips
 from models.patchlets import PatchletsExtractor
 
-def remove_patchlet_points_from_pc(point_seq, patchlet_point_list):
+def remove_patchlet_points_from_pc(point_seq, patchlet_point_list, features):
     '''
     get a point sequence and a patchlet point list sequence and remove the patchlet points from the sequence,
     used for visualization
@@ -19,6 +19,7 @@ def remove_patchlet_points_from_pc(point_seq, patchlet_point_list):
     '''
     t, n, _ = point_seq.shape
     out_points_seq = []
+    out_feat_seq = []
     all_patchlet_points = np.concatenate(patchlet_point_list, axis=1)
     for i in range(t):
         rows_to_delete = []
@@ -27,7 +28,8 @@ def remove_patchlet_points_from_pc(point_seq, patchlet_point_list):
             if point_seq[i][j] in all_patchlet_points[i]:
                 rows_to_delete.append(j)
         out_points_seq.append(np.delete(point_seq[i], rows_to_delete, 0))
-    return out_points_seq
+        out_feat_seq.append(np.delete(features[i], rows_to_delete, 0))
+    return out_points_seq, out_feat_seq
 
 
 # def remove_patchlet_points_from_pc(point_seq, patchlet_ids):
@@ -38,37 +40,38 @@ def remove_patchlet_points_from_pc(point_seq, patchlet_point_list):
 #         out_points_seq.append(np.delete(pc, idx, 0))
 #     return out_points_seq
 
-
-dataset_name = 'dfaust'
-outdir = os.path.join('./log/sequence_images/', dataset_name)
+gender = ''
+dataset_name = 'ikea'
+outdir = os.path.join('./log/sequence_images/', dataset_name, gender)
 os.makedirs(outdir, exist_ok=True)
-view = 'iso'
+view = 'ikea_front'
 show_patchlets, show_full_pc, reduce_opacity = True, True, False
 # n_sequences = 1
-sequence_id = [14]
+sequence_id = [1]
 # patchlet_ids = [2, 50, 100]
-patchlet_ids = [0, 10, 100]
+patchlet_ids = [400, 151, 180]
 frames_per_clip = 64
-
-
+point_size = 15
+k = 32
 if dataset_name == 'ikea':
     dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
     dataset = IKEAActionDatasetClips(dataset_path, set='test')
 else:
     dataset_path = '/home/sitzikbs/Datasets/dfaust/'
     dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=1024,
-                                       shuffle_points='fps_each', gender='female')
+                                       shuffle_points='fps_each', gender=gender)
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
 
-extract_pachlets = PatchletsExtractor(k=24, npoints=512, sample_mode='nn',
-                                      add_centroid_jitter=0.0, downsample_method='var')
+extract_pachlets = PatchletsExtractor(k=k, npoints=512, sample_mode='nn',
+                                      add_centroid_jitter=0.0, downsample_method='mean_var_t')
 
 
 for batch_ind, data in enumerate(dataloader):
     print("processing batch {}".format(batch_ind))
     if dataset_name == 'ikea':
         point_seq = data[0][..., :3, :].permute(0, 1, 3, 2)
+        point_color = data[0][..., 3:, :].permute(0, 1, 3, 2)/255
     else:
         point_seq = data['points']
 
@@ -77,18 +80,21 @@ for batch_ind, data in enumerate(dataloader):
         patchlet_dict = extract_pachlets(point_seq.cuda())
         patchlet_points = [patchlet_dict['patchlet_points'].squeeze()[:, id].cpu().numpy() for id in patchlet_ids]
         if show_patchlets == True:
-            point_seq = remove_patchlet_points_from_pc(point_seq.squeeze().cpu().numpy(), patchlet_points)
+            point_seq, point_color = remove_patchlet_points_from_pc(point_seq.squeeze().cpu().numpy(), patchlet_points,
+                                                                    point_color.squeeze().cpu().numpy())
         else:
             point_seq = point_seq.squeeze().cpu().numpy()
         # patchlet_idxs = [patchlet_dict['idx'].squeeze()[:, id].cpu().numpy() for id in patchlet_ids]
         # point_seq = remove_patchlet_points_from_pc(patchlet_dict['x_current'].squeeze().cpu().numpy(), patchlet_idxs)
 
         visualization.export_pc_seq(point_seq, patchlet_points, text=None,
-                                    color=None, cmap=None,
-                                    point_size=15, output_path=os.path.join(outdir, str(batch_ind).zfill(6)),
+                                    color=point_color, cmap=None,
+                                    point_size=point_size, output_path=os.path.join(outdir, str(batch_ind).zfill(6)),
                                     show_patchlets=show_patchlets, show_full_pc=show_full_pc,
                                     reduce_opacity=reduce_opacity, view=view)
-        visualization.export_patchlet_seq(patchlet_points, point_size=15,
+        visualization.export_patchlet_seq(patchlet_points, point_size=point_size,
+                                          output_path=os.path.join(outdir, str(batch_ind).zfill(6)), view=view)
+        visualization.export_patchlet_seq_separately(patchlet_points, point_size=point_size,
                                           output_path=os.path.join(outdir, str(batch_ind).zfill(6)), view=view)
 
 

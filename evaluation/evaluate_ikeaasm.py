@@ -99,7 +99,7 @@ print(balanced_score_str)
 
 
 # output the dataset total score
-with open(os.path.join(args.results_path, 'scores.txt'), 'w') as file:
+with open(os.path.join(results_path, 'scores.txt'), 'w') as file:
     file.writelines(localization_score_str)
     file.writelines(classification_score_str)
     file.writelines(scores_str)
