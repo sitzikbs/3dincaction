@@ -9,5 +9,5 @@ CONFIG='./config.yaml'
 LOGDIR='./log/'
 
 python train_i3d.py --identifier $IDENTIFIER --config $CONFIG --logdir $LOGDIR
-python test_i3d.py --identifier $IDENTIFIER --model_ckpt '000000.pt' --logdir $LOGDIR
-python3 ../evaluation/evaluate_ikeaasm.py --identifier $IDENTIFIER --logdir $LOGDIR
+#python test_i3d.py --identifier $IDENTIFIER --model_ckpt '000030.pt' --logdir $LOGDIR
+#python3 ../evaluation/evaluate_ikeaasm.py --identifier $IDENTIFIER --logdir $LOGDIR
