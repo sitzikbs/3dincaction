@@ -28,7 +28,6 @@ if sweep:
     sample_mode_list = ['nn']
     dfaust_augmentation = ['']
     centroid_noise_list = [0.1]
-    # k_list = [8, 16, 32, 64]
     # sample_mode_list = ['nn', 'randn']
 
     # centroid_noise_list = [0.0, 0.001, 0.0025, 0.005, 0.0075, 0.01]
@@ -55,8 +54,10 @@ else:
     }
 
 
-
 def main():
+    wandb.init()
+    if not sweep:
+        wandb.config.update(configuration)  # adds all of the arguments as config variables
 
     k = wandb.config.k
     sample_mode = wandb.config.sample_mode
@@ -174,9 +175,7 @@ def main():
 
 
 if __name__ == "__main__":
-    run = wandb.init()
     if sweep:
         wandb.agent(sweep_id, function=main, count=4)
     else:
-        wandb.config.update(configuration)  # adds all of the arguments as config variables
         main()
