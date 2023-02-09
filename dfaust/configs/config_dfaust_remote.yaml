@@ -6,6 +6,7 @@ MODEL:
     patchlet_centroid_jitter: 0.005
     patchlet_sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
     k: 16
+    downsample_method: 'fps'
 
 TRAINING:
   lr: 0.001
