@@ -76,11 +76,15 @@ class PatchletsExtractor(nn.Module):
             distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='keops')
             if self.sample_mode == 'nn':
                 x_current = utils.index_points(x_next, idxs)[:, :, 0, :]
-            elif self.sample_mode == 'rand':
-                rand_idx = torch.randint(self.k, (b, n, 1, 3), device=x_next.device, dtype=torch.int64)
+            elif self.sample_mode == 'randn':
+                rand_idx = torch.randint(self.k, (b, n, 1), device=x_next.device, dtype=torch.int64).repeat([1, 1, 3]).unsqueeze(2)
                 x_current = torch.gather(utils.index_points(x_next, idxs).squeeze(), dim=2, index=rand_idx).squeeze()
             elif self.sample_mode == 'mean':
                 x_current = utils.index_points(x_next, idxs).mean(2)
+            elif self.sample_mode == 'gt':
+                x_current = x_next
+            else:
+                raise ValueError("sample mode not supported")
 
             # x1[:, i] = x_current
             out_x[:, i] = x_current

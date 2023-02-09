@@ -1,8 +1,11 @@
 import torch
 import visualization
 import numpy as np
+import sys
+sys.path.append('../dfaust')
+sys.path.append('../ikeaaction')
 from DfaustDataset import DfaustActionClipsDataset
-from ikeaaction.IKEAActionDataset import IKEAActionVideoClipDataset
+from ikeaaction.IKEAActionDatasetClips import IKEAActionDatasetClips
 from torch.multiprocessing import set_start_method
 
 from models.patchlets import PatchletsExtractor
@@ -10,24 +13,23 @@ from models.patchlets import PatchletsExtractor
 if __name__ == "__main__":
     # set_start_method('spawn')
 
-    dataset_name = 'dfaust'
+    dataset_name = 'ikea'
     npoints = 512
-    k = 16
+    k = 64
     sample_mode = 'nn'
-    dfaust_augmentation = ['jitter']
-    add_centroid_jitter = 0.005
+    dfaust_augmentation = ['']
+    add_centroid_jitter = 0.00
 
     if dataset_name == 'ikea':
-        dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/'
-        dataset = IKEAActionVideoClipDataset(dataset_path, frames_per_clip=64, set='train', n_points=1024, input_type='pc', camera='dev3',
-                          mode='img', cache_capacity=1)
+        dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/64/'
+        dataset = IKEAActionDatasetClips(dataset_path,  set='train')
     else:
         dataset_path = '/home/sitzikbs/Datasets/dfaust/'
         dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=64, set='train', n_points=1024,
                                 shuffle_points='fps_each', gender='female', data_augmentation=dfaust_augmentation )
 
 
-    extract_pachlets = PatchletsExtractor(k=16, npoints=npoints, sample_mode=sample_mode, add_centroid_jitter=add_centroid_jitter)
+    extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode, add_centroid_jitter=add_centroid_jitter)
 
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=0,

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 sweep = True
-dataset_name = 'ikea'
+
 output_dir = './patchlet_parameter_ablations/'
 n_examples = 1000
 npoints = 512
@@ -23,33 +23,34 @@ frames_per_clip = 64
 # Define sweep config
 
 if sweep:
-    dataset_name_list = ['defaust', 'ikea']
+    dataset_name_list = ['dfaust', 'ikea']
     k_list = [8, 16, 32, 64]
-    sample_mode_list = ['nn']
     dfaust_augmentation = ['']
-    centroid_noise_list = [0.1]
-    # sample_mode_list = ['nn', 'randn']
+    sample_mode_list = ['nn', 'randn']
 
-    # centroid_noise_list = [0.0, 0.001, 0.0025, 0.005, 0.0075, 0.01]
+    centroid_noise_list = [0.0, 0.001, 0.0025, 0.005, 0.0075, 0.01]
     configuration = {
-        'method': 'random',
+        'method': 'grid',
         'name': 'sweep',
-        'metric': {'goal': 'minimize', 'name': 'final_degradation_rate'},
+        # 'metric': {'goal': 'minimize', 'name': 'final_degradation_rate'},
         'parameters':
         {
             'k': {'values': k_list},
             'sample_mode': {'values': sample_mode_list},
             'centroid_noise': {'values': centroid_noise_list},
-            'dataset_name': {'values': dataset_name_list}
+            'dataset_name': {'values': dataset_name_list},
+            'dfaust_augmentation': {'values': dfaust_augmentation},
          }
     }
     sweep_id = wandb.sweep(sweep=configuration, project='point_drop_sweep')
+    # sweep_id = 'cgmlab/point_drop_sweep/bi58lqyg'
 else:
+    dataset_name = 'dfaust'
     dfaust_augmentation = ['']
     configuration = {
             'k':  16,
             'sample_mode': 'nn',
-            'centroid_noise':  0.001,
+            'centroid_noise':  0.00,
             'dataset': dataset_name
     }
 
@@ -62,6 +63,7 @@ def main():
     k = wandb.config.k
     sample_mode = wandb.config.sample_mode
     add_centroid_jitter = wandb.config.centroid_noise
+    dataset_name = wandb.config.dataset_name
 
     extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
                                           add_centroid_jitter=add_centroid_jitter)
@@ -71,19 +73,21 @@ def main():
         dataset = IKEAActionDatasetClips(dataset_path,  set='train')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=2, num_workers=8,
                                                        pin_memory=True, shuffle=False, drop_last=True)
-    else:
+    elif dataset_name == 'dfaust':
         dataset_path = '/home/sitzikbs/Datasets/dfaust/'
         dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=1024,
-                                shuffle_points='fps_each_frame', gender='female', data_augmentation=dfaust_augmentation )
+                                shuffle_points='fps_each_frame', gender='female', data_augmentation=dfaust_augmentation)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=2, num_workers=0,
                                                        pin_memory=True, shuffle=False, drop_last=True)
+    else:
+        raise ValueError("unknown dataset")
 
     degredation_rate = []
     total_degredation_percentage = []
     patchlet_variance = []
     example_counter = 0
     for batch_ind, data in enumerate(dataloader):
-
+        print("{}/{}".format(batch_ind, len(dataloader)))
         if dataset_name == 'ikea':
             point_seq = data[0][..., :3, :].permute(0, 1, 3, 2).cuda()
         else:
@@ -155,7 +159,7 @@ def main():
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     images = wandb.Image(data, caption="Variance histogram")
     wandb.log({"Mean variance histogram": images})
-
+    plt.close()
     # plt.show()
     # patchlet_variance_scores = [[s] for s in patchlet_variance]
     # var_table = wandb.Table(data=patchlet_variance_scores, columns=["patchlet variance"])
@@ -168,14 +172,10 @@ def main():
                                                         final_degradation_rate, final_average_patchlet_variance]])
     wandb.log({"Results summary": results_table})
     wandb.log({"degredation rate": final_degradation_rate,
-               "patchlet variance":final_average_patchlet_variance})
-    run.finish()
-
-# Start sweep job.
-
+               "patchlet variance": final_average_patchlet_variance})
 
 if __name__ == "__main__":
     if sweep:
-        wandb.agent(sweep_id, function=main, count=4)
+        wandb.agent(sweep_id, function=main)
     else:
         main()
