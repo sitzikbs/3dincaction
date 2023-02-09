@@ -6,7 +6,7 @@ export CUDA_VISIBLE_DEVICES=$GPU_IDX
 export OMP_NUM_THREADS=8
 
 IDENTIFIER='pn1'
-CONFIG='./config_remote.yaml'
+CONFIG='./configs/config_ikeaasm_remote.yaml'
 LOGDIR='./log/f32_baseline4paper/'
 
 python train_i3d.py --identifier $IDENTIFIER --config $CONFIG --logdir $LOGDIR

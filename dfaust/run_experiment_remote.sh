@@ -6,7 +6,7 @@ export CUDA_VISIBLE_DEVICES=$GPU_IDX
 export OMP_NUM_THREADS=8
 
 IDENTIFIER='pn2_patchlets'
-CONFIG='./config_dfaust_remote.yaml'
+CONFIG='./configs/config_dfaust_remote.yaml'
 LOGDIR='./log/f32/baselines4paper/'
 
 

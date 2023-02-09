@@ -28,7 +28,7 @@ torch.manual_seed(0)
 parser = argparse.ArgumentParser()
 parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
 parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
-parser.add_argument('--config', type=str, default='./config_dfaust.yaml', help='path to configuration yaml file')
+parser.add_argument('--config', type=str, default='./configs/config_dfaust.yaml', help='path to configuration yaml file')
 args = parser.parse_args()
 
 
@@ -51,10 +51,10 @@ def run(cfg, logdir):
 
 
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
-    os.system('cp %s %s' % ('./models/pointnet.py', logdir))  # backup the models files
-    os.system('cp %s %s' % ('./models/pointnet2_cls_ssg.py', logdir))  # backup the models files
-    os.system('cp %s %s' % ('./models/pytorch_3dmfv.py', logdir))  # backup the models files
-    os.system('cp %s %s' % ('./models/patchlets.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('../models/pointnet.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('../models/patchlets.py', logdir))  # backup the models files
 
     # setup dataset
     train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=n_points,

@@ -5,7 +5,7 @@ export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
 IDENTIFIER='debug'
-CONFIG='./config.yaml'
+CONFIG='./configs/config_ikeaasm.yaml'
 LOGDIR='./log/'
 
 python train_i3d.py --identifier $IDENTIFIER --config $CONFIG --logdir $LOGDIR
