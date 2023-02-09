@@ -4,7 +4,7 @@ MODEL:
     n_gaussians: 8
   PATCHLET:
     patchlet_centroid_jitter: 0.005
-    patchlet_sample_mode: 'nn'  # nn | randn | mean type of patchlet sampling
+    patchlet_sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
     k: 16
 
 TRAINING:
@@ -26,6 +26,6 @@ DATA:
   frames_per_clip: 32
   frame_skip: 1
   n_points: 1024
-  shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each'
+  shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each '
   gender: 'all'
   data_sampler: 'weighted'

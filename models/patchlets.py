@@ -79,9 +79,8 @@ class PatchletsExtractor(nn.Module):
             elif self.sample_mode == 'randn':
                 rand_idx = torch.randint(self.k, (b, n, 1), device=x_next.device, dtype=torch.int64).repeat([1, 1, 3]).unsqueeze(2)
                 x_current = torch.gather(utils.index_points(x_next, idxs).squeeze(), dim=2, index=rand_idx).squeeze()
-            elif self.sample_mode == 'mean':
-                x_current = utils.index_points(x_next, idxs).mean(2)
             elif self.sample_mode == 'gt':
+                # only works when point correspondence is known and points are already aligned
                 x_current = x_next
             else:
                 raise ValueError("sample mode not supported")
