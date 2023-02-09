@@ -3,15 +3,17 @@ import visualization
 import numpy as np
 import sys
 sys.path.append('../dfaust/')
+sys.path.append('../ikeaaction/')
 from DfaustDataset import DfaustActionClipsDataset
-from ikeaaction.IKEAActionDataset import IKEAActionDatasetClips
+from ikeaaction.IKEAActionDatasetClips import IKEAActionDatasetClips
 import os
 # import pandas as pd
 import wandb
 from models.patchlets import PatchletsExtractor
 import matplotlib.pyplot as plt
 
-sweep = False
+
+sweep = True
 dataset_name = 'ikea'
 output_dir = './patchlet_parameter_ablations/'
 n_examples = 1000
@@ -21,6 +23,7 @@ frames_per_clip = 64
 # Define sweep config
 
 if sweep:
+    dataset_name_list = ['defaust', 'ikea']
     k_list = [8, 16, 32, 64]
     sample_mode_list = ['nn']
     dfaust_augmentation = ['']
@@ -37,7 +40,8 @@ if sweep:
         {
             'k': {'values': k_list},
             'sample_mode': {'values': sample_mode_list},
-            'centroid_noise': {'values': centroid_noise_list}
+            'centroid_noise': {'values': centroid_noise_list},
+            'dataset_name': {'values': dataset_name_list}
          }
     }
     sweep_id = wandb.sweep(sweep=configuration, project='point_drop_sweep')
@@ -46,7 +50,8 @@ else:
     configuration = {
             'k':  16,
             'sample_mode': 'nn',
-            'centroid_noise':  0.001
+            'centroid_noise':  0.001,
+            'dataset': dataset_name
     }
 
 
@@ -61,7 +66,7 @@ def main():
                                           add_centroid_jitter=add_centroid_jitter)
 
     if dataset_name == 'ikea':
-        dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/'
+        dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/64/'
         dataset = IKEAActionDatasetClips(dataset_path,  set='train')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=2, num_workers=8,
                                                        pin_memory=True, shuffle=False, drop_last=True)
@@ -123,9 +128,10 @@ def main():
 
     # plot histogram
     patchlet_variance_flattenned = np.vstack(patchlet_variance).reshape(-1)
-    patchlet_variance_scores = [s for s in patchlet_variance_flattenned]
+    # patchlet_variance_scores = [s for s in patchlet_variance_flattenned]
     fig = plt.figure()
-    plt.hist(patchlet_variance_scores, bins=1000, range=[0, np.percentile(patchlet_variance_scores, 90)])
+    plt.hist(patchlet_variance_flattenned, bins=1000, range=[0, np.percentile(patchlet_variance_flattenned, 90)],
+             weights=(1 / len(patchlet_variance_flattenned))*np.ones_like(patchlet_variance_flattenned))
     fig.suptitle('temporal mean center variance', fontsize=20)
     plt.xlabel('variance', fontsize=18)
     plt.ylabel('patchlet count', fontsize=16)
@@ -138,7 +144,8 @@ def main():
     # plot histogram
     patchlet_mean_variance = np.mean(np.array(patchlet_variance), 1)
     fig = plt.figure()
-    plt.hist(patchlet_mean_variance, bins=30, range=[0, np.percentile(patchlet_mean_variance, 90)])
+    plt.hist(patchlet_mean_variance, bins=30, range=[0, np.percentile(patchlet_mean_variance, 90)],
+             weights=(1 / len(patchlet_mean_variance))*np.ones_like(patchlet_mean_variance))
     fig.suptitle('temporal mean center mean variance', fontsize=20)
     plt.xlabel('mean variance', fontsize=18)
     plt.ylabel('patchlet count', fontsize=16)
@@ -159,15 +166,17 @@ def main():
     results_table = wandb.Table(columns=columns, data=[[dataset_name, k, sample_mode, add_centroid_jitter,
                                                         final_degradation_rate, final_average_patchlet_variance]])
     wandb.log({"Results summary": results_table})
+    wandb.log({"degredation rate": final_degradation_rate,
+               "patchlet variance":final_average_patchlet_variance})
     run.finish()
 
 # Start sweep job.
 
 
 if __name__ == "__main__":
+    run = wandb.init()
     if sweep:
         wandb.agent(sweep_id, function=main, count=4)
     else:
-        run = wandb.init()
         wandb.config.update(configuration)  # adds all of the arguments as config variables
         main()
