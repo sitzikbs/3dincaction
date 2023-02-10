@@ -1,6 +1,9 @@
 # Author: Yizhak Ben-Shabat (Itzik), 2022
 # test 3DInAction on Dfaust dataset
 
+import sys
+sys.path.append('../')
+
 import os
 import argparse
 import i3d_utils

@@ -1,6 +1,9 @@
 # Author: Yizhak Ben-Shabat (Itzik), 2022
 # train 3DInAction on Dfaust dataset
 
+import sys
+sys.path.append('../')
+
 import os
 import yaml
 import argparse
@@ -272,7 +275,7 @@ if __name__ == '__main__':
     # set_start_method('spawn')
     cfg = yaml.safe_load(open(args.config))
     logdir = os.path.join(args.logdir, args.identifier)
-    wandb_run = wandb.init(project='DFAUST', save_code=True)
+    wandb_run = wandb.init(project='DFAUST', entity='cgmlab', save_code=True)
 
     os.makedirs(logdir, exist_ok=True)
     cfg['WANDB'] = {'id': wandb_run.id, 'project': wandb_run.project, 'entity': wandb_run.entity}
