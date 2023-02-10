@@ -6,7 +6,7 @@ from joblib import Parallel, delayed
 import glob
 import numpy as np
 import numexpr as ne
-
+from ikeaego_utils import createAllRecordingDirList, createTrainTestFiles, getListFromFile, writeListToFile, getAllJsonAnnotations
 
 def fps_ne(points, npoint):
     # returns farthers point distance sampling
@@ -88,12 +88,51 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
             SampleAndSave(src_file_path, target_file_path, num_points, use_fps)
 
 
+def createAnnotationJson(dataset_dir):
+    getAllJsonAnnotations(dataset_dir=dataset_dir, merged_json={})
+
+
+def copyActionList(dataset_dir, action_list_txt_file=""):
+
+    if action_list_txt_file == "":
+        action_list_txt_file = os.path.join(dataset_dir, "action_list.txt")
+    action_list = getListFromFile(action_list_txt_file)
+    print(action_list)
+    writeListToFile(filename=os.path.join(dataset_dir, "indexing_files", "action_list.txt"), line_list=action_list)
+
+
+def createSeperateFurnitureRecLists(dataset_dir):
+    indexing_files_path = os.path.join(dataset_dir, "indexing_files")
+
+    [createAllRecordingDirList(dataset_dir=os.path.join(dataset_dir, furniture_name),
+                               target_file=os.path.join(indexing_files_path, "{}_recording_dir_list.txt".format(furniture_name)),
+                               original_dataset_path=dataset_dir)
+     for furniture_name in os.listdir(dataset_dir)
+     if os.path.isdir(os.path.join(dataset_dir, furniture_name)) and not furniture_name == "indexing_files"]
+
+
+def createAllIndexingFiles(dataset_dir, smallDataset = False):
+    # w_path = Path(dataset_dir)
+    indexing_files_path = os.path.join(dataset_dir, "indexing_files")
+
+    if not os.path.exists(indexing_files_path): os.mkdir(indexing_files_path)
+
+    recording_dir_list_path = os.path.join(indexing_files_path, "all_recording_dir_list.txt")
+    createAllRecordingDirList(dataset_dir=dataset_dir, target_file=recording_dir_list_path,
+                              original_dataset_path=dataset_dir)
+    createSeperateFurnitureRecLists(dataset_dir)
+    createTrainTestFiles(dataset_dir=dataset_dir)
+    copyActionList(dataset_dir=dataset_dir)
+    createAnnotationJson(dataset_dir=dataset_dir)
+
+
 if __name__ == '__main__':
-    src_dataset = r'/data1/datasets/Hololens/'
-    target_dataset = r'/data1/datasets/ikeaego_small/'
-    # src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
-    # target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
+    # src_dataset = r'/data1/datasets/Hololens/'
+    # target_dataset = r'/data1/datasets/ikeaego_small/'
+    src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
+    target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
     use_fps = True
     num_points = 4096
     parallelize = True
-    createSmallDataset(src_dataset, target_dataset, use_fps, num_points, parallelize)
+    # createSmallDataset(src_dataset, target_dataset, use_fps, num_points, parallelize)
+    createAllIndexingFiles(src_dataset, smallDataset=False)
