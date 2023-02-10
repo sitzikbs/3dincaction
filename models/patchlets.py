@@ -251,8 +251,8 @@ class PointNet2Patchlets(nn.Module):
     def __init__(self, cfg, num_class, n_frames=32, in_channel=3 ):
         super(PointNet2Patchlets, self).__init__()
         self.k = cfg['k']
-        self.sample_mode = cfg['sample_mode']
-        self.centroid_jitter = cfg['centroid_jitter']
+        self.sample_mode = cfg['patchlet_sample_mode']
+        self.centroid_jitter = cfg['patchlet_centroid_jitter']
         self.n_frames = n_frames
         self.downsample_method = cfg['downsample_method']
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
