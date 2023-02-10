@@ -105,7 +105,8 @@ def createSeperateFurnitureRecLists(dataset_dir):
     indexing_files_path = os.path.join(dataset_dir, "indexing_files")
 
     [createAllRecordingDirList(dataset_dir=os.path.join(dataset_dir, furniture_name),
-                               target_file=os.path.join(indexing_files_path, "{}_recording_dir_list.txt".format(furniture_name)))
+                               target_file=os.path.join(indexing_files_path, "{}_recording_dir_list.txt".format(furniture_name)),
+                               original_dataset_path=dataset_dir)
      for furniture_name in os.listdir(dataset_dir)
      if os.path.isdir(os.path.join(dataset_dir, furniture_name)) and not furniture_name == "indexing_files"]
 
@@ -117,7 +118,8 @@ def createAllIndexingFiles(dataset_dir, smallDataset = False):
     if not os.path.exists(indexing_files_path): os.mkdir(indexing_files_path)
 
     recording_dir_list_path = os.path.join(indexing_files_path, "all_recording_dir_list.txt")
-    createAllRecordingDirList(dataset_dir=dataset_dir, target_file=recording_dir_list_path)
+    createAllRecordingDirList(dataset_dir=dataset_dir, target_file=recording_dir_list_path,
+                              original_dataset_path=dataset_dir)
     createSeperateFurnitureRecLists(dataset_dir)
     createTrainTestFiles(dataset_dir=dataset_dir)
     copyActionList(dataset_dir=dataset_dir)
@@ -133,4 +135,4 @@ if __name__ == '__main__':
     num_points = 4096
     parallelize = True
     # createSmallDataset(src_dataset, target_dataset, use_fps, num_points, parallelize)
-    createAllIndexingFiles(src_dataset, smallDataset=target_dataset)
+    createAllIndexingFiles(src_dataset, smallDataset=False)
