@@ -209,7 +209,7 @@ class PointNetCls(nn.Module):
         return F.log_softmax(x, dim=1), trans, trans_feat
 
 class PointNetfeat(nn.Module):
-    def __init__(self, global_feat = True, feature_transform = False, in_d=3):
+    def __init__(self, global_feat=True, feature_transform=False, in_d=3):
         super(PointNetfeat, self).__init__()
         self.stn = STN3d()
         self.conv1 = torch.nn.Conv2d(in_d, 64, 1)
@@ -270,7 +270,8 @@ class PointNetClsBasic(nn.Module):
         self.num_classes = k
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, in_d=in_d)
-        self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
+        self.temporalconv = torch.nn.Conv1d(256, 256, 7, padding='same')
+        # self.temporalconv = torch.nn.AvgPool1d(5, stride=1, padding=2)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, k)

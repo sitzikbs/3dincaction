@@ -11,10 +11,11 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add utils dir
 import utils
 import eval_utils
-from DfaustDataset import DfaustActionClipsDataset as Dataset
-import matplotlib.pyplot as plt
 sys.path.append('evaluation')
 sys.path.append('../')
+from dfaust.DfaustDataset import DfaustActionClipsDataset as Dataset
+import matplotlib.pyplot as plt
+
 from eval_detection import ANETdetection
 from eval_classification import ANETclassification
 import sklearn

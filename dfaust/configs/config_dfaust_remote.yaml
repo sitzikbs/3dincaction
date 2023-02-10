@@ -1,5 +1,5 @@
 MODEL:
-  pc_model: 'pn2' # which model to use for point cloud processing, pn1 | pn2 | pn1_4d_basic | pn2_4d_basic | pn2_patchlets | 3dmfv (check)
+  pc_model: 'pn1_4d_basic' # which model to use for point cloud processing, pn1 | pn2 | pn1_4d_basic | pn2_4d_basic | pn2_patchlets | 3dmfv (check)
   3DMFV:
     n_gaussians: 8
   PATCHLET:
@@ -11,8 +11,8 @@ MODEL:
 TRAINING:
   lr: 0.001
   steps_per_update: 1
-  batch_size: 2
-  n_epochs: 30
+  batch_size: 8 #2
+  n_epochs: 200
   refine: False
   refine_epoch: 0
   pretrained_model: null
@@ -21,9 +21,11 @@ TRAINING:
 TESTING:
   batch_size: 2
   aug: [''] # 'jitter' | ''
+  set: 'test'
 
 DATA:
   dataset_path: '/data1/datasets/dfaust/'
+#  dataset_path: '/home/shrout/Hera/data1/datasets/dfaust/' # TODO: for debug (remove)
   frames_per_clip: 32
   frame_skip: 1
   n_points: 1024
