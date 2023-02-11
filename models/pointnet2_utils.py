@@ -153,9 +153,9 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
     fps_idx = farthest_point_sample(xyz, npoint) # [B, npoint, C]
     new_xyz = index_points(xyz, fps_idx.to(torch.int64))
 
-    # idx = query_ball_point(radius, nsample, xyz, new_xyz)
-    dists = square_distance(new_xyz, xyz)  # B x npoint x N
-    idx = dists.argsort()[:, :, :nsample]
+    idx = query_ball_point(radius, nsample, xyz, new_xyz)
+    # dists = square_distance(new_xyz, xyz)  # B x npoint x N
+    # idx = dists.argsort()[:, :, :nsample]
 
     grouped_xyz = index_points(xyz, idx) # [B, npoint, nsample, C]
     grouped_xyz_norm = grouped_xyz - new_xyz.view(B, S, 1, C)
