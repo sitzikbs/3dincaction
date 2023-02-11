@@ -45,13 +45,14 @@ def run(cfg, logdir, model_path, output_path):
     subset = cfg['TESTING']['set']
     pred_output_filename = os.path.join(output_path, subset + '_pred.npy')
     json_output_filename = os.path.join(output_path, subset + '_action_segments.json')
+    aug = cfg['TESTING']['aug']
 
     # setup dataset
     # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
     # test_transforms = transforms.Compose([transforms.CenterCrop(224)])
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=subset, n_points=n_points, last_op='pad',
-                           shuffle_points=shuffle_points, gender=gender)
+                           data_augmentation=aug, shuffle_points=shuffle_points, gender=gender)
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
     num_classes = test_dataset.action_dataset.num_classes
