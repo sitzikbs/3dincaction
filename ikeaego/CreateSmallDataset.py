@@ -88,21 +88,21 @@ def createSmallDataset(src_dataset, target_dataset, num_points, use_fps, paralle
             SampleAndSave(src_file_path, target_file_path, num_points, use_fps)
 
 
-def createAnnotationJson(dataset_dir):
-    getAllJsonAnnotations(dataset_dir=dataset_dir, merged_json={})
+def createAnnotationJson(dataset_dir, out_dir):
+    getAllJsonAnnotations(dataset_dir=dataset_dir, out_dir=out_dir, merged_json={})
 
 
-def copyActionList(dataset_dir, action_list_txt_file=""):
+def copyActionList(dataset_dir, out_dir, action_list_txt_file=""):
 
     if action_list_txt_file == "":
         action_list_txt_file = os.path.join(dataset_dir, "action_list.txt")
     action_list = getListFromFile(action_list_txt_file)
     print(action_list)
-    writeListToFile(filename=os.path.join(dataset_dir, "indexing_files", "action_list.txt"), line_list=action_list)
+    writeListToFile(filename=os.path.join(out_dir, "indexing_files", "action_list.txt"), line_list=action_list)
 
 
-def createSeperateFurnitureRecLists(dataset_dir):
-    indexing_files_path = os.path.join(dataset_dir, "indexing_files")
+def createSeperateFurnitureRecLists(dataset_dir, out_dir):
+    indexing_files_path = os.path.join(out_dir, "indexing_files")
 
     [createAllRecordingDirList(dataset_dir=os.path.join(dataset_dir, furniture_name),
                                target_file=os.path.join(indexing_files_path, "{}_recording_dir_list.txt".format(furniture_name)),
@@ -111,19 +111,19 @@ def createSeperateFurnitureRecLists(dataset_dir):
      if os.path.isdir(os.path.join(dataset_dir, furniture_name)) and not furniture_name == "indexing_files"]
 
 
-def createAllIndexingFiles(dataset_dir, smallDataset = False):
+def createAllIndexingFiles(dataset_dir, target_dataset):
     # w_path = Path(dataset_dir)
-    indexing_files_path = os.path.join(dataset_dir, "indexing_files")
+    indexing_files_path = os.path.join(target_dataset, "indexing_files")
 
     if not os.path.exists(indexing_files_path): os.mkdir(indexing_files_path)
 
     recording_dir_list_path = os.path.join(indexing_files_path, "all_recording_dir_list.txt")
     createAllRecordingDirList(dataset_dir=dataset_dir, target_file=recording_dir_list_path,
                               original_dataset_path=dataset_dir)
-    createSeperateFurnitureRecLists(dataset_dir)
-    createTrainTestFiles(dataset_dir=dataset_dir)
-    copyActionList(dataset_dir=dataset_dir)
-    createAnnotationJson(dataset_dir=dataset_dir)
+    createSeperateFurnitureRecLists(dataset_dir, target_dataset)
+    createTrainTestFiles(dataset_dir=dataset_dir, out_dir=target_dataset)
+    copyActionList(dataset_dir=dataset_dir, out_dir=target_dataset)
+    createAnnotationJson(dataset_dir=dataset_dir, out_dir=target_dataset)
 
 
 if __name__ == '__main__':
@@ -135,4 +135,4 @@ if __name__ == '__main__':
     num_points = 4096
     parallelize = True
     # createSmallDataset(src_dataset, target_dataset, use_fps, num_points, parallelize)
-    createAllIndexingFiles(src_dataset, smallDataset=False)
+    createAllIndexingFiles(src_dataset, target_dataset)

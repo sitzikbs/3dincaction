@@ -299,7 +299,7 @@ def getAllJsonsInDirList(dir_list, merged_json, subset, dataset_path):
             print(f"path {_dir_} does not have json yet")
 
 
-def getAllJsonAnnotations(dataset_dir, merged_json=None):
+def getAllJsonAnnotations(dataset_dir, out_dir, merged_json=None):
     if merged_json is None or merged_json == {}:
         merged_json = {"version": "2.0.0", "database": {}}
     print(merged_json)
@@ -307,8 +307,8 @@ def getAllJsonAnnotations(dataset_dir, merged_json=None):
     # use this code for one test directory:
     # getAllJsonsInDirList([dataset_dir], merged_json, "testing")
     # use this code for real database:
-    test_dir_list_file = os.path.join(dataset_dir, "indexing_files", "all_test_dir_list.txt")
-    train_dir_list_file = os.path.join(dataset_dir, "indexing_files", "all_train_dir_list.txt")
+    test_dir_list_file = os.path.join(out_dir, "indexing_files", "all_test_dir_list.txt")
+    train_dir_list_file = os.path.join(out_dir, "indexing_files", "all_train_dir_list.txt")
     assert os.path.exists(test_dir_list_file) and os.path.exists(train_dir_list_file)
     test_dir_list = getListFromFile(test_dir_list_file)
     train_dir_list = getListFromFile(train_dir_list_file)
@@ -316,7 +316,7 @@ def getAllJsonAnnotations(dataset_dir, merged_json=None):
     getAllJsonsInDirList(train_dir_list, merged_json, "training", dataset_dir)
     print(merged_json)
 
-    with open(os.path.join(dataset_dir, "indexing_files", "db_gt_annotations.json"), "w") as new_json_file_obj:
+    with open(os.path.join(out_dir, "indexing_files", "db_gt_annotations.json"), "w") as new_json_file_obj:
         print(merged_json)
         merged_json = json.dumps(merged_json)
         new_json_file_obj.write(merged_json)
@@ -352,8 +352,8 @@ def getSepereateFurnitureRecDirLists(dataset_dir):
     return furniture_sep_rec_dir_list
 
 
-def createTrainTestFiles(dataset_dir, train_ratio=0.7):
-    furniture_sep_rec_dir_list = getSepereateFurnitureRecDirLists(dataset_dir)
+def createTrainTestFiles(dataset_dir, out_dir, train_ratio=0.7):
+    furniture_sep_rec_dir_list = getSepereateFurnitureRecDirLists(out_dir)
     print(furniture_sep_rec_dir_list)
     all_train_recordings = []
     all_test_recordings = []
@@ -371,21 +371,23 @@ def createTrainTestFiles(dataset_dir, train_ratio=0.7):
         test_rec_list = recording_dir_list[num_train_recordings:]
         all_train_recordings += train_rec_list
         all_test_recordings += test_rec_list
-        writeListToFile(os.path.join(dataset_dir, "indexing_files", "{}_train_dir_list.txt".format(furniture_name)),
+        writeListToFile(os.path.join(out_dir, "indexing_files", "{}_train_dir_list.txt".format(furniture_name)),
                         train_rec_list)
-        writeListToFile(os.path.join(dataset_dir, "indexing_files", "{}_test_dir_list.txt".format(furniture_name)),
+        writeListToFile(os.path.join(out_dir, "indexing_files", "{}_test_dir_list.txt".format(furniture_name)),
                         test_rec_list)
 
-    writeListToFile(os.path.join(dataset_dir, "indexing_files", "all_train_dir_list.txt"),
+    writeListToFile(os.path.join(out_dir, "indexing_files", "all_train_dir_list.txt"),
                     all_train_recordings)
-    writeListToFile(os.path.join(dataset_dir, "indexing_files", "all_test_dir_list.txt"),
+    writeListToFile(os.path.join(out_dir, "indexing_files", "all_test_dir_list.txt"),
                     all_test_recordings)
 
 
 def aux_createAllRecordingDirList(sub_dir, target_file, dataset_dir):
     if "_recDir" in sub_dir[-8:]:
         with open(target_file, "a") as all_rec_idx_file:
-            all_rec_idx_file.write(sub_dir.removeprefix(dataset_dir) + "\n")
+            # all_rec_idx_file.write(sub_dir.removeprefix(dataset_dir) + "\n")
+            rel = os.path.relpath(sub_dir, dataset_dir)
+            all_rec_idx_file.write(rel + "\n")
         return
 
     for sub_sub_dir in glob(rf"{sub_dir}/*//"):
