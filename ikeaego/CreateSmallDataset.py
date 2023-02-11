@@ -127,10 +127,10 @@ def createAllIndexingFiles(dataset_dir, smallDataset = False):
 
 
 if __name__ == '__main__':
-    # src_dataset = r'/data1/datasets/Hololens/'
-    # target_dataset = r'/data1/datasets/ikeaego_small/'
-    src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
-    target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
+    src_dataset = r'/data1/datasets/Hololens/'
+    target_dataset = r'/data1/datasets/ikeaego_small/'
+    # src_dataset = r'/home/sitzikbs/Datasets/temp_Hololens/'
+    # target_dataset = r'/home/sitzikbs/Datasets/temp_Hololens_smaller/'
     use_fps = True
     num_points = 4096
     parallelize = True
