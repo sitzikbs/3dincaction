@@ -288,6 +288,7 @@ if __name__ == '__main__':
     wandb_run.name = args.identifier
     wandb.config.update(cfg)  # adds all of the arguments as config variables
     wandb.run.log_code(".")
+    wandb.run.log_code("../")
     # define our custom x axis metric
     wandb.define_metric("train/step")
     wandb.define_metric("train/*", step_metric="train/step")
