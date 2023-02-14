@@ -78,7 +78,10 @@ def make_weights_for_balanced_classes(clip_set, label_count):
     N = label_count.sum()
     weight_per_class = [0.] * nclasses
     for i in range(nclasses):
-        weight_per_class[i] = N/float(label_count[i])
+        if label_count[i] == 0:
+            weight_per_class[i] = 0
+        else:
+            weight_per_class[i] = N/float(label_count[i])
 
     weight = [0] * n_clips
     for idx, clip in enumerate(clip_set):

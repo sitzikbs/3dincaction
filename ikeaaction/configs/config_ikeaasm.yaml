@@ -11,7 +11,7 @@ MODEL:
 TRAINING:
   lr: 0.001
   steps_per_update: 1
-  batch_size: 2
+  batch_size: 1
   n_epochs: 1
   refine: False
   refine_epoch: 0

@@ -44,7 +44,7 @@ class IKEAActionDatasetClips(Dataset):
 
 
 if __name__ == '__main__':
-    dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips_32/'
+    dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
     set = 'train'
     dataset = IKEAActionDatasetClips(dataset_path, set)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)

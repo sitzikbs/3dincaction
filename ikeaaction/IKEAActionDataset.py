@@ -744,13 +744,14 @@ class Cache():
 
 
 if __name__ == "__main__":
-    dataset_path = '/mnt/sitzikbs_storage/Datasets/ANU_ikea_dataset_smaller'
+    dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller'
 
     db_file = 'ikea_annotation_db_full'
-    train_file = 'ikea_trainset.txt'
-    test_file = 'ikea_testset.txt'
+    train_file = 'train_cross_env.txt'
+    test_file = 'test_cross_env.txt'
     action_list_file = 'atomic_action_list.txt'
     action_object_relation_file = 'action_object_relation_list.txt'
-    dataset = IKEAActionDataset(dataset_path, db_file, action_list_file, action_object_relation_file, train_file, test_file)
+    dataset = IKEAActionDataset(dataset_path, db_file, action_list_file, action_object_relation_file, train_file, test_file,
+                                action_segments_filename='/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller/gt_segments.json')
 
     print(dataset.action_list)

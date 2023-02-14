@@ -400,13 +400,18 @@ class PointSampler():
 if __name__ == '__main__':
     # dataset = DfaustActionDataset(dfaust_path='/home/sitzikbs/Datasets/dfaust/')
     correformer_path = './transformer_toy_example/log/dfaust_N1024_d1024h16_lr1e-05bs16_/000000.pt'
+    frames_per_clip = 64
     dataset = DfaustActionClipsDataset(action_dataset_path='/home/sitzikbs/Datasets/dfaust/',
-                                       frames_per_clip=64, set='train', n_points=1024, last_op='pad',
-                                       shuffle_points='each')
+                                       frames_per_clip=frames_per_clip, set='test', n_points=1024, last_op='pad',
+                                       shuffle_points='each', gender='all')
     test_loader = DataLoader(dataset, batch_size=2, num_workers=1, shuffle=False, drop_last=True)#,
                              # multiprocessing_context='spawn')
 
-
+    print("Number of clips: {}".format(len(dataset)))
+    print("Number of frames: {}".format(frames_per_clip*len(dataset)))
+    stats = dataset.get_dataset_statistics()
+    actions = dataset.action_dataset.actions
+    print(stats)
     # correformer = cf.get_correformer(correformer_path)
 
     for batch, data in enumerate(test_loader):

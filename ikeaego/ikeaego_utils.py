@@ -196,9 +196,15 @@ def addTextToImg(img_path, txt="null"):
 
 
 def getNumFrames(_dir_):
-    pv_dir = os.path.join(_dir_, "pv")
-    assert os.path.exists(pv_dir)
-    return len(os.listdir(pv_dir))
+    pv_dir = os.path.join(_dir_, "norm", "pv")
+    pc_dir = os.path.join(_dir_, "norm", "Depth Long Throw")
+    data_dir = pv_dir
+    if not os.path.exists(pv_dir):
+        data_dir = pc_dir
+        if not os.path.exists(data_dir):
+            print("couldn't locate " + data_dir)
+            raise ValueError("no point cloud or RGB file dir")
+    return len(os.listdir(data_dir))
 
 def searchForAnnotationJson(_dir_):
     for sub_dir in os.listdir(_dir_):
@@ -265,7 +271,7 @@ def saveVideoClip(clip_name, clip_frames):
     for frame in clip_frames:
         transposed_frame = np.transpose(frame, (1, 2, 0))
         video.write(cv2.cvtColor(np.array(transposed_frame), cv2.COLOR_RGB2BGR))
-    print("saved video: ",clip_name )
+    print("saved video: ", clip_name)
 def decodeJsonAnnotations(current_json_annotation: dict, fps_error_correction_mapping):
     print(f"current_json_annotation: {current_json_annotation.keys()}")
     id_to_name = getIdToNameMapping(current_json_annotation["config"]["actionLabelData"])
@@ -383,7 +389,7 @@ def createTrainTestFiles(dataset_dir, out_dir, train_ratio=0.7):
 
 
 def aux_createAllRecordingDirList(sub_dir, target_file, dataset_dir):
-    if "_recDir" in sub_dir[-8:]:
+    if "_recDir" in sub_dir[-8:] and not "failedAttempts" in sub_dir:
         with open(target_file, "a") as all_rec_idx_file:
             # all_rec_idx_file.write(sub_dir.removeprefix(dataset_dir) + "\n")
             rel = os.path.relpath(sub_dir, dataset_dir)
