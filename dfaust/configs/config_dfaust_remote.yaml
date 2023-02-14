@@ -1,5 +1,5 @@
 MODEL:
-  pc_model: 'pn1' # which model to use for point cloud processing, pn1 | pn2 | pn1_4d_basic | pn2_4d_basic | pn2_patchlets | 3dmfv (check)
+  pc_model: 'pn1_4d_basic' # which model to use for point cloud processing, pn1 | pn2 | pn1_4d_basic | pn2_4d_basic | pn2_patchlets | 3dmfv (check)
   3DMFV:
     n_gaussians: 8
   PATCHLET:
@@ -24,7 +24,7 @@ TESTING:
   set: 'test'
 
 DATA:
-  dataset_path: '/data1/datasets/dfaust/'
+  dataset_path: '/data/sitzikbs/datasets/dfaust/'
 #  dataset_path: '/home/shrout/Hera/data1/datasets/dfaust/' # TODO: for debug (remove)
   frames_per_clip: 64 #32
   frame_skip: 1
@@ -33,5 +33,5 @@ DATA:
   gender: 'all'
   data_sampler: 'weighted'
   noisy_data:
-    train: False
-    test: False
+    train: True #False
+    test: True #False
