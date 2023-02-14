@@ -15,22 +15,20 @@ DATASET_N_POINTS = 6890
 
 class DfaustActionClipsDataset(Dataset):
     def __init__(self, action_dataset_path, frames_per_clip=64, set='train', n_points=DATASET_N_POINTS, last_op='pad',
-                 shuffle_points='once', data_augmentation=[], aug_params_dict={'sigma': 0.01},
-                 gender='female', nn_sample_ratio=1):
-        self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender)
+                 shuffle_points='once', data_augmentation=[], gender='female', nn_sample_ratio=1, noisy_data=None):
+        self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender, noisy_data=noisy_data)
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
         self.last_op = last_op
         self.data_augmentation = data_augmentation
-        self.aug_params_dict = aug_params_dict
         self.nn_sample_ratio = nn_sample_ratio # subsample the points
 
         self.clip_verts = None
         self.clip_labels = None
         self.subseq_pad = None  # stores the amount of padding for every clip
         self.point_sampler = PointSampler(self.shuffle_points, self.n_points, total_n_points=DATASET_N_POINTS,
-                                    nn_sample_ratio=nn_sample_ratio)
+                                          nn_sample_ratio=nn_sample_ratio)
 
         self.clip_data()
 
@@ -141,13 +139,11 @@ class DfaustActionClipsDataset(Dataset):
         if self.data_augmentation:
             out_points = points
             if 'scale' in self.data_augmentation:
-                out_points = transforms.random_scale_point_cloud(out_points, scale_low=0.8, scale_high=1.25)
+                out_points = transforms.random_scale_point_cloud(out_points, scale_low=0.95, scale_high=1.05)
             if 'rotate' in self.data_augmentation:
                 out_points = transforms.rotate_perturbation_point_cloud(out_points, angle_sigma=0.06, angle_clip=0.18)
-            # jitter is handled externally
             if 'jitter' in self.data_augmentation:
-                out_points = transforms.jitter_point_cloud(out_points, sigma=self.aug_params_dict['sigma'],
-                                                           clip=5 * self.aug_params_dict['sigma'])
+                out_points = transforms.jitter_point_cloud(out_points, sigma=0.001, clip=0.005)
             if 'translate' in self.data_augmentation:
                 out_points = transforms.shift_point_cloud(out_points, shift_range=0.1)
         else:
@@ -164,7 +160,6 @@ class DfaustActionClipsDataset(Dataset):
         points_seq, shuffled_idxs = self.point_sampler.samlpe_and_shuffle(self.clip_verts[idx])
         out_points = self.augment_points(points_seq)
 
-
         out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
                     'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx],
                     'corr_gt': shuffled_idxs, 'idx': idx}
@@ -173,15 +168,17 @@ class DfaustActionClipsDataset(Dataset):
 class DfaustActionDataset(Dataset):
     # A dataset class for action sequences. No batch support since sequences are not of equal lengths.
     # batch is supported in the clip based version that clips the sequences into equal length clips
-    def __init__(self, dfaust_path,  set='train', gender='female', n_points=DATASET_N_POINTS, shuffle_points='none'):
+    def __init__(self, dfaust_path, set='train', gender='female', n_points=DATASET_N_POINTS, shuffle_points='none',
+                 noisy_data=None):
+        self.noisy_data = noisy_data.get(set)
 
         dataset_subdivision_dict = {'train': {'female': {'sids': ['50004', '50020', '50021'],
                                                          'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5')]},
                                               'male': {'sids': ['50002', '50007', '50009'],
-                                                         'filnames': [os.path.join(dfaust_path, 'registrations_m.hdf5')]},
+                                                       'filnames': [os.path.join(dfaust_path, 'registrations_m.hdf5')]},
                                               'all': {'sids': ['50004', '50020', '50021', '50002', '50007', '50009'],
-                                                         'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5'),
-                                                                      os.path.join(dfaust_path, 'registrations_m.hdf5')]}
+                                                      'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5'),
+                                                                   os.path.join(dfaust_path, 'registrations_m.hdf5')]}
                                               },
                                     'test': {'female': {'sids': ['50022', '50025'],
                                                         'filnames': [os.path.join(dfaust_path, 'registrations_f.hdf5')]},
@@ -194,21 +191,23 @@ class DfaustActionDataset(Dataset):
                                     }
 
         self.sids = dataset_subdivision_dict[set][gender]['sids']
-        self.data_filename =  dataset_subdivision_dict[set][gender]['filnames']
-        self.actions = ['chicken_wings',
-                    'hips',
-                    'jiggle_on_toes',
-                    'jumping_jacks',
-                    'knees',
-                    'light_hopping_loose',
-                    'light_hopping_stiff',
-                    'one_leg_jump',
-                    'one_leg_loose',
-                    'punching',
-                    'running_on_spot',
-                    'shake_arms',
-                    'shake_hips',
-                    'shake_shoulders']
+        self.data_filename = dataset_subdivision_dict[set][gender]['filnames']
+        self.actions = [
+            'chicken_wings',
+            'hips',
+            'jiggle_on_toes',
+            'jumping_jacks',
+            'knees',
+            'light_hopping_loose',
+            'light_hopping_stiff',
+            'one_leg_jump',
+            'one_leg_loose',
+            'punching',
+            'running_on_spot',
+            'shake_arms',
+            'shake_hips',
+            'shake_shoulders',
+        ]
         self.num_classes = len(self.actions)
         self.vertices = []
         self.labels = []
@@ -222,11 +221,11 @@ class DfaustActionDataset(Dataset):
         self.shuffle_points = shuffle_points
         self.point_sampler = PointSampler(self.shuffle_points, self.n_points, total_n_points=DATASET_N_POINTS)
 
-
         self.load_data()
+        if self.noisy_data:
+            self.make_noisy_data()
 
         print(set+"set was loaded successfully and subdivided into clips.")
-
 
     def load_data(self):
         for filename in self.data_filename:
@@ -240,7 +239,7 @@ class DfaustActionDataset(Dataset):
                             #scale to unit sphere centered at the first frame
                             t = np.mean(vertices[0], axis=0)
                             s = np.linalg.norm(np.max(np.abs(vertices[0] - t), axis=0))
-                            vertices = (vertices - t )/ s
+                            vertices = (vertices - t) / s
 
                             self.vertices.append(vertices)
                             if self.faces is None:
@@ -249,6 +248,13 @@ class DfaustActionDataset(Dataset):
                             self.label_per_frame.append(i*np.ones(len(vertices)))
                             self.sid_per_seq.append(sidseq)
                             self.n_frames_per_seq[sidseq] = len(vertices)
+
+    def make_noisy_data(self):
+        noisy_vertices_l = []
+        for seq in self.vertices:
+            noisy_vertices_l.append(transforms.jitter_point_cloud(seq, sigma=0.01, clip=0.05))
+        # replace the vertices
+        self.vertices = noisy_vertices_l
 
     def get_dataset_statistics(self):
         n_frames_per_label = np.zeros(len(self.actions))

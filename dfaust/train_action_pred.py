@@ -51,7 +51,7 @@ def run(cfg, logdir):
     gender = cfg['DATA']['gender']
     data_sampler = cfg['DATA']['data_sampler']
     num_steps_per_update = cfg['TRAINING']['steps_per_update']
-
+    noisy_data = cfg['DATA']['noisy_data']
 
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('../models/pointnet.py', logdir))  # backup the models files
@@ -61,7 +61,8 @@ def run(cfg, logdir):
 
     # setup dataset
     train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=n_points,
-                            shuffle_points=shuffle_points, data_augmentation=data_aug_train, gender=gender)
+                            shuffle_points=shuffle_points, data_augmentation=data_aug_train, gender=gender,
+                            noisy_data=noisy_data)
     print("Number of clips in the trainingset:{}".format(len(train_dataset)))
 
     if data_sampler == 'weighted':
@@ -74,7 +75,8 @@ def run(cfg, logdir):
                                                    pin_memory=True, shuffle=True, drop_last=True)
 
     test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=n_points,
-                           shuffle_points=shuffle_points, gender=gender, data_augmentation=data_aug_test)
+                           shuffle_points=shuffle_points, gender=gender, data_augmentation=data_aug_test,
+                           noisy_data=noisy_data)
     print("Number of clips in the testset:{}".format(len(test_dataset)))
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                   pin_memory=True)

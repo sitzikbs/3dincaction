@@ -265,12 +265,13 @@ class PointNet1(nn.Module):
 
 
 class PointNetClsBasic(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
+    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=64):
         super(PointNetClsBasic, self).__init__()
         self.num_classes = k
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, in_d=in_d)
-        self.temporalconv = torch.nn.Conv1d(256, 256, 7, padding='same')
+        self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, padding='same')
+        # self.temporalconv = torch.nn.Conv1d(1024, 1024, 7, padding='same')  # todo: remove
         # self.temporalconv = torch.nn.AvgPool1d(5, stride=1, padding=2)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
@@ -279,11 +280,14 @@ class PointNetClsBasic(nn.Module):
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
         self.bn3 = nn.BatchNorm1d(256)
+        # self.bn3 = nn.BatchNorm1d(1024) # todo: remove
         self.relu = nn.ReLU()
 
     def forward(self, x):
         b, k, t, n = x.size()
         x, trans, trans_feat = self.feat(x)
+        # # todo: try to move 'temporalconv' to here
+        # x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 1024).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 1024)
         x = F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
         x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
         # learn a temporal filter on all per-frame global representations
@@ -332,6 +336,8 @@ class PointNetDenseCls(nn.Module):
 
 
 def feature_transform_regularizer(trans):
+    if trans is None:
+        return 0
     d = trans.size()[1]
     batchsize = trans.size()[0]
     I = torch.eye(d)[None, :, :]

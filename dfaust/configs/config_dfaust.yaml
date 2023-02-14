@@ -10,13 +10,13 @@ MODEL:
 
 TRAINING:
   lr: 0.001
-  steps_per_update: 2
+  steps_per_update: 1
   batch_size: 8
   n_epochs: 200
   refine: False
   refine_epoch: 0
   pretrained_model: null
-  aug: ['']
+  aug: [''] # 'scale', 'translate'
 
 TESTING:
   batch_size: 2
@@ -24,10 +24,13 @@ TESTING:
   set: 'test'
 
 DATA:
-  dataset_path: '/home/sitzikbs/Datasets/dfaust/'
-  frames_per_clip: 64
+  dataset_path: '/home/shrout/Data_sets/dfaust/'
+  frames_per_clip: 64 #32
   frame_skip: 1
   n_points: 1024
   shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each'
   gender: 'all'
   data_sampler: 'weighted'
+  noisy_data:
+    train: True
+    test: True

@@ -118,7 +118,7 @@ fig, ax = utils.plot_confusion_matrix(cm=c_matrix,
                       cmap=None,
                       normalize=True)
 
-plt.savefig(os.path.join(args.results_path, 'confusion_matrix.png'))
+plt.savefig(os.path.join(results_path, 'confusion_matrix.png'))
 img_out_filename = os.path.join(results_path, 'confusion_matrix.png')
 plt.savefig(img_out_filename)
 img = plt.imread(img_out_filename)

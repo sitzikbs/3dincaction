@@ -36,10 +36,11 @@ results_path = os.path.join(args.logdir, args.identifier, 'results/')
 dataset_path = cfg['DATA']['dataset_path']
 subset = cfg['TESTING']['set']
 gender = cfg['DATA']['gender']
+noisy_data = cfg['DATA']['noisy_data']
 
 # load the gt and predicted data
 gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments_'+gender+'.json')
-dataset = Dataset(dataset_path, set=subset, gender=gender)
+dataset = Dataset(dataset_path, set=subset, gender=gender, noisy_data=noisy_data)
 gt_labels = dataset.action_dataset.label_per_frame
 
 results_json = os.path.join(results_path, subset + '_action_segments.json')
