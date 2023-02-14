@@ -6,8 +6,10 @@ import numpy as np
 import itertools
 sys.path.append('../dfaust')
 sys.path.append('../ikeaaction')
+sys.path.append('../ikeaego')
 from DfaustDataset import DfaustActionClipsDataset
 from ikeaaction.IKEAActionDatasetClips import IKEAActionDatasetClips
+from ikeaego.IKEAEgoDatasetClips import IKEAEgoDatasetClips
 from models.patchlets import PatchletsExtractor
 
 def remove_patchlet_points_from_pc(point_seq, patchlet_point_list, features):
@@ -42,26 +44,32 @@ def remove_patchlet_points_from_pc(point_seq, patchlet_point_list, features):
 #     return out_points_seq
 
 gender = 'female'
-dataset_name = 'dfaust'
+dataset_name = 'ikeaego'
 # outdir = os.path.join('./log/sequence_images/', dataset_name, gender)
 # os.makedirs(outdir, exist_ok=True)
 view = 'iso'
 show_patchlets, show_full_pc, reduce_opacity = True, True, False
 # n_sequences = 1
-sequence_id = [1]
+sequence_id = [39, 50, 60, 10, 20, 30]
 # patchlet_ids = [2, 50, 100]
 patchlet_ids = [400, 151, 180]
-frames_per_clip = 64
+frames_per_clip = 32
 point_size = 15
 k = 32
 if dataset_name == 'ikea':
-    dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
+    dataset_path = os.path.join('/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/', str(frames_per_clip))
     dataset = IKEAActionDatasetClips(dataset_path, set='test')
-else:
+elif dataset_name == 'dfaust':
     dataset_path = '/home/sitzikbs/Datasets/dfaust/'
     dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=frames_per_clip, set='test', n_points=1024,
                                        shuffle_points='fps_each', gender=gender,
                                        noisy_data={'test': True, 'train':True})
+elif dataset_name == 'ikeaego':
+    dataset_path = os.path.join('/home/sitzikbs/Datasets/ikeaego_small_clips/',  str(frames_per_clip))
+    dataset = IKEAEgoDatasetClips(dataset_path, set='test')
+else:
+    raise ValueError("unsupported dataset")
+
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
 
@@ -71,36 +79,23 @@ extract_pachlets = PatchletsExtractor(k=k, npoints=512, sample_mode='nn',
 
 for batch_ind, data in enumerate(dataloader):
     print("processing batch {}".format(batch_ind))
-    if dataset_name == 'ikea':
+    if dataset_name == 'ikea' or dataset_name == 'ikeaego':
         point_seq = data[0][..., :3, :].permute(0, 1, 3, 2)
         point_color = data[0][..., 3:, :].permute(0, 1, 3, 2)/255
-    else:
+        labels_id = torch.argmax(data[1].squeeze(), 0)
+        label_txt = [dataset.action_list[laebl_id.item()] for laebl_id in labels_id]
+    elif dataset_name == 'dfaust':
         point_seq = data['points']
+        label_txt = None #TODO add support for dfaust labels
 
 
     # if n_sequences == 0 or batch_ind < n_sequences:
     if batch_ind in sequence_id:
         patchlet_dict = extract_pachlets(point_seq.cuda())
         patchlet_points = [patchlet_dict['patchlet_points'].squeeze()[:, id].cpu().numpy() for id in patchlet_ids]
-        # if show_patchlets == True:
-        #     point_seq, point_color = remove_patchlet_points_from_pc(point_seq.squeeze().cpu().numpy(), patchlet_points,
-        #                                                             point_color.squeeze().cpu().numpy())
-        # else:
-        #     point_seq = point_seq.squeeze().cpu().numpy()
-        # patchlet_idxs = [patchlet_dict['idx'].squeeze()[:, id].cpu().numpy() for id in patchlet_ids]
-        # point_seq = remove_patchlet_points_from_pc(patchlet_dict['x_current'].squeeze().cpu().numpy(), patchlet_idxs)
 
-        # visualization.export_pc_seq(point_seq, patchlet_points, text=None,
-        #                             color=point_color, cmap=None,
-        #                             point_size=point_size, output_path=os.path.join(outdir, str(batch_ind).zfill(6)),
-        #                             show_patchlets=show_patchlets, show_full_pc=show_full_pc,
-        #                             reduce_opacity=reduce_opacity, view=view)
-        # visualization.export_patchlet_seq(patchlet_points, point_size=point_size,
-        #                                   output_path=os.path.join(outdir, str(batch_ind).zfill(6)), view=view)
-        # visualization.export_patchlet_seq_separately(patchlet_points, point_size=point_size,
-        #                                   output_path=os.path.join(outdir, str(batch_ind).zfill(6)), view=view)
 
-        visualization.pc_seq_vis(point_seq.squeeze().cpu().numpy(), text=None, color=None, point_size=15)
+        visualization.pc_seq_vis(point_seq.squeeze().cpu().numpy(), text=label_txt, color=None, point_size=15)
 
 
 

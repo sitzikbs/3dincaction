@@ -313,7 +313,7 @@ class HololensStreamRecClipDataset(HololensStreamRecBase):
 
         frames = []
         for counter, i in enumerate(frame_ind):
-            pc_filename = os.path.join(video_full_path, "norm", "Depth Long Throw", "{}.ply".format(counter))
+            pc_filename = os.path.join(video_full_path, "norm", "Depth Long Throw", "{}.ply".format(i))
             plydata = plyfile.PlyData.read(pc_filename)
             d = np.asarray(plydata['vertex'].data)
             pc = np.column_stack([d[p.name] for p in plydata['vertex'].properties])
@@ -457,4 +457,8 @@ if __name__ == "__main__":
     dataset_path = '/home/sitzikbs/Datasets/ikeaego_small/'
     furniture_list = ['Stool', 'Drawer', 'Table', 'Coffee_Table']
     dataset = HololensStreamRecClipDataset(dataset_path, furniture_list, subset='train',
-                                           gt_annotation_filename='db_gt_annotations.json')
+                                           gt_annotation_filename='db_gt_annotations.json',
+                                           modalities=['point_clouds'])
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, num_workers=0, pin_memory=True)
+    for train_batchind, data in enumerate(dataloader):
+        inputs, labels, vid_idx, frame_pad = data

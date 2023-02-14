@@ -12,7 +12,7 @@ parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets
                     help='path to ikea asm dataset with point cloud data')
 parser.add_argument('--output_dataset_dir', type=str, default='/home/sitzikbs/Datasets/ikeaego_small_clips/',
                     help='path to the output directory where the new model will be saved')
-parser.add_argument('--frames_per_clip', type=int, default=32,  help='number of frames in each clip')
+parser.add_argument('--frames_per_clip', type=int, default=64,  help='number of frames in each clip')
 args = parser.parse_args()
 
 dataset_path = args.dataset_path

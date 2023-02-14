@@ -1,5 +1,5 @@
 MODEL:
-  pc_model: 'pn1' # which model to use for point cloud processing
+  pc_model: 'pn1_4d_basic' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   PATCHLET:
@@ -11,7 +11,7 @@ MODEL:
 TRAINING:
   lr: 0.001
   steps_per_update: 1
-  batch_size: 8
+  batch_size: 4
   n_epochs: 200
   refine: False
   refine_epoch: 0
@@ -24,7 +24,8 @@ TESTING:
   set: 'test'
 
 DATA:
-  dataset_path: '/home/shrout/Data_sets/dfaust/'
+#  dataset_path: '/home/shrout/Data_sets/dfaust/'
+  dataset_path: '/home/sitzikbs/Datasets/dfaust/'
   frames_per_clip: 64 #32
   frame_skip: 1
   n_points: 1024
@@ -32,5 +33,5 @@ DATA:
   gender: 'all'
   data_sampler: 'weighted'
   noisy_data:
-    train: True
-    test: True
+    train: false
+    test: false
