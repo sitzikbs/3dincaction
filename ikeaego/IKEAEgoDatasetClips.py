@@ -2,7 +2,7 @@ import os
 import torch.utils.data
 from torch.utils.data import Dataset
 import pickle
-
+import numpy as np
 
 
 class IKEAEgoDatasetClips(Dataset):
@@ -33,11 +33,30 @@ class IKEAEgoDatasetClips(Dataset):
         path = os.path.abspath(directory)
         return [entry.path for entry in os.scandir(path) if entry.is_file()]
 
+    def normalize_point_cloud(self, data):
+        # normalize the point cloud into a unit sphere
+        # for robustness to outliers, they are excluded in the scaling and will be positioned outside the sphere
+        points = data['inputs']
+        t = np.mean(points[0, 0:3], axis=-1)[:, None]
+        dist = np.linalg.norm(points[0, 0:3, :], axis=0)
+        thresh = dist.mean() + 3*dist.std()
+        mask = dist < thresh
+        robust_bbox_diag = np.abs(points[0, 0:3, mask] - t.transpose())
+        s = np.linalg.norm(np.max(robust_bbox_diag, axis=0))
+        # clasic non robust version
+        # bbox_diag = np.abs(points[0, 0:3, :] - t)
+        # s = np.linalg.norm(np.max(bbox_diag, axis=0))
+
+        points[:, 0:3] = (points[:, 0:3] - t) / s
+        data['inputs'] = points
+        return data
+
     def __len__(self):
         return len(self.file_list)
     def __getitem__(self, index):
         with open(self.file_list[index], 'rb') as f:
             data = pickle.load(f)
+        data = self.normalize_point_cloud(data)
         return data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
 
 

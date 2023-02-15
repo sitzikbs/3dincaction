@@ -317,10 +317,11 @@ class HololensStreamRecClipDataset(HololensStreamRecBase):
             plydata = plyfile.PlyData.read(pc_filename)
             d = np.asarray(plydata['vertex'].data)
             pc = np.column_stack([d[p.name] for p in plydata['vertex'].properties])
-            if counter == 0: # set the translation and scale consistently throughout the sequence
-                t = np.mean(pc[:, 0:3], axis=0)
-                s = np.linalg.norm(np.max(np.abs(pc[:, 0:3] - t), axis=0))
-            pc[:, 0:3] = (pc[:, 0:3] - t) / s
+            # Not translating and scaling when converting into clips. This will be done in the dataloader
+            # if counter == 0: # set the translation and scale consistently throughout the sequence
+            #     t = np.mean(pc[:, 0:3], axis=0)
+            #     s = np.linalg.norm(np.max(np.abs(pc[:, 0:3] - t), axis=0))
+            # pc[:, 0:3] = (pc[:, 0:3] - t) / s
 
             if n_points is not None:
                 indices = np.random.choice(range(len(pc)), size=n_points, replace=False)

@@ -1,0 +1,27 @@
+MODEL:
+  pc_model: 'pn1' # which model to use for point cloud processing
+  3DMFV:
+    n_gaussians: 8
+  PATCHLET:
+    patchlet_centroid_jitter: 0.001
+    patchlet_sample_mode: 'nn'  # nn | randn | mean type of patchlet sampling
+    k: 16
+    downsample_method: 'fps'
+
+TRAINING:
+  lr: 0.001
+  steps_per_update: 20
+  batch_size: 8
+  n_epochs: 31
+  refine: False
+  refine_epoch: 0
+  pretrained_model: null
+
+TESTING:
+  batch_size: 2
+
+
+DATA:
+  dataset_path: '/data1/datasets/ikeaego_small_clips/32/'
+  frame_skip: 1
+  n_points: 4096
