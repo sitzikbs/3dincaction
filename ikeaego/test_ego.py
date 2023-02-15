@@ -115,6 +115,8 @@ def run(cfg, logdir, model_path, output_path):
         # get the inputs
         inputs, labels, vid_idx, frame_pad = data
         # wrap them in Variable
+        if not vid_idx[0] == vid_idx[1]:
+            print("I am here")
         inputs = inputs.cuda().requires_grad_().contiguous()
         labels = labels.cuda()
 

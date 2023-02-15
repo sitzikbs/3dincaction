@@ -136,3 +136,4 @@ if __name__ == '__main__':
     parallelize = True
     # createSmallDataset(src_dataset, target_dataset, use_fps, num_points, parallelize)
     createAllIndexingFiles(src_dataset, target_dataset)
+    # run conver_json_actions.py

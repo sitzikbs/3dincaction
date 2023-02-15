@@ -9,5 +9,5 @@ CONFIG='./configs/config_ikeaego.yaml'
 LOGDIR='./log/'
 
 #python train_ego.py --identifier $IDENTIFIER --config $CONFIG --logdir $LOGDIR
-python test_ego.py --identifier $IDENTIFIER --model_ckpt '000000.pt' --logdir $LOGDIR
+#python test_ego.py --identifier $IDENTIFIER --model_ckpt '000000.pt' --logdir $LOGDIR
 python3 ../evaluation/evaluate_ikeaego.py --identifier $IDENTIFIER --logdir $LOGDIR
