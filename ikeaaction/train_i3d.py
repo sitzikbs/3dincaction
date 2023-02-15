@@ -30,7 +30,7 @@ import wandb
 parser = argparse.ArgumentParser()
 parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
 parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
-parser.add_argument('--config', type=str, default='./config.yaml', help='path to configuration yaml file')
+parser.add_argument('--config', type=str, default='./configs/config_ikeaasm.yaml', help='path to configuration yaml file')
 args = parser.parse_args()
 
 

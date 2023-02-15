@@ -53,7 +53,7 @@ show_patchlets, show_full_pc, reduce_opacity = True, True, False
 sequence_id = [39, 50, 60, 10, 20, 30]
 # patchlet_ids = [2, 50, 100]
 patchlet_ids = [400, 151, 180]
-frames_per_clip = 32
+frames_per_clip = 64
 point_size = 15
 k = 32
 if dataset_name == 'ikea':
@@ -84,9 +84,14 @@ for batch_ind, data in enumerate(dataloader):
         point_color = data[0][..., 3:, :].permute(0, 1, 3, 2)/255
         labels_id = torch.argmax(data[1].squeeze(), 0)
         label_txt = [dataset.action_list[laebl_id.item()] for laebl_id in labels_id]
+        if dataset_name == 'ikea':
+            pc_color = data[0][..., 3:, :].permute(0, 1, 3, 2).squeeze().cpu().numpy() / 255
+        elif dataset_name == 'ikeaego':
+            pc_color = data[0][..., 6:, :].permute(0, 1, 3, 2).squeeze().cpu().numpy() / 255
     elif dataset_name == 'dfaust':
         point_seq = data['points']
         label_txt = None #TODO add support for dfaust labels
+        pc_color = None
 
 
     # if n_sequences == 0 or batch_ind < n_sequences:
@@ -95,7 +100,7 @@ for batch_ind, data in enumerate(dataloader):
         patchlet_points = [patchlet_dict['patchlet_points'].squeeze()[:, id].cpu().numpy() for id in patchlet_ids]
 
 
-        visualization.pc_seq_vis(point_seq.squeeze().cpu().numpy(), text=label_txt, color=None, point_size=15)
+        visualization.pc_seq_vis(point_seq.squeeze().cpu().numpy(), text=label_txt, color=pc_color, point_size=15)
 
 
 
