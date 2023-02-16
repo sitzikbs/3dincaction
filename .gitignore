@@ -7,6 +7,6 @@
 **/build/
 **/dist/
 **/wandb/
-**/config/
+**/configs/
 **/run_experiment_remote.sh
 temp.py
