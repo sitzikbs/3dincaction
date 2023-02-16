@@ -24,7 +24,7 @@ import sklearn
 import wandb
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
+parser.add_argument('--logdir', type=str, default='../ikeaego/log/', help='path to model save dir')
 parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
 args = parser.parse_args()
 
@@ -75,7 +75,8 @@ acc3_per_vid = []
 
 gt_single_labels = []
 for vid_idx in range(len(logits)):
-    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx]), dim=1)
+    effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
+    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1) # avoid padding for ego since last frames are not necessary
     acc1, acc3 = eval_utils.accuracy(torch.tensor(logits[vid_idx]), single_label_per_frame, topk=(1, 3))
     acc1_per_vid.append(acc1.item())
     acc3_per_vid.append(acc3.item())
@@ -88,13 +89,14 @@ print(scores_str)
 balanced_acc_per_vid = []
 
 for vid_idx in range(len(logits)):
-    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx]), dim=1)
+    effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
+    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1)
     acc = sklearn.metrics.balanced_accuracy_score(single_label_per_frame, np.argmax(logits[vid_idx], 1),
                                                   sample_weight=None, adjusted=False)
     balanced_acc_per_vid.append(acc)
 
 balanced_score = round(np.mean(balanced_acc_per_vid)*100, 2)
-balanced_score_str = 'balanced accuracy: {}'.format(balanced_score)
+balanced_score_str = 'balanced accuracy: {} %'.format(balanced_score)
 print(balanced_score_str)
 
 

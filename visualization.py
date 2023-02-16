@@ -202,9 +202,10 @@ def pc_patchlet_vis(verts, patchlets, text=None):
         value=0,
         title="point_id",
         pointa=(0.025, 0.2),
-        pointb=(0.31, 0.2),
+        pointb=(0.71, 0.2),
         style='modern',
-        event_type='always'
+        event_type='always',
+        fmt='%4.0f'
     )
     pl.add_slider_widget(
         callback=lambda value: engine('frame_id', value),
@@ -440,25 +441,7 @@ def get_pc_pv_image(verts, text=None, color=None, point_size=50, cmap='cet_glasb
     return image
 
 
-def plot_correformer_outputs(mat_dict, titles_dict, title_text=''):
-    nrows = int(np.ceil(len(mat_dict) / 4))
-    ncols = 4
-    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 20))
-    row = 0
-    col = 0
-    for i, key in enumerate(mat_dict.keys()):
 
-        ax[row, col].matshow(mat_dict[key], interpolation='nearest')
-        ax[row, col].title.set_text(titles_dict[key])
-
-        col += 1
-        if col == ncols :
-            row += 1
-            col = 0
-
-    fig.suptitle(title_text)
-
-    plt.show()
 
 def plot_attention_maps(attention_maps, points, point_idx=0, title_text='', point_size=25):
     n_points = points.shape[1]
@@ -508,7 +491,8 @@ def export_pc_seq(verts, patchlet_points, text=None, color=None, cmap=None, poin
     t = len(verts)
     alpha = 1.0
     os.makedirs(output_path, exist_ok=True)
-    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan'], COLOR_PALLET['green']]
+    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan'], COLOR_PALLET['green'],
+                  COLOR_PALLET['salmon']]
     if cmap is not None:
         pv.global_theme.cmap = cmap
     else:
@@ -534,30 +518,43 @@ def export_pc_seq(verts, patchlet_points, text=None, color=None, cmap=None, poin
         if show_full_pc:
             if reduce_opacity:
                 alpha = np.clip(0.99 - 2*i/t, 0., 1.)
-            if 'ikea' in view:
-                pc['scalars'] = color[i]
-                pl.add_mesh(pc, render_points_as_spheres=True, point_size=point_size, #pbr=True,
-                            roughness=0.9, diffuse=1.0, metallic=0.05, opacity=alpha, rgb=True)
-            else:
-                pl.add_mesh(pc, render_points_as_spheres=True, point_size=point_size, pbr=True,
+
+            if type(point_size) == list:
+                # plot points of different sizes
+                pc["radius"] = point_size
+                # Low resolution geometry
+                geom = pv.Sphere(theta_resolution=20, phi_resolution=20)
+                glyphed = pc.glyph(scale="radius", geom=geom, )  # progress_bar=True)
+                pl.add_mesh(glyphed, render_points_as_spheres=True, pbr=True,
                             roughness=0.9, diffuse=1.0, metallic=0.05, opacity=alpha, color=color)
+            else:
+                if 'ikea' in view:
+                    pc['scalars'] = color[i]
+                    pl.add_mesh(pc, render_points_as_spheres=True, point_size=point_size,
+                                roughness=0.9, diffuse=1.0, metallic=0.05, opacity=alpha, rgb=True)
+                else:
+                    pl.add_mesh(pc, render_points_as_spheres=True, point_size=point_size, pbr=True,
+                                roughness=0.9, diffuse=1.0, metallic=0.05, opacity=alpha, color=color)
+
+
+
         if show_patchlets:
             for j, patchlet_pc in enumerate(patchlet_points):
                 pc = pv.PolyData(patchlet_pc[i])
                 pl.add_mesh(pc, render_points_as_spheres=True, color=color_list[j], point_size=point_size, pbr=True,
                             roughness=0.9, diffuse=1.0, metallic=0.05)
 
-        # # set up lighting
-        # light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
-        # pl.add_light(light)
+        # set up lighting
+        light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
+        pl.add_light(light)
+        light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
+        pl.add_light(light)
 
         pl.show(screenshot=os.path.join(output_path, str(i).zfill(6) + '.png'))
 
@@ -566,7 +563,8 @@ def export_patchlet_seq(patchlet_points, point_size=50, output_path='./', view='
     # plot a set of patchlets temporally in a single image
     output_path = os.path.join(output_path)
     os.makedirs(output_path, exist_ok=True)
-    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan'], COLOR_PALLET['green']]
+    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan'], COLOR_PALLET['green'],
+                  COLOR_PALLET['salmon']]
 
 
     pl = pv.Plotter(off_screen=True)
@@ -582,8 +580,18 @@ def export_patchlet_seq(patchlet_points, point_size=50, output_path='./', view='
     pl.set_background('white', top='white')
     for j, patchlet_pc in enumerate(patchlet_points):
         pc = pv.PolyData(patchlet_pc.reshape(-1, 3))
-        pl.add_mesh(pc, render_points_as_spheres=True, color=color_list[j], point_size=point_size, pbr=True,
-                    roughness=0.9, diffuse=1.0, metallic=0.05)
+        if type(point_size) == list:
+            # plot points of different sizes
+            pc["radius"] = point_size
+            # Low resolution geometry
+            geom = pv.Sphere(theta_resolution=20, phi_resolution=20)
+            glyphed = pc.glyph(scale="radius", geom=geom, )  # progress_bar=True)
+            pl.add_mesh(glyphed, render_points_as_spheres=True, pbr=True,
+                        roughness=0.9, diffuse=1.0, metallic=0.05, color=color_list[j])
+        else:
+
+            pl.add_mesh(pc, render_points_as_spheres=True, color=color_list[j], point_size=point_size, pbr=True,
+                        roughness=0.9, diffuse=1.0, metallic=0.05)
 
     # set up lighting
     light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
@@ -603,7 +611,8 @@ def export_patchlet_seq_separately(patchlet_points, point_size=50, output_path='
     # plot a set of patchlets temporally in a single image
     output_path = os.path.join(output_path)
     os.makedirs(output_path, exist_ok=True)
-    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan'], COLOR_PALLET['green']]
+    color_list = [COLOR_PALLET['dblue'], COLOR_PALLET['maroon'], COLOR_PALLET['cyan'], COLOR_PALLET['green'],
+                  COLOR_PALLET['salmon']]
 
 
     for j, patchlet_pc in enumerate(patchlet_points):
