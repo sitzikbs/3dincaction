@@ -13,7 +13,8 @@ from models.patchlets import PatchletsExtractor
 if __name__ == "__main__":
     # set_start_method('spawn')
 
-    dataset_name = 'ikea'
+    dataset_name = 'dfaust'
+    downsample_method = 'mean_var_t'
     npoints = 512
     k = 64
     sample_mode = 'nn'
@@ -26,10 +27,13 @@ if __name__ == "__main__":
     else:
         dataset_path = '/home/sitzikbs/Datasets/dfaust/'
         dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=64, set='train', n_points=1024,
-                                shuffle_points='fps_each', gender='female', data_augmentation=dfaust_augmentation )
+                                shuffle_points='fps_each', gender='female',
+                                           data_augmentation=dfaust_augmentation,
+                                           noisy_data={'test': False, 'train': False})
 
 
-    extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode, add_centroid_jitter=add_centroid_jitter)
+    extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
+                                          add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method)
 
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=0,

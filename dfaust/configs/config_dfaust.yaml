@@ -1,10 +1,10 @@
 MODEL:
-  pc_model: 'pn2_patchlets' # which model to use for point cloud processing
+  pc_model: '3dmfv' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   PATCHLET:
     patchlet_centroid_jitter: 0.005
-    patchlet_sample_mode: 'gt'  # nn | randn | gt type of patchlet sampling
+    patchlet_sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
     k: 16
     downsample_method: 'fps'
 

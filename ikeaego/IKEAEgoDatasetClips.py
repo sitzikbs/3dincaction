@@ -51,6 +51,13 @@ class IKEAEgoDatasetClips(Dataset):
         data['inputs'] = points
         return data
 
+    def get_dataset_statistics(self):
+        label_count = np.zeros(len(self.action_list))
+        for i in range(len(self.file_list)):
+            data = self.__getitem__(i)
+            label_count = label_count + data[1].sum(-1)
+        return label_count
+
     def __len__(self):
         return len(self.file_list)
     def __getitem__(self, index):

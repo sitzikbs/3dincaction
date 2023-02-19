@@ -409,7 +409,8 @@ if __name__ == '__main__':
     frames_per_clip = 64
     dataset = DfaustActionClipsDataset(action_dataset_path='/home/sitzikbs/Datasets/dfaust/',
                                        frames_per_clip=frames_per_clip, set='test', n_points=1024, last_op='pad',
-                                       shuffle_points='each', gender='all')
+                                       shuffle_points='each', gender='all',
+                                       noisy_data={'test': False, 'train':False})
     test_loader = DataLoader(dataset, batch_size=2, num_workers=1, shuffle=False, drop_last=True)#,
                              # multiprocessing_context='spawn')
 

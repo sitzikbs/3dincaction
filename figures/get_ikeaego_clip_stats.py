@@ -1,7 +1,7 @@
 import os
 import sys
 sys.path.append('../ikeaego/')
-from EgoSmallRawDataset import HololensStreamRecClipDataset as Dataset
+from IKEAEgoDatasetClips import IKEAEgoDatasetClips as Dataset
 from torch.utils.data import DataLoader
 import pandas as pd
 import seaborn as sns
@@ -9,15 +9,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from itertools import compress
 
-dataset_path = '/home/sitzikbs/Datasets/ikeaego_small/'
 frames_per_clip = 32
-gender = 'all'
+dataset_path = '/home/sitzikbs/Datasets/ikeaego_small_clips/' + str(frames_per_clip) + '/'
 out_dir = './log'
 out_dict = {'test':{}, 'train':{}}
 with_names = True
 
 for subset in out_dict.keys():
-    dataset = Dataset(dataset_path, subset=subset, frames_per_clip=frames_per_clip)
+    dataset = Dataset(dataset_path, set=subset)
     test_loader = DataLoader(dataset, batch_size=1, num_workers=1, shuffle=False, drop_last=False)
     print("printing info for {} set".format(subset))
     print("number of classes: {}".format(len(dataset.action_list)))
@@ -35,7 +34,7 @@ data_mean_occ = np.array(6000.)
 
 with open(os.path.join(out_dir, 'action_list.tex'), 'w') as f:
     for i, action in enumerate(actions):
-        f.write(str(i) + '& ' + action + '\\\\ \n')
+        f.write(str(i) + '& ' + action + '// \n')
 
 if with_names:
     action_labels = actions

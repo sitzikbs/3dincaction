@@ -4,7 +4,7 @@ GPU_IDX=0
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=$GPU_IDX
 
-IDENTIFIER='debug'
+IDENTIFIER='pn1_8bs_20steps_cuda1_millbrae'
 CONFIG='./configs/config_ikeaego.yaml'
 LOGDIR='./log/'
 

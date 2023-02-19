@@ -9,7 +9,6 @@ CONVERSION_DICT = {
         'spin screw':'spin screwdriver',
         'pick up back panel ':'pick up back panel',
         'application interface ':'application interface',
-        'pick up side panel':'pick drawer up side panel',
         'pick up drawer side panel':'pick up side panel',
         'pick up screw holder (the strange white thing)':'pick up cam lock',
         'insert screw holder (the strange white thing)':'insert cam lock',
@@ -43,6 +42,7 @@ CONVERSION_DICT = {
         'lay down front panel':'N/A',  # 0 occurances
         'flip whole table':'N/A',  # 0 occurances
         'flip coffee tabletop secondary':'N/A',  # 0 occurances
+        # 'flip coffee tabletop main':'N/A',  # low occurances
         'allign side panel':'N/A',  # 0 occurances
 }
 

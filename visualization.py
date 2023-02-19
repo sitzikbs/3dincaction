@@ -374,7 +374,7 @@ def pc_seq_vis(verts, text=None, color=None, point_size=25):
 
     n_frames = verts.shape[0]
     if color is None:
-        color = 0.5*np.ones([len(verts), len(verts[0])])
+        color = 0.5*np.ones([len(verts), len(verts[0]), 3])
 
     pc = pv.PolyData(verts[0])
     pc['scalars'] = color[0]

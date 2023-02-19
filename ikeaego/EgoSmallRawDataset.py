@@ -231,7 +231,6 @@ class HololensStreamRecClipDataset(HololensStreamRecBase):
                 if action == 'spin screw': action = 'spin screwdriver'
                 if action == 'pick up back panel ': action = 'pick up back panel'
                 if action == 'application interface ': action = 'application interface'
-                if action == 'pick up side panel' : action = 'pick drawer up side panel'
                 if action == 'pick up drawer side panel' : action = 'pick up side panel'
                 if action == 'pick up screw holder (the strange white thing)' : action = 'pick up cam lock'
                 if action == 'insert screw holder (the strange white thing)' : action = 'insert cam lock'
