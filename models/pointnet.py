@@ -211,6 +211,7 @@ class PointNetCls(nn.Module):
 class PointNetfeat(nn.Module):
     def __init__(self, global_feat=True, feature_transform=False, in_d=3):
         super(PointNetfeat, self).__init__()
+        self.in_d = in_d
         self.stn = STN3d()
         self.conv1 = torch.nn.Conv2d(in_d, 64, 1)
         self.conv2 = torch.nn.Conv2d(64, 128, 1)
@@ -225,8 +226,12 @@ class PointNetfeat(nn.Module):
 
     def forward(self, x):
         b, k, t, n = x.size() # batch, feature_dim , temporal, n_points
-        trans = self.stn(x)
-        x = torch.bmm(x.permute(0, 2, 3, 1).reshape(b*t, n, k), trans)
+        trans = self.stn(x[:, 0:3, ...])
+        x_trans = torch.bmm(x[:, 0:3, ...].permute(0, 2, 3, 1).reshape(b*t, n,3), trans)
+        if self.in_d > 3:
+            x = torch.cat([x_trans, x.reshape(b*t, n,self.in_d)[..., 3:]], axis=-1)
+        else:
+            x = x_trans
         x = x.reshape(b, t, n, k).permute(0, 3, 1, 2)
         x = F.relu(self.bn1(self.conv1(x)))
 

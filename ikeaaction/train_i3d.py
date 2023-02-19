@@ -70,17 +70,17 @@ def run(cfg, logdir):
     frames_per_clip = train_dataset.frames_per_clip
 
     if pc_model == 'pn1':
-        model = PointNet1(k=num_classes, feature_transform=True)
+        model = PointNet1(k=num_classes, feature_transform=True, in_d=in_channel)
     elif pc_model == 'pn1_4d':
         model = PointNet4D(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
     elif pc_model == 'pn1_4d_basic':
-        model = PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip)
+        model = PointNet1Basic(k=num_classes, feature_transform=True, n_frames=frames_per_clip, in_d=in_channel)
     elif pc_model == 'pn2':
-        model = PointNet2(num_class=num_classes, n_frames=frames_per_clip)
+        model = PointNet2(num_class=num_classes, n_frames=frames_per_clip, in_channel=in_channel)
     elif pc_model == 'pn2_4d':
         model = PointNetPP4D(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_4d_basic':
-        model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
+        model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip, in_channel=in_channel)
     elif pc_model == 'pn2_patchlets':
         model = PointNet2Patchlets(cfg=cfg['MODEL']['PATCHLET'], num_class=num_classes, n_frames=frames_per_clip,
                                    in_channel=in_channel)

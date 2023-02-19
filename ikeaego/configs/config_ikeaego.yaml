@@ -1,5 +1,5 @@
 MODEL:
-  pc_model: 'pn2' # which model to use for point cloud processing
+  pc_model: 'pn2_patchlets' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   PATCHLET:
@@ -25,3 +25,4 @@ DATA:
   dataset_path: '/home/sitzikbs/Datasets/ikeaego_small_clips/32/'
   frame_skip: 1
   n_points: 1024
+  in_channel: 6

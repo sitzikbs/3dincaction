@@ -68,9 +68,9 @@ class PointNet2(nn.Module):
         self.n_frames = n_frames
         self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel, mlp=[64, 64, 128],
                                           group_all=False)
-        self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3, mlp=[128, 128, 256],
+        self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + in_channel, mlp=[128, 128, 256],
                                           group_all=False)
-        self.sa3 = PointNetSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + 3,
+        self.sa3 = PointNetSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + in_channel,
                                           mlp=[256, 512, 1024], group_all=True)
 
         self.fc1 = nn.Linear(1024, 512)
@@ -106,9 +106,9 @@ class PointNet2Basic(nn.Module):
         self.n_frames = n_frames
         self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel, mlp=[64, 64, 128],
                                           group_all=False)
-        self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3, mlp=[128, 128, 256],
+        self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + in_channel, mlp=[128, 128, 256],
                                           group_all=False)
-        self.sa3 = PointNetSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + 3,
+        self.sa3 = PointNetSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + in_channel,
                                           mlp=[256, 512, 1024], group_all=True)
 
         self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
