@@ -33,8 +33,9 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu', radius=None):
     if radius is not None:
         # clip samples outside a radius, replace with origin to keep k constant
         clipped_idxs = idxs[..., [0]].repeat(1, 1, k)
-        mask = distances > radius
+        mask = distances > radius**2
         idxs[mask] = clipped_idxs[mask]
+        distances[mask] = 0
     return distances, idxs
 
 
@@ -146,7 +147,7 @@ class PatchletsExtractor(nn.Module):
         patchlets, patchlet_points = patchlets.reshape(b, t, n, self.k), patchlet_points.reshape(b, t, n, self.k, d)
         patchlet_feats = patchlet_feats.reshape(b, t, n, self.k, d_feat)
 
-        normalized_patchlet_points = patchlet_points - patchlet_points[:, 0, :, [0], :].unsqueeze(1) # normalize the patchlet around the center point of the first frame
+        normalized_patchlet_points = patchlet_points - patchlet_points[:, 0, :, [0], :].unsqueeze(1).detach() # normalize the patchlet around the center point of the first frame
         patchlet_feats = torch.cat([patchlet_feats, normalized_patchlet_points], -1)
 
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
@@ -260,20 +261,21 @@ class PointNet2Patchlets(nn.Module):
         self.centroid_jitter = cfg['centroid_jitter']
         self.n_frames = n_frames
         self.downsample_method = cfg['downsample_method']
+        self.radius = cfg['radius']
         self.in_channel = in_channel
 
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
         self.patchlet_extractor1 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=512,
                                                       add_centroid_jitter=self.centroid_jitter,
-                                                      downsample_method=self.downsample_method,
-                                                      )
+                                                      downsample_method=self.downsample_method, radius=self.radius[0])
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7, k=self.k, mlp=[64, 64, 128])
         self.patchlet_extractor2 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
                                                       add_centroid_jitter=self.centroid_jitter,
-                                                      downsample_method=self.downsample_method)
+                                                      downsample_method=self.downsample_method, radius=self.radius[1])
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3, k=self.k, mlp=[128, 128, 256])
         self.patchlet_extractor3 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
-                                                      add_centroid_jitter=self.centroid_jitter, downsample_method=None)
+                                                      add_centroid_jitter=self.centroid_jitter, downsample_method=None,
+                                                      radius=self.radius[2])
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3, k=self.k,
                                                            mlp=[256, 512, 1024])
 
@@ -290,7 +292,7 @@ class PointNet2Patchlets(nn.Module):
 
         # self.bnt = nn.BatchNorm1d(1024)
         # self.temporalconv1 = torch.nn.Conv1d(1024, 1024, int(n_frames/4), 1, padding='same')
-        self.temporalconv2 = torch.nn.Conv1d(256, 256, n_frames, 1, padding='same')
+        self.temporalconv2 = torch.nn.Conv1d(256, 256, 3, 1, padding='same')
         self.bn3 = nn.BatchNorm1d(256)
 
 

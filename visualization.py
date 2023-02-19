@@ -370,7 +370,7 @@ def mesh_seq_vis(verts, faces, text=None, color=None):
 
     pl.show()
 
-def pc_seq_vis(verts, text=None, color=None, point_size=25):
+def pc_seq_vis(verts, text=None, color=None, point_size=25, rgb=True):
 
     n_frames = verts.shape[0]
     if color is None:
@@ -380,7 +380,7 @@ def pc_seq_vis(verts, text=None, color=None, point_size=25):
     pc['scalars'] = color[0]
 
     pl = pv.Plotter()
-    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=point_size, rgb=True)
+    pl.add_mesh(pc, render_points_as_spheres=True, scalars=pc['scalars'], point_size=point_size, rgb=rgb)
     engine = PCCustomRoutine(verts, pc, text, pl, color)
     pl.add_slider_widget(
         callback=lambda value: engine('value', value),

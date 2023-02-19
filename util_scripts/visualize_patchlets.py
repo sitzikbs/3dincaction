@@ -13,8 +13,8 @@ from models.patchlets import PatchletsExtractor
 if __name__ == "__main__":
     # set_start_method('spawn')
 
-    dataset_name = 'dfaust'
-    downsample_method = 'mean_var_t'
+    dataset_name = 'ikea'
+    downsample_method = 'fps'
     npoints = 512
     k = 64
     sample_mode = 'nn'
@@ -33,7 +33,8 @@ if __name__ == "__main__":
 
 
     extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
-                                          add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method)
+                                          add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,
+                                          radius=0.2)
 
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=0,

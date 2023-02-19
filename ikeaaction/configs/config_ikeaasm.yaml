@@ -7,7 +7,7 @@ MODEL:
     sample_mode: 'nn'  # nn | randn | mean type of patchlet sampling
     k: 16
     downsample_method: 'fps'
-
+    radius: [None, None, None]
 
 TRAINING:
   lr: 0.001
