@@ -45,7 +45,7 @@ def remove_patchlet_points_from_pc(point_seq, patchlet_point_list, features):
 #     return out_points_seq
 
 gender = 'female'
-dataset_name = 'dfaust'
+dataset_name = 'ikea'
 # outdir = os.path.join('./log/sequence_images/', dataset_name, gender)
 # os.makedirs(outdir, exist_ok=True)
 view = 'iso'
@@ -76,7 +76,8 @@ else:
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
 
 extract_pachlets = PatchletsExtractor(k=k, npoints=512, sample_mode='nn',
-                                      add_centroid_jitter=0.0, downsample_method='fps')
+                                      add_centroid_jitter=0.0, downsample_method='fps',
+                                      radius=0.2)
 
 
 for batch_ind, data in enumerate(dataloader):

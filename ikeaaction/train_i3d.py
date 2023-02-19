@@ -43,7 +43,7 @@ def run(cfg, logdir):
     pretrained_model = cfg['TRAINING']['pretrained_model']
     pc_model = cfg['MODEL']['pc_model']
     num_steps_per_update = cfg['TRAINING']['steps_per_update']
-
+    in_channel = cfg['DATA']['in_channel']
 
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('../models/pytorch_i3d.py', logdir))  # backup the models files
@@ -82,7 +82,8 @@ def run(cfg, logdir):
     elif pc_model == 'pn2_4d_basic':
         model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_patchlets':
-        model = PointNet2Patchlets(cfg=cfg['MODEL']['PATCHLET'], num_class=num_classes, n_frames=frames_per_clip)
+        model = PointNet2Patchlets(cfg=cfg['MODEL']['PATCHLET'], num_class=num_classes, n_frames=frames_per_clip,
+                                   in_channel=in_channel)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=cfg['MODEL']['3DMFV']['n_gaussians'], num_classes=num_classes, n_frames=frames_per_clip)
     else:
@@ -155,7 +156,7 @@ def run(cfg, logdir):
             inputs = inputs.cuda().requires_grad_()
             labels = labels.cuda()
 
-            inputs = inputs[:, :, 0:3, :]
+            inputs = inputs[:, :, 0:in_channel, :]
             out_dict = model(inputs)
             per_frame_logits = out_dict['pred']
             if pc_model == 'pn1':
@@ -219,7 +220,7 @@ def run(cfg, logdir):
 
                 with torch.no_grad():
 
-                    inputs = inputs[:, :, 0:3, :]
+                    inputs = inputs[:, :, 0:in_channel, :]
                     out_dict = model(inputs)
                     per_frame_logits = out_dict['pred']
                     if pc_model == 'pn1':

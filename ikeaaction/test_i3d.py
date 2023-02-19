@@ -30,6 +30,7 @@ def run(cfg, logdir, model_path, output_path):
     dataset_path = cfg['DATA']['dataset_path']
     pc_model = cfg['MODEL']['pc_model']
     batch_size = cfg['TESTING']['batch_size']
+    in_channel = cfg['DATA']['in_channel']
     pred_output_filename = os.path.join(output_path, 'pred.npy')
     json_output_filename = os.path.join(output_path, 'action_segments.json')
 
@@ -89,7 +90,7 @@ def run(cfg, logdir, model_path, output_path):
             sys.modules["PointNet2Patchlets"] = pointnet_pp
             spec.loader.exec_module(pointnet_pp)
             model = pointnet_pp.PointNet2Patchlets(cfg=cfg['MODEL']['PATCHLET'], num_class=num_classes,
-                                                      n_frames=frames_per_clip)
+                                                      n_frames=frames_per_clip, in_channel=in_channel)
     elif pc_model == '3dmfv':
             spec = importlib.util.spec_from_file_location("FourDmFVNet",
                                                           os.path.join(logdir, "pytorch_3dmfv.py"))
@@ -118,7 +119,7 @@ def run(cfg, logdir, model_path, output_path):
         inputs = inputs.cuda().requires_grad_().contiguous()
         labels = labels.cuda()
 
-        inputs = inputs[:, :, 0:3, :].contiguous()
+        inputs = inputs[:, :, 0:in_channel, :].contiguous()
         out_dict = model(inputs)
         logits = out_dict['pred']
 

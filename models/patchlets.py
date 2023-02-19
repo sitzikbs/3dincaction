@@ -11,7 +11,7 @@ from pykeops.torch import Vi, Vj
 import time
 # import torch_cluster
 
-def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
+def get_knn(x1, x2, k=16, res=None, method='faiss_gpu', radius=None):
 
     if method == 'faiss_gpu':
         distances, idxs = faiss_torch_knn_gpu(res, x1, x2, k=k)
@@ -29,14 +29,22 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu'):
         D_ij = ((X_i - X_j) ** 2).sum(-1)
         KNN_fun = D_ij.Kmin_argKmin(k, dim=1)
         distances, idxs = KNN_fun(x1.contiguous(), x2.contiguous())
+
+    if radius is not None:
+        # clip samples outside a radius, replace with origin to keep k constant
+        clipped_idxs = idxs[..., [0]].repeat(1, 1, k)
+        mask = distances > radius
+        idxs[mask] = clipped_idxs[mask]
     return distances, idxs
 
 
 class PatchletsExtractor(nn.Module):
-    def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None):
+    def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None,
+                 radius=None):
         super(PatchletsExtractor, self).__init__()
         #TODO consider implementing a radius threshold
         self.k = k
+        self.radius = radius
         self.sample_mode = sample_mode
         self.downsample_method = downsample_method
         self.npoints = npoints
@@ -57,26 +65,11 @@ class PatchletsExtractor(nn.Module):
         x1 = point_seq
         x2 = torch.cat([point_seq[:, [0]], point_seq], dim=1)[:, :-1]
 
-        # # Downsample
-        # fps_idx = None
-        # if self.npoints is not None:
-        #     if self.downsample_method == 'fps':
-        #         #select a subset of the points using fps for maximum coverage
-        #         fps_idx = utils.farthest_point_sample(x2[:, 0].contiguous(), self.npoints).to(torch.int64)
-        #         x2 = utils.index_points(x2[:, 0], fps_idx).unsqueeze(1)
-        #         n = self.npoints
-        #         n_out = self.npoints
-        #     elif self.downsample_method == 'mean_var_t':
-        #         n_out = n_original
-        #         pass
-        #     else:
-        #         raise ValueError("downsampling method not suported")
-
         out_x = torch.empty(b, t, n_out, d)
         patchlets = torch.empty(b, t, n, self.k, device=point_seq.device, dtype=torch.long)
         distances_i = torch.empty(b,  t, n, self.k, device=point_seq.device)
         idxs_i = torch.empty(b, t, n, self.k, device=point_seq.device, dtype=torch.long)
-        patchlet_points = torch.empty(b, t, n, self.k, 3, device=point_seq.device)
+        patchlet_points = torch.empty(b, t, n, self.k, d, device=point_seq.device)
         patchlet_feats = torch.empty(b, t, n, self.k, d_feat, device=point_seq.device)
 
         # loop over the data to reorder the indices to form the patchlets
@@ -84,7 +77,7 @@ class PatchletsExtractor(nn.Module):
         feat_seq_2 = torch.cat([feat_seq[:, [0]], feat_seq], dim=1)[:, :-1]
         for i in range(0, t):
             x_next = x1[:, i]
-            distances, idxs = get_knn(x_current, x_next, k=self.k, res=self.res, method='keops')
+            distances, idxs = get_knn(x_current[..., 0:3], x_next[..., 0:3], k=self.k, res=self.res, method='keops', radius=self.radius)
             if self.sample_mode == 'nn':
                 x_current = utils.index_points(x_next, idxs)[:, :, 0, :]
             elif self.sample_mode == 'randn':
@@ -113,25 +106,10 @@ class PatchletsExtractor(nn.Module):
         idxs = idxs_i
 
         patchlet_feats = patchlet_feats.reshape(b*t, n, self.k, d_feat)
-        patchlet_points = patchlet_points.reshape(b * t, n, self.k, 3)
+        patchlet_points = patchlet_points.reshape(b * t, n, self.k, d)
         idxs = idxs.reshape(b*t, n, self.k)
         distances = distances.reshape(b*t, n, self.k)
         patchlets = patchlets.reshape(b*t, n, self.k)
-
-
-        # # downsample
-        # if self.npoints is not None and self.downsample_method == 'mean_var_t':
-        #     patchlet_variance = torch.linalg.norm(
-        #         torch.var(torch.mean(patchlet_points.reshape(b, t, n, self.k, d), -2), 1), dim=-1)
-        #     _, selected_idxs = torch.topk(patchlet_variance, self.npoints)
-        #     selected_idxs = selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints)
-        #     patchlet_points = utils.index_points(patchlet_points, selected_idxs)
-        #     patchlet_feats = utils.index_points(patchlet_feats, selected_idxs)
-        #     distances = utils.index_points(distances, selected_idxs)
-        #     idxs = utils.index_points(idxs, selected_idxs)
-        #     patchlets = utils.index_points(patchlets, selected_idxs)
-        #     n = self.npoints
-        #     n_out = n_original
 
         fps_idx = None
         if self.downsample_method == 'fps':
@@ -155,11 +133,11 @@ class PatchletsExtractor(nn.Module):
                 raise ValueError("downsample method not supported ")
             _, selected_idxs = torch.topk(patchlet_variance, self.npoints)
             selected_idxs = selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints)
-            patchlet_points = utils.index_points(patchlet_points, selected_idxs)#.reshape(-1, self.npoints)
-            patchlet_feats = utils.index_points(patchlet_feats, selected_idxs)#.reshape(-1, self.npoints))
-            distances = utils.index_points(distances, selected_idxs)#.reshape(-1, self.npoints)
-            idxs = utils.index_points(idxs, selected_idxs)#.reshape(-1, self.npoints)
-            patchlets = utils.index_points(patchlets, selected_idxs)#.reshape(-1, self.npoints)
+            patchlet_points = utils.index_points(patchlet_points, selected_idxs)
+            patchlet_feats = utils.index_points(patchlet_feats, selected_idxs)
+            distances = utils.index_points(distances, selected_idxs)
+            idxs = utils.index_points(idxs, selected_idxs)
+            patchlets = utils.index_points(patchlets, selected_idxs)
             n = self.npoints
 
 
@@ -174,7 +152,7 @@ class PatchletsExtractor(nn.Module):
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
                 'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
                 'normalized_patchlet_points': normalized_patchlet_points, 'fps_idx': fps_idx,
-                'x_current': out_x.reshape(b, t, n_out, 3)}
+                'x_current': out_x.reshape(b, t, n_out, d)}
 
 
 class PatchletTemporalConv(nn.Module):
@@ -275,25 +253,28 @@ class PointNet2PatchletsSA(nn.Module):
 
 
 class PointNet2Patchlets(nn.Module):
-    def __init__(self, cfg, num_class, n_frames=32, in_channel=3 ):
+    def __init__(self, cfg, num_class, n_frames=32, in_channel=3):
         super(PointNet2Patchlets, self).__init__()
         self.k = cfg['k']
-        self.sample_mode = cfg['patchlet_sample_mode']
-        self.centroid_jitter = cfg['patchlet_centroid_jitter']
+        self.sample_mode = cfg['sample_mode']
+        self.centroid_jitter = cfg['centroid_jitter']
         self.n_frames = n_frames
         self.downsample_method = cfg['downsample_method']
+        self.in_channel = in_channel
+
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
         self.patchlet_extractor1 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=512,
                                                       add_centroid_jitter=self.centroid_jitter,
-                                                      downsample_method=self.downsample_method)
+                                                      downsample_method=self.downsample_method,
+                                                      )
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7, k=self.k, mlp=[64, 64, 128])
         self.patchlet_extractor2 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
                                                       add_centroid_jitter=self.centroid_jitter,
                                                       downsample_method=self.downsample_method)
-        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+3, temporal_conv=3, k=self.k, mlp=[128, 128, 256])
+        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3, k=self.k, mlp=[128, 128, 256])
         self.patchlet_extractor3 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
                                                       add_centroid_jitter=self.centroid_jitter, downsample_method=None)
-        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+3, temporal_conv=3, k=self.k,
+        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3, k=self.k,
                                                            mlp=[256, 512, 1024])
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
