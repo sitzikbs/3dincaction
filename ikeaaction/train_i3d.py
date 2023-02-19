@@ -44,7 +44,7 @@ def run(cfg, logdir):
     pc_model = cfg['MODEL']['pc_model']
     num_steps_per_update = cfg['TRAINING']['steps_per_update']
     in_channel = cfg['DATA']['in_channel']
-
+    assert in_channel == 3 or in_channel == 6
     os.system('cp %s %s' % (__file__, logdir))  # backup the current training file
     os.system('cp %s %s' % ('../models/pytorch_i3d.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pointnet.py', logdir))  # backup the models files

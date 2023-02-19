@@ -26,4 +26,4 @@ DATA:
   dataset_path: '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
   frame_skip: 1
   n_points: 1024
-  in_channel: 6
+  in_channel: 6 # 3 | 6 -> xyz, xyzrgb
