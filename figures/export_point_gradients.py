@@ -23,12 +23,14 @@ import yaml
 from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 from torch.multiprocessing import set_start_method
 
+from util_scripts.GradCam import GradCam
+
 np.random.seed(0)
 torch.manual_seed(0)
-# pn2_patchlets_8bs_2steps_skip_connection_2_millbrae, pn2_4d_basic_8bs_2steps_skip_connection_0_millbrae
+# pn2_patchlets_8bs_2steps_skip_connection_2_millbrae, pn2_4d_basic_8bs_2steps_skip_connection_0_millbrae, pn2_patchlets_8bs_2steps_skip_connection_detach_3_millbrae
 parser = argparse.ArgumentParser()
 parser.add_argument('--logdir', type=str, default='../dfaust/log/', help='path to model save dir')
-parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
+parser.add_argument('--identifier', type=str, default='pn2_patchlets_8bs_2steps_skip_connection_detach_3_millbrae', help='unique run identifier')
 parser.add_argument('--model_ckpt', type=str, default='000000.pt', help='checkpoint to load')
 args = parser.parse_args()
 
@@ -113,41 +115,52 @@ def run(cfg, logdir, model_path, output_path):
 
     model.load_state_dict(checkpoints["model_state_dict"])  # load trained model
     model.cuda()
-    model = nn.DataParallel(model)
+    # model = nn.DataParallel(model)
+    model.eval()
 
+    # target_layers = [model.patchlet_temporal_conv1]
+    target_layers = [model.patchlet_extractor1]
+    cam = GradCam.GradCAM(model=model, target_layers=target_layers, reshape_transform=None)
+    #
     # Iterate over data.
     for test_batchind, data in enumerate(test_dataloader):
-        model.train(False)
+
         # get the inputs
         inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
         inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
         labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
 
-        out_dict = model(inputs)
-        logits = out_dict['pred']
-
-        pred_labels = torch.argmax(logits, 1).detach().cpu().numpy()
+        if test_batchind in [1, 6, 22, 12, 14]:
+            cam_result = cam(input_tensor=inputs, targets=labels)
+            per_patch_cam = cam_result.mean(-1)
+            out_dict = model(inputs)
+            patchlet_points = out_dict['patchlet_points']
+            visualization.pc_patchlet_points_vis(patchlet_points[0].detach().cpu().numpy(), colors=per_patch_cam[0] )
+        # logits = out_dict['pred']
+        # pred_labels = torch.argmax(logits, 1).detach().cpu().numpy()
 
         # compute losses
         # loc_loss = F.binary_cross_entropy_with_logits(logits, labels)
         # cls_loss = F.binary_cross_entropy_with_logits(torch.max(logits, dim=2)[0],
         #                                               torch.max(labels, dim=2)[0])
         # loss = (0.5 * loc_loss + 0.5 * cls_loss)
-        loss = F.binary_cross_entropy_with_logits(logits, labels, reduction='none').mean(1).squeeze()
-        if test_batchind == 15:
-            # Compute gradient magnitude
-            batch_idx = 0
-            point_grad = utils.gradient(inputs, loss)
-            point_grad_mag = torch.linalg.norm(point_grad[:, 0:], axis=2)
-            # point_grad_mag = (point_grad_mag - point_grad_mag.min(axis=2)[0].unsqueeze(-1)) / \
-            #                  (point_grad_mag.max(axis=2)[0].unsqueeze(-1) - point_grad_mag.min(axis=2)[0].unsqueeze(-1))
-            point_grad_mag = (point_grad_mag - point_grad_mag.min()) / (point_grad_mag.max() - point_grad_mag.min())
-            point_grad_mag = torch.clip(point_grad_mag, min=point_grad_mag.mean(axis=2).unsqueeze(-1) - 2 *point_grad_mag.std(axis=2).unsqueeze(-1),
-                                        max=point_grad_mag.mean(axis=2).unsqueeze(-1) + 2 *point_grad_mag.std(axis=2).unsqueeze(-1))
 
-            #Visualize
-            visualization.pc_seq_vis(inputs[batch_idx, 0:].permute(0, 2, 1).detach().cpu().numpy(), text=None,
-                                     color=point_grad_mag[batch_idx].detach().cpu().numpy(), point_size=15, rgb=False)
+        # loss = F.binary_cross_entropy_with_logits(logits, labels, reduction='none').mean(1).squeeze()
+        #
+        # if test_batchind == 15:
+        #     # Compute gradient magnitude
+        #     batch_idx = 0
+        #     point_grad = utils.gradient(inputs, loss)
+        #     point_grad_mag = torch.linalg.norm(point_grad[:, 0:], axis=2)
+        #     # point_grad_mag = (point_grad_mag - point_grad_mag.min(axis=2)[0].unsqueeze(-1)) / \
+        #     #                  (point_grad_mag.max(axis=2)[0].unsqueeze(-1) - point_grad_mag.min(axis=2)[0].unsqueeze(-1))
+        #     point_grad_mag = (point_grad_mag - point_grad_mag.min()) / (point_grad_mag.max() - point_grad_mag.min())
+        #     point_grad_mag = torch.clip(point_grad_mag, min=point_grad_mag.mean(axis=2).unsqueeze(-1) - 2 *point_grad_mag.std(axis=2).unsqueeze(-1),
+        #                                 max=point_grad_mag.mean(axis=2).unsqueeze(-1) + 2 *point_grad_mag.std(axis=2).unsqueeze(-1))
+        #
+        #     #Visualize
+        #     visualization.pc_seq_vis(inputs[batch_idx, 0:].permute(0, 2, 1).detach().cpu().numpy(), text=None,
+        #                              color=point_grad_mag[batch_idx].detach().cpu().numpy(), point_size=15, rgb=False)
 
 
 

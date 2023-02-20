@@ -133,12 +133,13 @@ class PCPatchletsRoutine:
         return
 
 class PCPatchletsAllRoutine:
-    def __init__(self, vertices, point_obj_list, text, pl):
+    def __init__(self, vertices, point_obj_list, text, pl, color):
 
         self.vertices = vertices
         self.text = text
         self.pl = pl
         self.point_id = 0
+        self.color = color
         # default parameters
         self.kwargs = {'frame_id': 0}
         self.output = point_obj_list
@@ -154,7 +155,11 @@ class PCPatchletsAllRoutine:
         pc = []
         for i, patchlet_points in enumerate(self.vertices[frame_idx]):
             pc.append(pv.PolyData(patchlet_points))
-            pc[i]['scalars'] = i * np.ones(len(patchlet_points))
+            if self.color is None:
+                pc[i]['scalars'] = i * np.ones(len(patchlet_points))
+            else:
+                pc[i]['scalars'] = self.color[i] * np.ones(len(patchlet_points))
+            # pc[i]['scalars'] = i * np.ones(len(patchlet_points))
             self.output[i].overwrite(pc[i])
         return
 
@@ -227,17 +232,23 @@ def pc_patchlet_vis(verts, patchlets, text=None):
     pl.set_background('white', top='white')
     pl.show()
 
-def pc_patchlet_points_vis(verts, text=None):
+def pc_patchlet_points_vis(verts, text=None, colors=None):
     n_frames, n_points, k, d = verts.shape
-    pv.global_theme.cmap = 'cet_glasbey_bw'
+
 
     pl = pv.Plotter()
     pc = []
     for i, patchlet_points in enumerate(verts[0]):
         pc.append( pv.PolyData(patchlet_points))
-        pc[i]['scalars'] = i*np.ones(k)
-        pl.add_mesh(pc[i], render_points_as_spheres=True, scalars=pc[i]['scalars'], point_size=25, clim=[0, n_points])
-    engine = PCPatchletsAllRoutine(verts, pc, text, pl)
+        if colors is None:
+            pv.global_theme.cmap = 'cet_glasbey_bw'
+            pc[i]['scalars'] = i*np.ones(k)
+            clim = [0, n_points]
+        else:
+            pc[i]['scalars'] = colors[i]*np.ones(k)
+            clim = [0, np.mean(colors) + 2*np.std(colors)]
+        pl.add_mesh(pc[i], render_points_as_spheres=True, scalars=pc[i]['scalars'], point_size=25, clim=clim)
+    engine = PCPatchletsAllRoutine(verts, pc, text, pl, colors)
 
     pl.add_slider_widget(
         callback=lambda value: engine('frame_id', value),

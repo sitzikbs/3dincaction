@@ -327,11 +327,11 @@ class PointNet2Patchlets(nn.Module):
         b, t, d, n = xyz.shape
 
         patchlet_dict = self.patchlet_extractor1(xyz.permute(0, 1, 3, 2))
-        xyz = patchlet_dict['patchlet_points']
+        xyz0 = patchlet_dict['patchlet_points']
         patchlet_feats = patchlet_dict['normalized_patchlet_points'].permute(0, 4, 2, 1, 3)
         patchlet_feats = self.patchlet_temporal_conv1(patchlet_feats)  # [b, d+k, npoint, t, nsample]
 
-        patchlet_dict = self.patchlet_extractor2(xyz[:, :, :, 0, :], patchlet_feats)
+        patchlet_dict = self.patchlet_extractor2(xyz0[:, :, :, 0, :], patchlet_feats)
         xyz = patchlet_dict['patchlet_points']
         patchlet_feats = patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
         patchlet_feats = self.patchlet_temporal_conv2(patchlet_feats)  # [b, d+k, npoint, t, nsample]
@@ -368,4 +368,5 @@ class PointNet2Patchlets(nn.Module):
         # x = self.temporal_pool(x.reshape(b, t, -1))
         x = F.log_softmax(x, -1)
 
-        return {'pred': x.reshape(b, t, -1).permute([0, 2, 1]), 'features': patchlet_feats}
+        return {'pred': x.reshape(b, t, -1).permute([0, 2, 1]), 'features': patchlet_feats,
+                'patchlet_points': xyz0}
