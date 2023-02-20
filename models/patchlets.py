@@ -157,7 +157,7 @@ class PatchletsExtractor(nn.Module):
 
 
 class PatchletTemporalConv(nn.Module):
-    def __init__(self, in_channel, temporal_conv, k, mlp, use_attn=False):
+    def __init__(self, in_channel, temporal_conv, k, mlp, use_attn=False, attn_num_heads=4):
         super(PatchletTemporalConv, self).__init__()
         self.use_attn = use_attn
 
@@ -171,8 +171,7 @@ class PatchletTemporalConv(nn.Module):
             last_channel = out_channel
 
         if self.use_attn:
-            num_heads = 4
-            self.multihead_attn = nn.MultiheadAttention(last_channel, num_heads, batch_first=True)
+            self.multihead_attn = nn.MultiheadAttention(last_channel, attn_num_heads, batch_first=True)
         else:
             self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], 1, padding='same')
             self.bnt = nn.BatchNorm2d(out_channel)
@@ -277,6 +276,7 @@ class PointNet2Patchlets(nn.Module):
         self.downsample_method = cfg['downsample_method']
         self.radius = cfg['radius']
         self.type = cfg.get('type', 'origin')
+        attn_num_heads = cfg.get('attn_num_heads')
         self.in_channel = in_channel
 
         use_attn = False
@@ -288,17 +288,20 @@ class PointNet2Patchlets(nn.Module):
                                                       add_centroid_jitter=self.centroid_jitter,
                                                       downsample_method=self.downsample_method, radius=self.radius[0])
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7,
-                                                            k=self.k, mlp=[64, 64, 128], use_attn=use_attn)
+                                                            k=self.k, mlp=[64, 64, 128],
+                                                            use_attn=use_attn, attn_num_heads=attn_num_heads)
         self.patchlet_extractor2 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
                                                       add_centroid_jitter=self.centroid_jitter,
                                                       downsample_method=self.downsample_method, radius=self.radius[1])
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3,
-                                                            k=self.k, mlp=[128, 128, 256], use_attn=use_attn)
+                                                            k=self.k, mlp=[128, 128, 256],
+                                                            use_attn=use_attn, attn_num_heads=attn_num_heads)
         self.patchlet_extractor3 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
                                                       add_centroid_jitter=self.centroid_jitter, downsample_method=None,
                                                       radius=self.radius[2])
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3,
-                                                            k=self.k, mlp=[256, 512, 1024], use_attn=use_attn)
+                                                            k=self.k, mlp=[256, 512, 1024],
+                                                            use_attn=use_attn, attn_num_heads=attn_num_heads)
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
         # self.temporal_pool = torch.nn.AvgPool2d(3, stride=1, padding=1)
@@ -318,8 +321,7 @@ class PointNet2Patchlets(nn.Module):
 
         if self.type == 'attn_last_layer' or self.type == 'attn_all_layers':
             embed_dim = 256
-            num_heads = 4
-            self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+            self.multihead_attn = nn.MultiheadAttention(embed_dim, attn_num_heads, batch_first=True)
 
     def forward(self, xyz):
         b, t, d, n = xyz.shape

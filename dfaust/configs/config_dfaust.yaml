@@ -9,6 +9,7 @@ MODEL:
     downsample_method: 'fps'
     radius: [null, null, null]
     type: 'attn_all_layers' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
+    attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
 
 TRAINING:
   lr: 0.001
