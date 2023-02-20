@@ -157,8 +157,10 @@ class PatchletsExtractor(nn.Module):
 
 
 class PatchletTemporalConv(nn.Module):
-    def __init__(self, in_channel, temporal_conv, k, mlp):
+    def __init__(self, in_channel, temporal_conv, k, mlp, use_attn=False):
         super(PatchletTemporalConv, self).__init__()
+        self.use_attn = use_attn
+
         self.mlp_convs = nn.ModuleList()
         self.mlp_bns = nn.ModuleList()
         last_channel = in_channel
@@ -168,8 +170,12 @@ class PatchletTemporalConv(nn.Module):
             self.mlp_bns.append(nn.BatchNorm3d(out_channel))
             last_channel = out_channel
 
-        self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], 1, padding='same')
-        self.bnt = nn.BatchNorm2d(out_channel)
+        if self.use_attn:
+            num_heads = 4
+            self.multihead_attn = nn.MultiheadAttention(last_channel, num_heads, batch_first=True)
+        else:
+            self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], 1, padding='same')
+            self.bnt = nn.BatchNorm2d(out_channel)
     def forward(self, x):
         for i, conv in enumerate(self.mlp_convs):
             bn = self.mlp_bns[i]
@@ -178,8 +184,16 @@ class PatchletTemporalConv(nn.Module):
         x = torch.max(x, -1)[0] # pool neighbors to get patch representation
         # x = torch.mean(x, -1)  # pool neighbors to get patch representation
 
-        x = F.relu(self.bnt(self.temporal_conv(x))) # convolve temporally to improve patch representation
-        return x.permute(0, 3, 2, 1)
+        if self.use_attn:
+            x = x.permute(0, 2, 3, 1)
+            b, n, f, c = x.shape
+            x = x.reshape(b * n, f, c)
+            attn, _ = self.multihead_attn(x, x, x)
+            x = attn.view(b, n, f, c).permute(0, 2, 1, 3)
+        else:
+            x = F.relu(self.bnt(self.temporal_conv(x))) # convolve temporally to improve patch representation
+            x = x.permute(0, 3, 2, 1)
+        return x
 
 class PointMLP(nn.Module):
     def __init__(self, in_channel, mlp):
@@ -262,22 +276,29 @@ class PointNet2Patchlets(nn.Module):
         self.n_frames = n_frames
         self.downsample_method = cfg['downsample_method']
         self.radius = cfg['radius']
+        self.type = cfg.get('type', 'origin')
         self.in_channel = in_channel
+
+        use_attn = False
+        if self.type == 'attn_all_layers':
+            use_attn = True
 
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
         self.patchlet_extractor1 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=512,
                                                       add_centroid_jitter=self.centroid_jitter,
                                                       downsample_method=self.downsample_method, radius=self.radius[0])
-        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7, k=self.k, mlp=[64, 64, 128])
+        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7,
+                                                            k=self.k, mlp=[64, 64, 128], use_attn=use_attn)
         self.patchlet_extractor2 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
                                                       add_centroid_jitter=self.centroid_jitter,
                                                       downsample_method=self.downsample_method, radius=self.radius[1])
-        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3, k=self.k, mlp=[128, 128, 256])
+        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3,
+                                                            k=self.k, mlp=[128, 128, 256], use_attn=use_attn)
         self.patchlet_extractor3 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
                                                       add_centroid_jitter=self.centroid_jitter, downsample_method=None,
                                                       radius=self.radius[2])
-        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3, k=self.k,
-                                                           mlp=[256, 512, 1024])
+        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3,
+                                                            k=self.k, mlp=[256, 512, 1024], use_attn=use_attn)
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
         # self.temporal_pool = torch.nn.AvgPool2d(3, stride=1, padding=1)
@@ -295,6 +316,10 @@ class PointNet2Patchlets(nn.Module):
         self.temporalconv2 = torch.nn.Conv1d(256, 256, 3, 1, padding='same')
         self.bn3 = nn.BatchNorm1d(256)
 
+        if self.type == 'attn_last_layer' or self.type == 'attn_all_layers':
+            embed_dim = 256
+            num_heads = 4
+            self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
 
     def forward(self, xyz):
         b, t, d, n = xyz.shape
@@ -322,12 +347,23 @@ class PointNet2Patchlets(nn.Module):
 
         x = self.drop1(F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512))
         x = self.drop2(F.relu(self.bn2(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 256))
+
         # learn a temporal filter on all per-frame global representations
-        x = F.relu(self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
+        if self.type == 'origin':
+            x = F.relu(
+                self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
+        elif self.type == 'skip_con':
+            x = x + F.relu(
+                self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
+        elif self.type == 'attn_last_layer' or self.type == 'attn_all_layers':
+            x = x.view(b, t, -1)
+            attn_output, _ = self.multihead_attn(x, x, x)
+            x = attn_output.reshape(b * t, -1)
+        else:
+            raise NotImplementedError
         x = self.fc3(x)
 
         # x = self.temporal_pool(x.reshape(b, t, -1))
-
         x = F.log_softmax(x, -1)
 
         return {'pred': x.reshape(b, t, -1).permute([0, 2, 1]), 'features': patchlet_feats}
