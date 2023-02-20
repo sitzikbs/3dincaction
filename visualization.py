@@ -234,14 +234,16 @@ def pc_patchlet_vis(verts, patchlets, text=None):
 
 def pc_patchlet_points_vis(verts, text=None, colors=None):
     n_frames, n_points, k, d = verts.shape
-
+    if colors is None:
+        pv.global_theme.cmap = 'cet_glasbey_bw'
+    else:
+        pv.global_theme.cmap = 'jet'
 
     pl = pv.Plotter()
     pc = []
     for i, patchlet_points in enumerate(verts[0]):
         pc.append( pv.PolyData(patchlet_points))
         if colors is None:
-            pv.global_theme.cmap = 'cet_glasbey_bw'
             pc[i]['scalars'] = i*np.ones(k)
             clim = [0, n_points]
         else:
@@ -654,3 +656,33 @@ def export_patchlet_seq_separately(patchlet_points, point_size=50, output_path='
         pl.add_light(light)
 
         pl.show(screenshot=os.path.join(output_path, 'patchlet_seq_' + view + '_' + str(j).zfill(2) + '.png'))
+
+
+def export_pc_patchlet_points(verts, colors=None, output_path='./', view='front'):
+    # export patchlets with jet colormap based on colors value
+    n_frames, n_points, k, d = verts.shape
+    t = len(verts)
+    output_path = os.path.join(output_path, view)
+    os.makedirs(output_path, exist_ok=True)
+
+    for j in range(t):
+        pc = []
+        pv.global_theme.cmap = 'jet'
+        pl = pv.Plotter(off_screen=True)
+        pl.camera.position = CAMLOC[view]
+        pl.camera.focal_point = (0, 0, 0)
+        if 'ikea' in view:
+            pl.camera.up = (0.0, -1.0, 0.0)
+        else:
+            pl.camera.up = (0.0, 1.0, 0.0)
+        pl.camera.zoom(0.5)
+        pl.set_background('white', top='white')
+
+        for i, patchlet_points in enumerate(verts[j]):
+            pc.append( pv.PolyData(patchlet_points))
+            pc[i]['scalars'] = colors[i]*np.ones(k)
+            clim = [0, np.mean(colors) + 3*np.std(colors)]
+            pl.add_mesh(pc[i], render_points_as_spheres=True, scalars=pc[i]['scalars'], point_size=25, clim=clim,
+                        show_scalar_bar=False)
+
+        pl.show(screenshot=os.path.join(output_path, view + '_' + str(j).zfill(2) + '.png'))
