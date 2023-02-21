@@ -45,16 +45,16 @@ def remove_patchlet_points_from_pc(point_seq, patchlet_point_list, features):
 #     return out_points_seq
 
 gender = 'female'
-dataset_name = 'ikea'
+dataset_name = 'ikeaego'
 # outdir = os.path.join('./log/sequence_images/', dataset_name, gender)
 # os.makedirs(outdir, exist_ok=True)
 view = 'iso'
 show_patchlets, show_full_pc, reduce_opacity = True, True, False
 # n_sequences = 1
-sequence_id = [39, 50, 60, 10, 20, 30]
+sequence_id = [0]
 # patchlet_ids = [2, 50, 100]
 patchlet_ids = [400, 151, 180]
-frames_per_clip = 64
+frames_per_clip = 32
 point_size = 15
 k = 64
 n_points = 1024

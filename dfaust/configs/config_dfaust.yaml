@@ -10,7 +10,7 @@ MODEL:
     radius: [null, null, null]
     type: 'attn_all_layers' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
     attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
-
+    bidirectional: True # True | False to use bidirectional t-patches
 TRAINING:
   lr: 0.001
   steps_per_update: 8

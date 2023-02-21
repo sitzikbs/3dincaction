@@ -4,16 +4,18 @@ import numpy as np
 import sys
 sys.path.append('../dfaust')
 sys.path.append('../ikeaaction')
+sys.path.append('../ikeaego')
 from DfaustDataset import DfaustActionClipsDataset
 from ikeaaction.IKEAActionDatasetClips import IKEAActionDatasetClips
+from IKEAEgoDatasetClips import IKEAEgoDatasetClips
 from torch.multiprocessing import set_start_method
 
-from models.patchlets import PatchletsExtractor
+from models.patchlets import PatchletsExtractor, PatchletsExtractorBidirectional
 
 if __name__ == "__main__":
     # set_start_method('spawn')
 
-    dataset_name = 'ikea'
+    dataset_name = 'ikeaego'
     downsample_method = 'fps'
     npoints = 512
     k = 64
@@ -24,6 +26,9 @@ if __name__ == "__main__":
     if dataset_name == 'ikea':
         dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/64/'
         dataset = IKEAActionDatasetClips(dataset_path,  set='train')
+    elif dataset_name == 'ikeaego':
+        dataset_path = '/home/sitzikbs/Datasets/ikeaego_small_clips/32/'
+        dataset = IKEAEgoDatasetClips(dataset_path,  set='test')
     else:
         dataset_path = '/home/sitzikbs/Datasets/dfaust/'
         dataset = DfaustActionClipsDataset(dataset_path, frames_per_clip=64, set='train', n_points=1024,
@@ -32,17 +37,20 @@ if __name__ == "__main__":
                                            noisy_data={'test': False, 'train': False})
 
 
-    extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
+    # extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
+    #                                       add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,
+    #                                       radius=0.2)
+    extract_pachlets = PatchletsExtractorBidirectional(k=k, npoints=npoints, sample_mode=sample_mode,
                                           add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,
                                           radius=0.2)
-
+    PatchletsExtractorBidirectional
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=0,
                                                    pin_memory=True, shuffle=False, drop_last=True)
 
     for batch_ind, data in enumerate(dataloader):
 
-        if dataset_name == 'ikea':
+        if dataset_name == 'ikea' or dataset_name == 'ikeaego':
             point_seq = data[0][..., :3, :].permute(0, 1, 3, 2).cuda()
         else:
             point_seq = data['points'].cuda()
@@ -52,7 +60,7 @@ if __name__ == "__main__":
         patch_idxs = patchlet_dict['patchlets']
         fps_idx = patchlet_dict['fps_idx']
 
-        batch_ind = 2
+        batch_ind = 0
 
         u_points = []
         for j in range(t):

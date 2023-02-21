@@ -53,6 +53,7 @@ class PatchletsExtractor(nn.Module):
         self.res = faiss.StandardGpuResources()
         self.res.setDefaultNullStreamAllDevices()
 
+
     def forward(self, point_seq, feat_seq=None):
         b, t, n, d = point_seq.shape
         n_original = n
@@ -141,6 +142,157 @@ class PatchletsExtractor(nn.Module):
             patchlets = utils.index_points(patchlets, selected_idxs)
             n = self.npoints
 
+
+        # reshape all to bxtxnxk
+        distances, idxs = distances.reshape(b, t, n, self.k), idxs.reshape(b, t, n, self.k)
+        patchlets, patchlet_points = patchlets.reshape(b, t, n, self.k), patchlet_points.reshape(b, t, n, self.k, d)
+        patchlet_feats = patchlet_feats.reshape(b, t, n, self.k, d_feat)
+
+        normalized_patchlet_points = patchlet_points - patchlet_points[:, 0, :, [0], :].unsqueeze(1).detach() # normalize the patchlet around the center point of the first frame
+        patchlet_feats = torch.cat([patchlet_feats, normalized_patchlet_points], -1)
+
+        return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
+                'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
+                'normalized_patchlet_points': normalized_patchlet_points, 'fps_idx': fps_idx,
+                'x_current': out_x.reshape(b, t, n_out, d)}
+
+
+
+class PatchletsExtractorBidirectional(nn.Module):
+    def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None,
+                 radius=None):
+        super(PatchletsExtractorBidirectional, self).__init__()
+        #TODO consider implementing a radius threshold
+        self.k = k
+        self.radius = radius
+        self.sample_mode = sample_mode
+        self.downsample_method = downsample_method
+        self.npoints = npoints
+        self.add_centroid_jitter = add_centroid_jitter
+        self.res = faiss.StandardGpuResources()
+        self.res.setDefaultNullStreamAllDevices()
+
+    def get_tpatches(self, x1, x2, feat_seq, flip=False):
+
+        b, t, n, d = x1.shape
+        n_out = n
+
+        if feat_seq is None:
+            feat_seq = x1
+            d_feat = d
+        else:
+            d_feat = feat_seq.shape[-1]
+
+        out_x = torch.empty(b, t, n_out, d)
+        patchlets = torch.empty(b, t, n, self.k, device=x1.device, dtype=torch.long)
+        distances_i = torch.empty(b, t, n, self.k, device=x1.device)
+        idxs_i = torch.empty(b, t, n, self.k, device=x1.device, dtype=torch.long)
+        patchlet_points = torch.empty(b, t, n, self.k, d, device=x1.device)
+        patchlet_feats = torch.empty(b, t, n, self.k, d_feat, device=x1.device)
+
+        # loop over the data to reorder the indices to form the patchlets
+        x_current = x2[:, 0]
+        feat_seq_2 = torch.cat([feat_seq[:, [0]], feat_seq], dim=1)[:, :-1]
+        for i in range(0, t):
+            x_next = x1[:, i]
+            distances, idxs = get_knn(x_current[..., 0:3], x_next[..., 0:3], k=self.k, res=self.res, method='keops',
+                                      radius=self.radius)
+            if self.sample_mode == 'nn':
+                x_current = utils.index_points(x_next, idxs)[:, :, 0, :]
+            elif self.sample_mode == 'randn':
+                rand_idx = torch.randint(self.k, (b, n, 1), device=x_next.device, dtype=torch.int64).repeat(
+                    [1, 1, 3]).unsqueeze(2)
+                x_current = torch.gather(utils.index_points(x_next, idxs).squeeze(), dim=2, index=rand_idx).squeeze()
+            elif self.sample_mode == 'gt':
+                # only works when point correspondence is known and points are already aligned
+                # if self.downsample_method == 'fps':
+                #     x_current = utils.index_points(x_next, fps_idx).contiguous()
+                # else:
+                x_current = x_next
+            else:
+                raise ValueError("sample mode not supported")
+
+            out_x[:, i] = x_current
+            if self.add_centroid_jitter is not None:
+                x_current = x_current + self.add_centroid_jitter * torch.randn_like(x_current)
+
+            distances_i[:, i], idxs_i[:, i] = distances, idxs
+            patchlets[:, i] = idxs_i[:, i]
+            patchlet_points[:, i] = utils.index_points(x_next, idxs).squeeze()
+            patchlet_feats[:, i] = utils.index_points(feat_seq_2[:, i], idxs).squeeze()
+
+        distances = distances_i
+        idxs = idxs_i
+        if flip: # reverse temporal order
+            patchlet_feats = torch.flip(patchlet_feats, [1])
+            patchlet_points = torch.flip(patchlet_points, [1])
+            idxs = torch.flip(idxs, [1])
+            distances = torch.flip(distances, [1])
+            patchlets = torch.flip(patchlets, [1])
+
+        patchlet_feats = patchlet_feats.reshape(b * t, n, self.k, d_feat)
+        patchlet_points = patchlet_points.reshape(b * t, n, self.k, d)
+        idxs = idxs.reshape(b * t, n, self.k)
+        distances = distances.reshape(b * t, n, self.k)
+        patchlets = patchlets.reshape(b * t, n, self.k)
+
+        fps_idx = None
+        if self.downsample_method == 'fps':
+            # select a subset of the points using fps for maximum coverage
+            selected_idxs = utils.farthest_point_sample(x1[:, 0].contiguous(), self.npoints).to(torch.int64)
+            selected_idxs = selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints)
+            patchlet_points = utils.index_points(patchlet_points, selected_idxs)
+            patchlet_feats = utils.index_points(patchlet_feats, selected_idxs)
+            distances = utils.index_points(distances, selected_idxs)
+            idxs = utils.index_points(idxs, selected_idxs)
+            patchlets = utils.index_points(patchlets, selected_idxs)
+            n = self.npoints
+        elif self.downsample_method == 'var' or self.downsample_method == 'mean_var_t':
+            # select a subset of the points with the largest point variance for maximum temporal movement
+            if self.downsample_method == 'var':
+                temporal_patchlet_points = patchlet_points.reshape(b, t, n, self.k, d).\
+                    permute(0, 2, 1, 3, 4).reshape(b, n,-1, d)
+                patchlet_variance = torch.linalg.norm(torch.var(temporal_patchlet_points, -2), dim=-1)
+            elif self.downsample_method == 'mean_var_t':
+                patchlet_variance = torch.linalg.norm(
+                    torch.var(torch.mean(patchlet_points.reshape(b, t, n, self.k, d), -2), 1), dim=-1)
+            else:
+                raise ValueError("downsample method not supported ")
+            _, selected_idxs = torch.topk(patchlet_variance, self.npoints)
+            selected_idxs = selected_idxs.unsqueeze(1).repeat([1, t, 1]).reshape(-1, self.npoints)
+            patchlet_points = utils.index_points(patchlet_points, selected_idxs)
+            patchlet_feats = utils.index_points(patchlet_feats, selected_idxs)
+            distances = utils.index_points(distances, selected_idxs)
+            idxs = utils.index_points(idxs, selected_idxs)
+            patchlets = utils.index_points(patchlets, selected_idxs)
+            n = self.npoints
+
+        return patchlet_points, patchlet_feats, distances, idxs, patchlets, n, d_feat, fps_idx, out_x
+
+    def forward(self, point_seq, feat_seq=None):
+        b, t, n, d = point_seq.shape
+        n_original = n
+        n_out = n
+
+        # forward patchlets
+        x1 = point_seq
+        x2 = torch.cat([point_seq[:, [0]], point_seq], dim=1)[:, :-1]
+        patchlet_points1, patchlet_feats1, distances1, idxs1, patchlets1, n, d_feat, fps_idx, out_x1 = \
+            self.get_tpatches(x1, x2, feat_seq, flip=False)
+        #backward patchlets
+        x1 = torch.flip(point_seq, [1])
+        x2 = torch.cat([x1[:, [0]], x1], dim=1)[:, :-1]
+        patchlet_points2, patchlet_feats2, distances2, idxs2, patchlets2, _, _, fps_idx2, out_x2 = \
+            self.get_tpatches(x1, x2, feat_seq, flip=True)
+
+        # randomly select a subset
+        rand_idxs = torch.randperm(n)[:int(n/2)]
+        patchlets = torch.concat([patchlets1[:, rand_idxs, :], patchlets2[:, rand_idxs, :]], 1)
+        patchlet_feats = torch.concat([patchlet_feats1[:, rand_idxs, :], patchlet_feats2[:, rand_idxs, :]], 1)
+        patchlet_points = torch.concat([patchlet_points1[:, rand_idxs, :], patchlet_points2[:, rand_idxs, :]], 1)
+        distances = torch.concat([distances1[:, rand_idxs, :], distances2[:, rand_idxs, :]], 1)
+        idxs = torch.concat([idxs1[:, rand_idxs, :], idxs2[:, rand_idxs, :]], 1)
+        out_x = out_x1 # remove after debug, out_x is unused
 
         # reshape all to bxtxnxk
         distances, idxs = distances.reshape(b, t, n, self.k), idxs.reshape(b, t, n, self.k)
@@ -278,25 +430,30 @@ class PointNet2Patchlets(nn.Module):
         self.type = cfg.get('type', 'origin')
         attn_num_heads = cfg.get('attn_num_heads')
         self.in_channel = in_channel
+        self.bidirectional = cfg['bidirectional']
 
+        if self.bidirectional:
+            Extractor = PatchletsExtractorBidirectional
+        else:
+            Extractor = PatchletsExtractor
         use_attn = False
         if self.type == 'attn_all_layers':
             use_attn = True
 
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
-        self.patchlet_extractor1 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=512,
+        self.patchlet_extractor1 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=512,
                                                       add_centroid_jitter=self.centroid_jitter,
                                                       downsample_method=self.downsample_method, radius=self.radius[0])
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7,
                                                             k=self.k, mlp=[64, 64, 128],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads)
-        self.patchlet_extractor2 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
+        self.patchlet_extractor2 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
                                                       add_centroid_jitter=self.centroid_jitter,
                                                       downsample_method=self.downsample_method, radius=self.radius[1])
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3,
                                                             k=self.k, mlp=[128, 128, 256],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads)
-        self.patchlet_extractor3 = PatchletsExtractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
+        self.patchlet_extractor3 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
                                                       add_centroid_jitter=self.centroid_jitter, downsample_method=None,
                                                       radius=self.radius[2])
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3,
