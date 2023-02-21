@@ -7,7 +7,7 @@ MODEL:
     sample_mode: 'nn'  # nn | randn | mean type of patchlet sampling
     k: 16
     downsample_method: 'fps'
-    radius: [None, None, None]
+    radius: [null, null, null]
 
 TRAINING:
   lr: 0.001
@@ -23,7 +23,7 @@ TESTING:
 
 
 DATA:
-  dataset_path: '/home/sitzikbs/Datasets/ikeaego_small_clips/32/'
+  dataset_path: '/home/sitzikbs/Datasets/ikeaego_small_clips_top10/32/'
   frame_skip: 1
   n_points: 1024
-  in_channel: 6 # 3 | 6 | 9 -> xyz, xyzrgb, xyzrgbnxnynz
+  in_channel: 3 # 3 | 6 | 9 -> xyz, xyzrgb, xyzrgbnxnynz

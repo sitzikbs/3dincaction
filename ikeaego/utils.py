@@ -76,7 +76,7 @@ def convert_frame_logits_to_segment_json(logits, json_filename, video_name_list,
 def accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logits_per_video, pred_labels,
                                  logits, frames_per_clip):
     """
-    This is a helper function to accumulate the predictions of teh different batches into a single list
+    This is a helper function to accumulate the predictions of the different batches into a single list
     containing the predictions for each video separately. It is used in all of the test files except the frame based
     (no sequence)
     Parameters
