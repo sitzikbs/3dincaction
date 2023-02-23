@@ -126,9 +126,7 @@ class SetTransformerTemporal(SetTransformer):
         out = self.dec(self.enc(X))
         out = out.reshape(b, t, self.num_classes).permute(0, 2, 1)
         if not self.temporal_smoothing == 0:
-            out = self.temporalconv(out)
-
-
+            out = F.softmax(self.temporalconv(out), -2)
 
         return {'pred': out}
 
