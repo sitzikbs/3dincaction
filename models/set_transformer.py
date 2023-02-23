@@ -117,12 +117,19 @@ class SetTransformerTemporal(SetTransformer):
         SetTransformer.__init__(self, cfg, num_classes=num_classes)
 
         self.temporal_smoothing = cfg['temporal_smoothing']
+        if not self.temporal_smoothing == 0:
+            self.temporalconv = torch.nn.Conv1d(num_classes, num_classes, self.temporal_smoothing, 1, padding='same')
 
     def forward(self, X):
         b, t, d, n = X.shape
         X = X.reshape(b*t, d, n).permute(0, 2, 1)
         out = self.dec(self.enc(X))
         out = out.reshape(b, t, self.num_classes).permute(0, 2, 1)
+        if not self.temporal_smoothing == 0:
+            out = self.temporalconv(out)
+
+
+
         return {'pred': out}
 
 

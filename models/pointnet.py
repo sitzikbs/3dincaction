@@ -297,7 +297,9 @@ class PointNetClsBasic(nn.Module):
         x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
         # learn a temporal filter on all per-frame global representations
 
-        x = x + F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
+        x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
+        # x = x + F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1,
+        #                                                                                                             256)
         x = self.fc3(x)
 
         return F.log_softmax(x, dim=1), trans, trans_feat

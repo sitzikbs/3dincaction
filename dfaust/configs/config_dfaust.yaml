@@ -9,7 +9,7 @@ MODEL:
     dim_hidden: 512
     num_heads: 4
     ln: False
-    temporal_smoothing: False
+    temporal_smoothing: 0
   PATCHLET:
     centroid_jitter: 0.005
     sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
