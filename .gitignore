@@ -9,3 +9,4 @@
 **/wandb/
 **/run_experiment_remote.sh
 temp.py
+./models/_ext.cpython-39-x86_64-linux-gnu.su

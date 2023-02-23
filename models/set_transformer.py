@@ -137,7 +137,7 @@ class SetTransformerTemporal(SetTransformer):
             out = F.relu(self.bnt(self.temporalconv(out.reshape(b, t, -1).permute(0, 2, 1))))
             out = out.permute(0, 2, 1).reshape(b*t, -1)
         out = self.final_layer(out)
-        out = F.softmax(out, -1).reshape(b, t, -1).permute(0, 2, 1)
+        out = F.log_softmax(out, -1).reshape(b, t, -1).permute(0, 2, 1)
         return {'pred': out}
 
 
