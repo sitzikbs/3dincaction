@@ -84,6 +84,7 @@ def index_points(points, idx):
     repeat_shape = list(idx.shape)
     repeat_shape[0] = 1
     batch_indices = torch.arange(B, dtype=torch.long).to(device).view(view_shape).repeat(repeat_shape)
+    idx = idx.long()
     new_points = points[batch_indices, idx, :]
     return new_points
 
@@ -356,10 +357,10 @@ class PointNetSetAbstractionMsg(nn.Module):
         for i in range(len(mlp_list)):
             convs = nn.ModuleList()
             bns = nn.ModuleList()
-            last_channel = in_channel + 3
+            last_channel = in_channel # + 3
             for out_channel in mlp_list[i]:
-                convs.append(nn.Conv2d(last_channel, out_channel, 1))
-                bns.append(nn.BatchNorm2d(out_channel))
+                convs.append(nn.Conv3d(last_channel, out_channel, 1))
+                bns.append(nn.BatchNorm3d(out_channel))
                 last_channel = out_channel
             self.conv_blocks.append(convs)
             self.bn_blocks.append(bns)
@@ -373,9 +374,12 @@ class PointNetSetAbstractionMsg(nn.Module):
             new_xyz: sampled points position data, [B, C, S]
             new_points_concat: sample points feature data, [B, D', S]
         """
-        xyz = xyz.permute(0, 2, 1)
+        b, t, k, n = xyz.shape
+        xyz = xyz.reshape(-1, k, n)
+        xyz = xyz.permute(0, 2, 1).contiguous()
         if points is not None:
-            points = points.permute(0, 2, 1)
+            points = points.permute(0, 1, 3, 2)
+            points = points.reshape(-1, points.shape[-2], points.shape[-1])
 
         B, N, C = xyz.shape
         S = self.npoint
@@ -392,16 +396,19 @@ class PointNetSetAbstractionMsg(nn.Module):
             else:
                 grouped_points = grouped_xyz
 
-            grouped_points = grouped_points.permute(0, 3, 2, 1)  # [B, D, K, S]
+            grouped_points = grouped_points.reshape(b, t, grouped_points.shape[-3], grouped_points.shape[-2], grouped_points.shape[-1])
+            grouped_points = grouped_points.permute(0, 4, 2, 1, 3)  # [b, d+k, npoint, t, nsample]
+
             for j in range(len(self.conv_blocks[i])):
                 conv = self.conv_blocks[i][j]
                 bn = self.bn_blocks[i][j]
-                grouped_points =  F.relu(bn(conv(grouped_points)))
-            new_points = torch.max(grouped_points, 2)[0]  # [B, D', S]
+                grouped_points = F.relu(bn(conv(grouped_points)))
+            new_points = torch.max(grouped_points, -1)[0]
             new_points_list.append(new_points)
 
-        new_xyz = new_xyz.permute(0, 2, 1)
+        new_xyz = new_xyz.reshape(b, t, new_xyz.shape[-2], new_xyz.shape[-1]).permute(0, 1, 3, 2)
         new_points_concat = torch.cat(new_points_list, dim=1)
+        new_points_concat = new_points_concat.permute(0, 3, 1, 2)
         return new_xyz, new_points_concat
 
 

@@ -1,35 +1,38 @@
+seed: 0
+save_every: 5
+num_workers: 0
+
 MODEL:
-  pc_model: 'set_transformer' # which model to use for point cloud processing
+  pc_model: 'pn2' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
     dim_input: 3
     num_outputs: 1
-    num_inds: 32
+    num_inds: 16
     dim_hidden: 512
     num_heads: 4
     ln: False
     temporal_smoothing: 0
   PATCHLET:
-    centroid_jitter: 0.005
+    centroid_jitter: 0.001
     sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
     k: 16
     downsample_method: 'fps'
     radius: [null, null, null]
-    type: 'attn_all_layers' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
+    type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
     attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
     bidirectional: True # True | False to use bidirectional t-patches
-
 
 TRAINING:
   lr: 0.001
   steps_per_update: 8
   batch_size: 2
-  n_epochs: 200
+  n_epochs: 101
   refine: False
   refine_epoch: 0
   pretrained_model: null
-  aug: [''] # 'scale', 'translate'
+  aug: [''] # '' | 'scale', 'translate'
 
 TESTING:
   batch_size: 2
@@ -37,13 +40,10 @@ TESTING:
   set: 'test'
 
 DATA:
-  dataset_path: '/home/sitzikbs/Datasets/dfaust/'
-  frames_per_clip: 64 #32
+  name: 'IKEA_EGO'
+  dataset_path: '/home/sitzikbs/Datasets/ikeaego_small_clips/32/'
   frame_skip: 1
-  n_points: 1024
-  shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each'
-  gender: 'all'
+  frames_per_clip: 32
   data_sampler: 'weighted'
-  noisy_data:
-    train: False
-    test: False
+  n_points: 4096
+  in_channel: 3 # 3 | 6 | 9 -> [xyz], [xyz,rgb], [xyz,rgb,nxnynz]

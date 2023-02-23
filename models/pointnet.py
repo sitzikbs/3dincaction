@@ -139,14 +139,14 @@ class PointNetfeat4D(nn.Module):
 
 
 class PointNetCls4D(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32, k_frames=4):
+    def __init__(self, num_class=10, feature_transform=False, in_d=3, n_frames=32, k_frames=4):
         super(PointNetCls4D, self).__init__()
         self.feature_transform = feature_transform
         self.feat = PointNetfeat4D(global_feat=True, feature_transform=feature_transform, in_d=in_d,
                                    n_frames=32, k_frames=k_frames)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, k)
+        self.fc3 = nn.Linear(256, num_class)
         self.dropout = nn.Dropout(p=0.3)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
@@ -170,10 +170,10 @@ class PointNetCls4D(nn.Module):
 
 
 class PointNet4D(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=32):
+    def __init__(self, model_cfg, num_class=10, feature_transform=True, in_d=3, n_frames=32):
         super(PointNet4D, self).__init__()
         self.feature_transform = feature_transform
-        self.pn = PointNetCls4D(k=k, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
+        self.pn = PointNetCls4D(num_class=num_class, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
 
 
     def forward(self, x):
@@ -188,13 +188,13 @@ class PointNet4D(nn.Module):
 
 
 class PointNetCls(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3):
+    def __init__(self, num_class=10, feature_transform=False, in_d=3):
         super(PointNetCls, self).__init__()
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, in_d=in_d)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, k)
+        self.fc3 = nn.Linear(256, num_class)
         self.dropout = nn.Dropout(p=0.3)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
@@ -257,10 +257,10 @@ class PointNetfeat(nn.Module):
 
 
 class PointNet1(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3):
+    def __init__(self, model_cfg, num_class=10, feature_transform=True, n_frames=32, in_d=3):
         super(PointNet1, self).__init__()
         self.feature_transform = feature_transform
-        self.pn = PointNetCls(k=k, feature_transform=feature_transform, in_d=in_d)
+        self.pn = PointNetCls(num_class=num_class, feature_transform=feature_transform, in_d=in_d)
 
     def forward(self, x):
         b, t, k, n = x.shape
@@ -270,45 +270,36 @@ class PointNet1(nn.Module):
 
 
 class PointNetClsBasic(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=64):
+    def __init__(self, num_class=10, feature_transform=False, in_d=3, n_frames=64):
         super(PointNetClsBasic, self).__init__()
-        self.num_classes = k
+        self.num_classes = num_class
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, in_d=in_d)
         self.temporalconv = torch.nn.Conv1d(256, 256, n_frames, padding='same')
-        # self.temporalconv = torch.nn.Conv1d(1024, 1024, 7, padding='same')  # todo: remove
-        # self.temporalconv = torch.nn.AvgPool1d(5, stride=1, padding=2)
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, k)
+        self.fc3 = nn.Linear(256, self.num_classes)
         self.dropout = nn.Dropout(p=0.3)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
         self.bn3 = nn.BatchNorm1d(256)
-        # self.bn3 = nn.BatchNorm1d(1024) # todo: remove
         self.relu = nn.ReLU()
 
     def forward(self, x):
         b, k, t, n = x.size()
         x, trans, trans_feat = self.feat(x)
-        # # todo: try to move 'temporalconv' to here
-        # x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 1024).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 1024)
         x = F.relu(self.bn1(self.fc1(x).reshape(b, t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512)
         x = F.relu(self.bn2(self.dropout(self.fc2(x).reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
         # learn a temporal filter on all per-frame global representations
-
         x = F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1, 256)
-        # x = x + F.relu(self.bn3(self.temporalconv(x.reshape(b, t, 256).permute(0, 2, 1)))).permute(0, 2, 1).reshape(-1,
-        #                                                                                                             256)
         x = self.fc3(x)
-
         return F.log_softmax(x, dim=1), trans, trans_feat
 
 class PointNet1Basic(nn.Module):
-    def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=64):
+    def __init__(self, model_cfg, num_class=10, feature_transform=True, in_d=3, n_frames=64):
         super(PointNet1Basic, self).__init__()
         self.feature_transform = feature_transform
-        self.pn = PointNetClsBasic(k=k, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
+        self.pn = PointNetClsBasic(num_class=num_class, feature_transform=feature_transform, in_d=in_d, n_frames=n_frames)
 
     def forward(self, x):
         b, t, k, n = x.shape
