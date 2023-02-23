@@ -1,12 +1,16 @@
+seed: 0
+save_every: 10
+num_workers: 0
+
 MODEL:
-  pc_model: 'pn2_patchlets' # which model to use for point cloud processing
+  pc_model: 'pn2' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
     dim_input: 3
     num_outputs: 1
-    num_inds: 32
-    dim_hidden: 512
+    num_inds: 16
+    dim_hidden: 128
     num_heads: 4
     ln: False
     temporal_smoothing: 0
@@ -16,35 +20,14 @@ MODEL:
     k: 16
     downsample_method: 'fps'
     radius: [null, null, null]
-    type: 'attn_all_layers' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
+    type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
     attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
     bidirectional: True # True | False to use bidirectional t-patches
-    use_transformer: True
-    TRANSFORMER:
-      SPATIAL:
-        dim_input: 3
-        num_outputs: 1
-        num_inds: 16
-        dim_hidden: 128
-        num_heads: 4
-        ln: False
-        out_dim: 128
-        temporal_smoothing: 0
-#      TEMPORAL:
-#        dim_input: 3
-#        num_outputs: 1
-#        num_inds: 16
-#        dim_hidden: 128
-#        num_heads: 4
-#        ln: False
-#        out_dim: 128
-#        temporal_smoothing: 0
-
 
 TRAINING:
   lr: 0.001
   steps_per_update: 8
-  batch_size: 1
+  batch_size: 2
   n_epochs: 200
   refine: False
   refine_epoch: 0
@@ -57,8 +40,9 @@ TESTING:
   set: 'test'
 
 DATA:
+  name: 'DFAUST'
   dataset_path: '/home/sitzikbs/Datasets/dfaust/'
-  frames_per_clip: 64 #32
+  frames_per_clip: 64
   frame_skip: 1
   n_points: 1024
   shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each'

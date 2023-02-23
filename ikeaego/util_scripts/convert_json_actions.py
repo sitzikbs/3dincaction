@@ -56,7 +56,7 @@ print('backed up original annotations to' + bkp_path)
 with open(json_path) as json_file_obj:
     gt_data = json.load(json_file_obj)
 
-print('')
+# print('')
 for scan in gt_data['database']:
     for i, ann in enumerate(gt_data['database'][scan]['annotation']):
         action = ann['label']

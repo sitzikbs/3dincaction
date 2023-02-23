@@ -5,9 +5,8 @@ import torch.nn.functional as F
 import torch
 from models.pointnet2_utils import PointNetSetAbstraction, PointNetPP4DSetAbstraction
 
-
 class PointNetPP4D(nn.Module):
-    def __init__(self, num_class, n_frames=32, in_channel=3):
+    def __init__(self, model_cfg, num_class, n_frames=32, in_channel=3):
         super(PointNetPP4D, self).__init__()
         self.n_frames = n_frames
         self.sa1 = PointNetPP4DSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel,
@@ -63,9 +62,8 @@ class PointNetPP4D(nn.Module):
 
 
 class PointNet2(nn.Module):
-    def __init__(self, num_class, n_frames=32, in_channel=3):
+    def __init__(self, model_cfg, num_class, n_frames=32, in_channel=3):
         super(PointNet2, self).__init__()
-        self.n_frames = n_frames
         self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel, mlp=[64, 64, 128],
                                           group_all=False)
         self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + in_channel, mlp=[128, 128, 256],
@@ -101,7 +99,7 @@ class PointNet2(nn.Module):
         self.fc3 = nn.Linear(256, num_classes)
 
 class PointNet2Basic(nn.Module):
-    def __init__(self, num_class, n_frames=32, in_channel=3):
+    def __init__(self, model_cfg, num_class, n_frames=32, in_channel=3):
         super(PointNet2Basic, self).__init__()
         self.n_frames = n_frames
         self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=in_channel, mlp=[64, 64, 128],

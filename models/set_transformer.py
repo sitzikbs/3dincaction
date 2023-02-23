@@ -92,8 +92,9 @@ class DeepSet(nn.Module):
 
 
 class SetTransformer(nn.Module):
-    def __init__( self, cfg, num_classes=40):
+    def __init__(self, model_cfg, num_classes=40):
         super(SetTransformer, self).__init__()
+        cfg = model_cfg['SET_TRANSFORMER']
         self.num_classes = num_classes
         dim_input, num_outputs = cfg['dim_input'], cfg['num_outputs']
         num_inds, dim_hidden, num_heads, ln = cfg['num_inds'], cfg['dim_hidden'], cfg['num_heads'], cfg['ln']
@@ -113,12 +114,11 @@ class SetTransformer(nn.Module):
 
 
 class SetTransformerTemporal(SetTransformer):
-    def __init__(self, cfg, num_classes=40):
-        SetTransformer.__init__(self, cfg, num_classes=num_classes)
-
-        self.temporal_smoothing = cfg['temporal_smoothing']
+    def __init__(self, model_cfg, num_class=40, n_frames=32):
+        SetTransformer.__init__(self, model_cfg, num_classes=num_class)
+        self.temporal_smoothing = model_cfg['SET_TRANSFORMER']['temporal_smoothing']
         if not self.temporal_smoothing == 0:
-            self.temporalconv = torch.nn.Conv1d(num_classes, num_classes, self.temporal_smoothing, 1, padding='same')
+            self.temporalconv = torch.nn.Conv1d(num_class, num_class, self.temporal_smoothing, 1, padding='same')
 
     def forward(self, X):
         b, t, d, n = X.shape

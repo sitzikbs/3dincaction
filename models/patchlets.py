@@ -44,7 +44,6 @@ class PatchletsExtractor(nn.Module):
     def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None,
                  radius=None):
         super(PatchletsExtractor, self).__init__()
-        #TODO consider implementing a radius threshold
         self.k = k
         self.radius = radius
         self.sample_mode = sample_mode
@@ -103,7 +102,6 @@ class PatchletsExtractor(nn.Module):
             patchlets[:, i] = idxs_i[:, i]
             patchlet_points[:, i] = utils.index_points(x_next, idxs).squeeze()
             patchlet_feats[:, i] = utils.index_points(feat_seq_2[:, i], idxs).squeeze()
-
 
         distances = distances_i
         idxs = idxs_i
@@ -443,8 +441,9 @@ class PointNet2PatchletsSA(nn.Module):
 
 
 class PointNet2Patchlets(nn.Module):
-    def __init__(self, cfg, num_class, n_frames=32, in_channel=3):
+    def __init__(self, model_cfg, num_class, n_frames=32, in_channel=3):
         super(PointNet2Patchlets, self).__init__()
+        cfg = model_cfg['PATCHLET']
         self.k = cfg['k']
         self.sample_mode = cfg['sample_mode']
         self.centroid_jitter = cfg['centroid_jitter']
@@ -480,8 +479,8 @@ class PointNet2Patchlets(nn.Module):
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads,
                                                             use_transformer=self.use_transformer, cfg=cfg['TRANSFORMER'])
         self.patchlet_extractor3 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
-                                                      add_centroid_jitter=self.centroid_jitter, downsample_method=None,
-                                                      radius=self.radius[2])
+                                                      add_centroid_jitter=self.centroid_jitter,
+                                                      downsample_method=None, radius=self.radius[2])
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3,
                                                             k=self.k, mlp=[256, 512, 1024],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads,
