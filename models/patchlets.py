@@ -279,6 +279,7 @@ class PatchletsExtractorBidirectional(nn.Module):
         x2 = torch.cat([point_seq[:, [0]], point_seq], dim=1)[:, :-1]
         patchlet_points1, patchlet_feats1, distances1, idxs1, patchlets1, n, d_feat, fps_idx, out_x1 = \
             self.get_tpatches(x1, x2, feat_seq, flip=False)
+
         #backward patchlets
         x1 = torch.flip(point_seq, [1])
         x2 = torch.cat([x1[:, [0]], x1], dim=1)[:, :-1]

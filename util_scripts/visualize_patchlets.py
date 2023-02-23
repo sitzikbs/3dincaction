@@ -18,11 +18,11 @@ if __name__ == "__main__":
     dataset_name = 'ikeaego'
     downsample_method = 'fps'
     npoints = 512
-    k = 64
+    k = 16
     sample_mode = 'nn'
     dfaust_augmentation = ['']
     add_centroid_jitter = 0.00
-
+    bidirectional_extractor = True
     if dataset_name == 'ikea':
         dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/64/'
         dataset = IKEAActionDatasetClips(dataset_path,  set='train')
@@ -36,14 +36,17 @@ if __name__ == "__main__":
                                            data_augmentation=dfaust_augmentation,
                                            noisy_data={'test': False, 'train': False})
 
+    if bidirectional_extractor:
+        extract_pachlets = PatchletsExtractorBidirectional(k=k, npoints=npoints, sample_mode=sample_mode,
+                                                           add_centroid_jitter=add_centroid_jitter,
+                                                           downsample_method=downsample_method,
+                                                           radius=0.2)
+    else:
+        extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
+                                              add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,
+                                              radius=0.2)
 
-    # extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
-    #                                       add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,
-    #                                       radius=0.2)
-    extract_pachlets = PatchletsExtractorBidirectional(k=k, npoints=npoints, sample_mode=sample_mode,
-                                          add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,
-                                          radius=0.2)
-    PatchletsExtractorBidirectional
+
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=0,
                                                    pin_memory=True, shuffle=False, drop_last=True)
