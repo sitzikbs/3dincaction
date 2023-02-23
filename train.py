@@ -23,7 +23,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
 parser.add_argument('--identifier', type=str, default='debug', help='unique run identifier')
-parser.add_argument('--config', type=str, default='./configs/config_dfaust.yaml', help='path to yaml config file')
+parser.add_argument('--config', type=str, default='./configs/dfaust/config_dfaust.yaml', help='path to yaml config file')
 parser.add_argument('--fix_random_seed', action='store_true', default=False, help='fix random seed')
 args = parser.parse_args()
 

@@ -106,7 +106,7 @@ class SetTransformer(nn.Module):
             nn.Dropout(),
             PMA(dim_hidden, num_heads, num_outputs, ln=ln),
             nn.Dropout(),
-            nn.Linear(dim_hidden, num_classes),
+            # nn.Linear(dim_hidden, num_classes),
         )
 
     def forward(self, X):
@@ -117,17 +117,27 @@ class SetTransformerTemporal(SetTransformer):
     def __init__(self, model_cfg, num_class=40, n_frames=32):
         SetTransformer.__init__(self, model_cfg, num_classes=num_class)
         self.temporal_smoothing = model_cfg['SET_TRANSFORMER']['temporal_smoothing']
+        self.dim_hidden = model_cfg['SET_TRANSFORMER']['dim_hidden']
+        self.classifier12 = nn.Sequential(nn.Linear(self.dim_hidden, 512), nn.BatchNorm1d(512), nn.ReLU(), nn.Dropout(0.4),
+                                        nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(0.4))
+
         if not self.temporal_smoothing == 0:
-            self.temporalconv = torch.nn.Conv1d(num_class, num_class, self.temporal_smoothing, 1, padding='same')
+            self.temporalconv = torch.nn.Conv1d(256, 256, self.temporal_smoothing, 1, padding='same')
+            self.bnt = nn.BatchNorm1d(256)
+
+        self.final_layer = nn.Linear(256, num_class)
 
     def forward(self, X):
         b, t, d, n = X.shape
         X = X.reshape(b*t, d, n).permute(0, 2, 1)
-        out = self.dec(self.enc(X))
-        out = out.reshape(b, t, self.num_classes).permute(0, 2, 1)
+        out = self.dec(self.enc(X)).squeeze()
+        # out = out.reshape(b, t, self.dim_hidden).permute(0, 2, 1)
+        out = self.classifier12(out)
         if not self.temporal_smoothing == 0:
-            out = F.softmax(self.temporalconv(out), -2)
-
+            out = F.relu(self.bnt(self.temporalconv(out.reshape(b, t, -1).permute(0, 2, 1))))
+            out = out.permute(0, 2, 1).reshape(b*t, -1)
+        out = self.final_layer(out)
+        out = F.softmax(out, -1).reshape(b, t, -1).permute(0, 2, 1)
         return {'pred': out}
 
 
