@@ -33,7 +33,15 @@ def main():
     logdir = os.path.join(args.logdir, args.identifier)
     os.makedirs(logdir, exist_ok=True)
 
-    wandb_run = wandb.init(project='DFAUST', entity='cgmlab', save_code=True)
+    if cfg['DATA'].get('name') == 'DFAUST':
+        project_name = 'DFAUST'
+    elif cfg['DATA'].get('name') == 'IKEA_EGO':
+        project_name = 'IKEA EGO'
+    elif cfg['DATA'].get('name') == 'IKEA_ASM':
+        project_name = 'IKEA ASM'
+    else:
+        raise NotImplementedError
+    wandb_run = wandb.init(project=project_name, entity='cgmlab', save_code=True)
     cfg['WANDB'] = {'id': wandb_run.id, 'project': wandb_run.project, 'entity': wandb_run.entity}
 
     with open(os.path.join(logdir, 'config.yaml'), 'w') as outfile:
