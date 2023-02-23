@@ -206,9 +206,17 @@ def run(cfg, logdir):
             if test_fraction_done <= train_fraction_done and test_batchind + 1 < test_num_batch:
                 model.eval()
                 test_batchind, data = next(test_enum)
-                inputs, labels = data['points'], data['labels']
-                inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-                labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+                if data_name == 'DFAUST':
+                    inputs, labels = data['points'], data['labels']
+                    inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
+                    labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+                elif data_name == 'IKEA_EGO':
+                    inputs, labels, vid_idx, frame_pad = data
+                    inputs = inputs.cuda().requires_grad_().contiguous()
+                    inputs = inputs[:, :, 0:in_channel, :]
+                    labels = labels.cuda()
+                else:
+                    raise NotImplementedError
 
                 with torch.no_grad():
                     out_dict = model(inputs)

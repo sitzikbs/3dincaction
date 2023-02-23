@@ -215,11 +215,10 @@ def run(cfg, logdir):
                 test_batchind, data = next(test_enum)
                 inputs, labels, vid_idx, frame_pad = data
                 inputs = inputs.cuda().requires_grad_().contiguous()
+                inputs = inputs[:, :, 0:in_channel, :]
                 labels = labels.cuda()
 
                 with torch.no_grad():
-
-                    inputs = inputs[:, :, 0:in_channel, :]
                     out_dict = model(inputs)
                     per_frame_logits = out_dict['pred']
                     if pc_model == 'pn1':
