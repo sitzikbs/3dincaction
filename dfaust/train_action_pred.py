@@ -21,7 +21,7 @@ from models.pointnet2_cls_ssg import PointNet2, PointNetPP4D, PointNet2Basic
 from models.pytorch_3dmfv import FourDmFVNet
 import utils as point_utils
 from models.patchlets import PointNet2Patchlets, PointNet2Patchlets
-
+from models.set_transformer import SetTransformerTemporal
 from torch.multiprocessing import set_start_method
 import wandb
 
@@ -58,6 +58,7 @@ def run(cfg, logdir):
     os.system('cp %s %s' % ('../models/pointnet2_cls_ssg.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/pytorch_3dmfv.py', logdir))  # backup the models files
     os.system('cp %s %s' % ('../models/patchlets.py', logdir))  # backup the models files
+    os.system('cp %s %s' % ('../models/set_transformer.py', logdir))  # backup the models files
 
     # setup dataset
     train_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set='train', n_points=n_points,
@@ -96,6 +97,8 @@ def run(cfg, logdir):
         model = PointNet2Basic(num_class=num_classes, n_frames=frames_per_clip)
     elif pc_model == 'pn2_patchlets':
         model = PointNet2Patchlets(cfg=cfg['MODEL']['PATCHLET'], num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'set_transformer':
+        model = SetTransformerTemporal(cfg=cfg['MODEL']['SET_TRANSFORMER'], num_classes=num_classes)
     elif pc_model == '3dmfv':
         model = FourDmFVNet(n_gaussians=cfg['MODEL']['3DMFV']['n_gaussians'], num_classes=num_classes,
                             n_frames=frames_per_clip)

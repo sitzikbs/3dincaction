@@ -52,6 +52,7 @@ class ISAB(nn.Module):
         H = self.mab0(self.I.repeat(X.size(0), 1, 1), X)
         return self.mab1(X, H)
 
+
 class PMA(nn.Module):
     def __init__(self, dim, num_heads, num_seeds, ln=False):
         super(PMA, self).__init__()
@@ -89,24 +90,40 @@ class DeepSet(nn.Module):
         X = self.dec(X).reshape(-1, self.num_outputs, self.dim_output)
         return X
 
+
 class SetTransformer(nn.Module):
-    def __init__(self, dim_input, num_outputs, dim_output, dim_hidden=128, num_heads=4, ln=False):
+    def __init__( self, cfg, num_classes=40):
         super(SetTransformer, self).__init__()
+        self.num_classes = num_classes
+        dim_input, num_outputs = cfg['dim_input'], cfg['num_outputs']
+        num_inds, dim_hidden, num_heads, ln = cfg['num_inds'], cfg['dim_hidden'], cfg['num_heads'], cfg['ln']
         self.enc = nn.Sequential(
-                SAB(dim_input, dim_hidden, num_heads, ln=ln),
-                SAB(dim_hidden, dim_hidden, num_heads, ln=ln),
-                # SAB(dim_hidden, dim_hidden, num_heads, ln=ln),
-                # SAB(dim_hidden, dim_hidden, num_heads, ln=ln)
+            ISAB(dim_input, dim_hidden, num_heads, num_inds, ln=ln),
+            ISAB(dim_hidden, dim_hidden, num_heads, num_inds, ln=ln),
         )
         self.dec = nn.Sequential(
-                # PMA(dim_hidden, num_heads, num_outputs, ln=ln),
-                SAB(dim_hidden, dim_hidden, num_heads, ln=ln),
-                SAB(dim_hidden, dim_hidden, num_heads, ln=ln),
-                nn.Linear(dim_hidden, dim_output))
+            nn.Dropout(),
+            PMA(dim_hidden, num_heads, num_outputs, ln=ln),
+            nn.Dropout(),
+            nn.Linear(dim_hidden, num_classes),
+        )
 
     def forward(self, X):
-        return self.dec(self.enc(X))
+        return self.dec(self.enc(X)).squeeze()
 
+
+class SetTransformerTemporal(SetTransformer):
+    def __init__(self, cfg, num_classes=40):
+        SetTransformer.__init__(self, cfg, num_classes=num_classes)
+
+        self.temporal_smoothing = cfg['temporal_smoothing']
+
+    def forward(self, X):
+        b, t, d, n = X.shape
+        X = X.reshape(b*t, d, n).permute(0, 2, 1)
+        out = self.dec(self.enc(X))
+        out = out.reshape(b, t, self.num_classes).permute(0, 2, 1)
+        return {'pred': out}
 
 
 class SetTransformerCross(nn.Module):

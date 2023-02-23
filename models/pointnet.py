@@ -301,6 +301,7 @@ class PointNetClsBasic(nn.Module):
         x = self.fc3(x)
 
         return F.log_softmax(x, dim=1), trans, trans_feat
+
 class PointNet1Basic(nn.Module):
     def __init__(self, k=2, feature_transform=False, in_d=3, n_frames=64):
         super(PointNet1Basic, self).__init__()

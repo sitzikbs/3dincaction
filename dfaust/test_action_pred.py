@@ -106,6 +106,13 @@ def run(cfg, logdir, model_path, output_path):
             sys.modules["PointNet2Patchlets"] = pointnet_pp
             spec.loader.exec_module(pointnet_pp)
             model = pointnet_pp.PointNet2Patchlets(cfg=cfg['MODEL']['PATCHLET'], num_class=num_classes, n_frames=frames_per_clip)
+    elif pc_model == 'set_transformer':
+            spec = importlib.util.spec_from_file_location("SetTransformerTemporal",
+                                                          os.path.join(logdir, "set_transformer.py"))
+            set_transformer = importlib.util.module_from_spec(spec)
+            sys.modules["SetTransformerTemporal"] = set_transformer
+            spec.loader.exec_module(set_transformer)
+            model = set_transformer.SetTransformerTemporal(cfg=cfg['MODEL']['SET_TRANSFORMER'], num_classes=num_classes)
     elif pc_model == '3dmfv':
             spec = importlib.util.spec_from_file_location("FourDmFVNet",
                                                           os.path.join(logdir, "pytorch_3dmfv.py"))
