@@ -98,9 +98,15 @@ def run(cfg, logdir, model_path, output_path):
     logits_per_video = [np.array(pred_video_logits) for pred_video_logits in logits_per_video]
 
     np.save(pred_output_filename, {'pred_labels': pred_labels_per_video, 'logits': logits_per_video})
-    utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename,
-                                               test_dataset.action_dataset.sid_per_seq,
-                                               test_dataset.action_dataset.actions)
+    if data_name == 'DFAUST':
+        utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename,
+                                                   test_dataset.action_dataset.sid_per_seq,
+                                                   test_dataset.action_dataset.actions)
+    elif data_name == 'IKEA_EGO':
+        utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.video_list,
+                                                   test_dataset.action_list)
+    else:
+        raise NotImplementedError
 
 
 if __name__ == '__main__':
