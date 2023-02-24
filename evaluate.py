@@ -78,7 +78,9 @@ acc3_per_vid = []
 
 gt_single_labels = []
 for vid_idx in range(len(logits)):
-    single_label_per_frame = torch.tensor(gt_labels[vid_idx])
+    effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
+    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1)  # avoid padding for ego since last frames are not necessary
+
     acc1, acc3 = eval_utils.accuracy(torch.tensor(logits[vid_idx]), single_label_per_frame, topk=(1, 3))
     acc1_per_vid.append(acc1.item())
     acc3_per_vid.append(acc3.item())
