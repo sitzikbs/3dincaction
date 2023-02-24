@@ -28,6 +28,7 @@ def run(cfg, logdir, model_path, output_path):
     subset = cfg['TESTING']['set']
     pred_output_filename = os.path.join(output_path, subset + '_pred.npy')
     json_output_filename = os.path.join(output_path, subset + '_action_segments.json')
+    data_name = cfg['DATA']['name']
 
     if args.fix_random_seed:
         seed = cfg['seed']
@@ -53,8 +54,14 @@ def run(cfg, logdir, model_path, output_path):
 
     # Iterate over data.
     avg_acc = []
-    pred_labels_per_video = [[] for i in range(len(test_dataset.action_dataset.vertices))]
-    logits_per_video = [[] for i in range(len(test_dataset.action_dataset.vertices)) ]
+    if data_name == 'DFAUST':
+        pred_labels_per_video = [[] for _ in range(len(test_dataset.action_dataset.vertices))]
+        logits_per_video = [[] for _ in range(len(test_dataset.action_dataset.vertices))]
+    elif data_name == 'IKEA_EGO':
+        pred_labels_per_video = [[] for _ in range(len(test_dataset.video_list))]
+        logits_per_video = [[] for _ in range(len(test_dataset.video_list))]
+    else:
+        raise NotImplementedError
     for test_batchind, data in enumerate(test_dataloader):
         # get the inputs
         inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
