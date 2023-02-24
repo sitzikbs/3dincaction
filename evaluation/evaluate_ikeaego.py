@@ -14,8 +14,8 @@ import utils
 import eval_utils
 import yaml
 # from ikeaaction.IKEAActionDataset import IKEAActionDataset as Dataset
-sys.path.append('../ikeaego')
-from IKEAEgoDatasetClips import IKEAEgoDatasetClips as Dataset
+sys.path.append('../')
+from datasets import IKEAEgoDatasetClips as Dataset
 import matplotlib.pyplot as plt
 sys.path.append('evaluation')
 from eval_detection import ANETdetection
