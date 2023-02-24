@@ -76,7 +76,7 @@ def run(cfg, logdir, model_path, output_path):
         logits = logits.reshape(inputs.shape[0] * frames_per_clip, -1)
         pred_labels = torch.argmax(logits, 1).detach().cpu().numpy()
         if data_name == 'IKEA_EGO' or data_name == 'IKEA_ASM':
-            logits = torch.nn.functional.softmax(logits, dim=1)
+            logits = torch.nn.functional.softmax(logits, dim=1).detach().cpu().numpy().tolist()
 
         pred_labels_per_video, logits_per_video = \
             utils.accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logits_per_video,
