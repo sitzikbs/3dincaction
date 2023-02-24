@@ -6,28 +6,22 @@ MODEL:
   pc_model: 'pn2' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
-  SET_TRANSFORMER:
-    dim_input: 3
-    num_outputs: 1
-    num_inds: 16
-    dim_hidden: 512
-    num_heads: 4
-    ln: False
-    temporal_smoothing: 0
   PATCHLET:
     centroid_jitter: 0.001
     sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
-    k: 16
+    k: [16, 16, 16]
+    npoints: [512, 128, null]
+    temp_conv: 7
     downsample_method: 'fps'
-    radius: [null, null, null]
+    radius: [0.2, 0.4, null]
     type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
     attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
     bidirectional: True # True | False to use bidirectional t-patches
 
 TRAINING:
   lr: 0.001
-  steps_per_update: 8
-  batch_size: 2
+  steps_per_update: 2
+  batch_size: 8
   n_epochs: 101
   refine: False
   refine_epoch: 0
