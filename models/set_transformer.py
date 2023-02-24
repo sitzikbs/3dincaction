@@ -118,8 +118,15 @@ class SetTransformerTemporal(SetTransformer):
         SetTransformer.__init__(self, model_cfg, num_classes=num_class)
         self.temporal_smoothing = model_cfg['SET_TRANSFORMER']['temporal_smoothing']
         self.dim_hidden = model_cfg['SET_TRANSFORMER']['dim_hidden']
-        self.classifier12 = nn.Sequential(nn.Linear(self.dim_hidden, 512), nn.BatchNorm1d(512), nn.ReLU(), nn.Dropout(0.4),
-                                        nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(0.4))
+        self.classifier12 = nn.Sequential(
+            nn.Linear(self.dim_hidden, 512),
+            nn.BatchNorm1d(512), nn.ReLU(),
+            nn.Dropout(0.4),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.4)
+        )
 
         if not self.temporal_smoothing == 0:
             self.temporalconv = torch.nn.Conv1d(256, 256, self.temporal_smoothing, 1, padding='same')

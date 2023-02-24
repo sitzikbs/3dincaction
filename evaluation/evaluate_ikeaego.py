@@ -14,8 +14,8 @@ import utils
 import eval_utils
 import yaml
 # from ikeaaction.IKEAActionDataset import IKEAActionDataset as Dataset
-sys.path.append('../ikeaego')
-from IKEAEgoDatasetClips import IKEAEgoDatasetClips as Dataset
+sys.path.append('../')
+from datasets import IKEAEgoDatasetClips as Dataset
 import matplotlib.pyplot as plt
 sys.path.append('evaluation')
 from eval_detection import ANETdetection
@@ -40,8 +40,13 @@ gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments.json')
 dataset = Dataset(cfg['DATA']['dataset_path'], set='test')
 gt_labels = dataset.action_labels
 
-results_json = os.path.join(results_path, 'action_segments.json')
-results_npy = os.path.join(results_path, 'pred.npy')
+# results_json = os.path.join(results_path, 'action_segments.json')
+# results_npy = os.path.join(results_path, 'pred.npy')
+
+subset = cfg['TESTING']['set']
+results_npy = os.path.join(results_path, subset + '_pred.npy')
+results_json = os.path.join(results_path, subset + '_action_segments.json')
+
 #
 # load the predicted data
 pred_data = np.load(results_npy, allow_pickle=True).item()

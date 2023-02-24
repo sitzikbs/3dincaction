@@ -33,7 +33,15 @@ def main():
     logdir = os.path.join(args.logdir, args.identifier)
     os.makedirs(logdir, exist_ok=True)
 
-    wandb_run = wandb.init(project='DFAUST', entity='cgmlab', save_code=True)
+    if cfg['DATA'].get('name') == 'DFAUST':
+        project_name = 'DFAUST'
+    elif cfg['DATA'].get('name') == 'IKEA_EGO':
+        project_name = 'IKEA EGO'
+    elif cfg['DATA'].get('name') == 'IKEA_ASM':
+        project_name = 'IKEA ASM'
+    else:
+        raise NotImplementedError
+    wandb_run = wandb.init(project=project_name, entity='cgmlab', save_code=True)
     cfg['WANDB'] = {'id': wandb_run.id, 'project': wandb_run.project, 'entity': wandb_run.entity}
 
     with open(os.path.join(logdir, 'config.yaml'), 'w') as outfile:
@@ -60,6 +68,7 @@ def run(cfg, logdir):
     frames_per_clip = cfg['DATA']['frames_per_clip']
     num_steps_per_update = cfg['TRAINING']['steps_per_update']
     save_every = cfg['save_every']
+    data_name = cfg['DATA'].get('name')
 
     if args.fix_random_seed:
         seed = cfg['seed']
@@ -137,9 +146,18 @@ def run(cfg, logdir):
         for train_batchind, data in enumerate(train_dataloader):
             num_iter += 1
             # get the inputs
-            inputs, labels = data['points'], data['labels']
-            inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-            labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+            if data_name == 'DFAUST':
+                inputs, labels = data['points'], data['labels']
+                inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
+                labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+            elif data_name == 'IKEA_EGO':
+                inputs, labels, vid_idx, frame_pad = data
+                inputs = inputs.cuda().requires_grad_()
+                labels = labels.cuda()
+                in_channel = cfg['DATA']['in_channel']
+                inputs = inputs[:, :, 0:in_channel, :]
+            else:
+                raise NotImplementedError
 
             out_dict = model(inputs)
             per_frame_logits = out_dict['pred']
@@ -188,9 +206,17 @@ def run(cfg, logdir):
             if test_fraction_done <= train_fraction_done and test_batchind + 1 < test_num_batch:
                 model.eval()
                 test_batchind, data = next(test_enum)
-                inputs, labels = data['points'], data['labels']
-                inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-                labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+                if data_name == 'DFAUST':
+                    inputs, labels = data['points'], data['labels']
+                    inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
+                    labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+                elif data_name == 'IKEA_EGO':
+                    inputs, labels, vid_idx, frame_pad = data
+                    inputs = inputs.cuda().requires_grad_().contiguous()
+                    inputs = inputs[:, :, 0:in_channel, :]
+                    labels = labels.cuda()
+                else:
+                    raise NotImplementedError
 
                 with torch.no_grad():
                     out_dict = model(inputs)
