@@ -33,6 +33,7 @@ def main():
     logdir = os.path.join(args.logdir, args.identifier)
     os.makedirs(logdir, exist_ok=True)
 
+    # TODO: move to cfg project_name, entity
     if cfg['DATA'].get('name') == 'DFAUST':
         project_name = 'DFAUST'
     elif cfg['DATA'].get('name') == 'IKEA_EGO':
@@ -68,7 +69,6 @@ def run(cfg, logdir):
     frames_per_clip = cfg['DATA']['frames_per_clip']
     num_steps_per_update = cfg['TRAINING']['steps_per_update']
     save_every = cfg['save_every']
-    data_name = cfg['DATA'].get('name')
 
     if args.fix_random_seed:
         seed = cfg['seed']
@@ -146,18 +146,11 @@ def run(cfg, logdir):
         for train_batchind, data in enumerate(train_dataloader):
             num_iter += 1
             # get the inputs
-            if data_name == 'DFAUST':
-                inputs, labels = data['points'], data['labels']
-                inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-                labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
-            elif data_name == 'IKEA_EGO':
-                inputs, labels, vid_idx, frame_pad = data
-                inputs = inputs.cuda().requires_grad_()
-                labels = labels.cuda()
-                in_channel = cfg['DATA']['in_channel']
-                inputs = inputs[:, :, 0:in_channel, :]
-            else:
-                raise NotImplementedError
+            inputs, labels, vid_idx, frame_pad = data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
+            in_channel = cfg['DATA'].get('in_channel', 3)
+            inputs = inputs[:, :, 0:in_channel, :]
+            inputs = inputs.cuda().requires_grad_().contiguous()
+            labels = labels.cuda()
 
             out_dict = model(inputs)
             per_frame_logits = out_dict['pred']
@@ -170,7 +163,7 @@ def run(cfg, logdir):
             cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])
             tot_cls_loss += cls_loss.item()
             loss = (0.5 * loc_loss + 0.5 * cls_loss) / num_steps_per_update
-            if pc_model == 'pn1' or pc_model == 'pn1_4d': # TODO: what about 'pn1_4d_basic'?
+            if pc_model == 'pn1' or pc_model == 'pn1_4d_basic':
                 trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
                 loss += 0.001 * feature_transform_regularizer(trans) + 0.001 * feature_transform_regularizer(trans_feat)
 
@@ -206,17 +199,11 @@ def run(cfg, logdir):
             if test_fraction_done <= train_fraction_done and test_batchind + 1 < test_num_batch:
                 model.eval()
                 test_batchind, data = next(test_enum)
-                if data_name == 'DFAUST':
-                    inputs, labels = data['points'], data['labels']
-                    inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-                    labels = F.one_hot(labels.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
-                elif data_name == 'IKEA_EGO':
-                    inputs, labels, vid_idx, frame_pad = data
-                    inputs = inputs.cuda().requires_grad_().contiguous()
-                    inputs = inputs[:, :, 0:in_channel, :]
-                    labels = labels.cuda()
-                else:
-                    raise NotImplementedError
+                inputs, labels, vid_idx, frame_pad = data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
+                in_channel = cfg['DATA'].get('in_channel', 3)
+                inputs = inputs[:, :, 0:in_channel, :]
+                inputs = inputs.cuda().requires_grad_().contiguous()
+                labels = labels.cuda()
 
                 with torch.no_grad():
                     out_dict = model(inputs)
@@ -227,7 +214,7 @@ def run(cfg, logdir):
                     cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0],
                                                                   torch.max(labels, dim=2)[0])
                     loss = (0.5 * loc_loss + 0.5 * cls_loss) / num_steps_per_update
-                    if pc_model == 'pn1' or pc_model == 'pn1_4d': # TODO: what about 'pn1_4d_basic'?
+                    if pc_model == 'pn1' or pc_model == 'pn1_4d_basic':
                         trans, trans_feat = out_dict['trans'], out_dict['trans_feat']
                         loss += (0.001 * feature_transform_regularizer(trans) +
                                  0.001 * feature_transform_regularizer(trans_feat)) / num_steps_per_update

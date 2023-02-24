@@ -39,7 +39,7 @@ def build_dataloader(config, training=True, shuffle=False):
     if training and data_sampler == 'weighted':
         if config['DATA'].get('name') == 'DFAUST':
             weights = dataset.make_weights_for_balanced_classes()
-        elif config['DATA'].get('name') == 'IKEA_EGO':
+        elif config['DATA'].get('name') == 'IKEA_ASM' or config['DATA'].get('name') == 'IKEA_EGO':
             weights = utils.make_weights_for_balanced_classes(dataset.clip_set, dataset.clip_label_count)
         else:
             raise NotImplementedError

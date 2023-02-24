@@ -54,31 +54,17 @@ def run(cfg, logdir, model_path, output_path):
 
     # Iterate over data.
     avg_acc = []
-    if data_name == 'DFAUST':
-        pred_labels_per_video = [[] for _ in range(len(test_dataset.action_dataset.vertices))]
-        logits_per_video = [[] for _ in range(len(test_dataset.action_dataset.vertices))]
-    elif data_name == 'IKEA_EGO':
-        pred_labels_per_video = [[] for _ in range(len(test_dataset.video_list))]
-        logits_per_video = [[] for _ in range(len(test_dataset.video_list))]
-    else:
-        raise NotImplementedError
+    pred_labels_per_video = [[] for _ in range(test_dataset.get_num_seq())]
+    logits_per_video = [[] for _ in range(test_dataset.get_num_seq())]
+
     for test_batchind, data in enumerate(test_dataloader):
         # get the inputs
-        if data_name == 'DFAUST':
-            inputs, labels_int, seq_idx, frame_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
-            inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-            labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
-        elif data_name == 'IKEA_EGO':
-            inputs, labels, seq_idx, frame_pad = data
-            # wrap them in Variable
-            if not seq_idx[0] == seq_idx[1]:
-                print("I am here")
-            inputs = inputs.cuda().requires_grad_().contiguous()
-            labels = labels.cuda()
-            in_channel = cfg['DATA']['in_channel']
-            inputs = inputs[:, :, 0:in_channel, :].contiguous()
-        else:
-            raise NotImplementedError
+        inputs, labels, vid_idx, frame_pad = data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
+        in_channel = cfg['DATA'].get('in_channel', 3)
+        inputs = inputs[:, :, 0:in_channel, :]
+        inputs = inputs.cuda().requires_grad_().contiguous()
+        labels = labels.cuda()
+
         out_dict = model(inputs)
         logits = out_dict['pred']
 
@@ -89,24 +75,19 @@ def run(cfg, logdir, model_path, output_path):
         logits = logits.permute(0, 2, 1)
         logits = logits.reshape(inputs.shape[0] * frames_per_clip, -1)
         pred_labels = torch.argmax(logits, 1).detach().cpu().numpy()
+        if data_name == 'IKEA_EGO' or data_name == 'IKEA_ASM':
+            logits = torch.nn.functional.softmax(logits, dim=1).detach().cpu().numpy().tolist()
 
         pred_labels_per_video, logits_per_video = \
-            utils.accume_per_video_predictions(seq_idx, frame_pad, pred_labels_per_video, logits_per_video,
+            utils.accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logits_per_video,
                                                pred_labels, logits, frames_per_clip)
 
     pred_labels_per_video = [np.array(pred_video_labels) for pred_video_labels in pred_labels_per_video]
     logits_per_video = [np.array(pred_video_logits) for pred_video_logits in logits_per_video]
 
     np.save(pred_output_filename, {'pred_labels': pred_labels_per_video, 'logits': logits_per_video})
-    if data_name == 'DFAUST':
-        utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename,
-                                                   test_dataset.action_dataset.sid_per_seq,
-                                                   test_dataset.action_dataset.actions)
-    elif data_name == 'IKEA_EGO':
-        utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.video_list,
-                                                   test_dataset.action_list)
-    else:
-        raise NotImplementedError
+    utils.convert_frame_logits_to_segment_json(logits_per_video, json_output_filename, test_dataset.video_list,
+                                               test_dataset.action_list, dataset_name=data_name)
 
 
 if __name__ == '__main__':

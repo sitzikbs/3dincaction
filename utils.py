@@ -63,7 +63,7 @@ def find_label_segments_and_scores(input, mode="logits"):
 
 
 def convert_frame_logits_to_segment_json(logits, json_filename, video_name_list, action_list, mode="logits",
-                                         details=""):
+                                         details="", dataset_name='DFAUST'):
     """
     convert dataset per frame logits to scored segments and save to .json file in the ActivityNet format
     for action localization evaluation
@@ -87,10 +87,21 @@ def convert_frame_logits_to_segment_json(logits, json_filename, video_name_list,
         list_of_result_dicts = []
         vid_name = video_name_list[i]
         for j, segment in enumerate(segments):
-            list_of_result_dicts.append({"label": int(segment_labels[j]),
-                                         "label name": action_list[segment_labels[j]],
-                                         "score": float(scores[j]),
-                                         "segment": segment.tolist()})
+            if dataset_name == 'DFAUST':
+                list_of_result_dicts.append({
+                    "label": int(segment_labels[j]),
+                    "label name": action_list[segment_labels[j]],
+                    "score": float(scores[j]),
+                    "segment": segment.tolist()
+                })
+            elif 'IKEA' in dataset_name:
+                list_of_result_dicts.append({
+                    "label": action_list[segment_labels[j]],
+                    "score": float(scores[j]),
+                    "segment": segment.tolist()
+                })
+            else:
+                raise NotImplementedError
         results[vid_name] = list_of_result_dicts
     json_dict_to_write["results"] = results
     json_dict_to_write["external_data"] = {"details": details}
@@ -98,7 +109,7 @@ def convert_frame_logits_to_segment_json(logits, json_filename, video_name_list,
         json.dump(json_dict_to_write, outfile)
 
 def convert_db_to_segment_json(logits, json_filename, video_name_list, action_list, mode="logits",
-                                         details="", subset=["testing"]):
+                               details="", subset=["testing"]):
     """
     convert dataset per frame labels to segments and save to .json file in the ActivityNet format
     for action localization evaluation
@@ -450,12 +461,13 @@ def accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logi
 
         pred_labels_per_video[batch_vid_idx].extend(pred_labels[i*frames_per_clip:(i+1)*frames_per_clip])
         if not batch_frame_pad == 0:
-            pred_labels_per_video[batch_vid_idx] = pred_labels_per_video[batch_vid_idx][batch_frame_pad:]
+            # pred_labels_per_video[batch_vid_idx] = pred_labels_per_video[batch_vid_idx][batch_frame_pad:]
+            pred_labels_per_video[batch_vid_idx] = pred_labels_per_video[batch_vid_idx][0:-batch_frame_pad]
 
-
-        logits_per_video[batch_vid_idx].extend(logits[i*frames_per_clip:(i+1)*frames_per_clip].detach().cpu().numpy())
+        logits_per_video[batch_vid_idx].extend(logits[i*frames_per_clip:(i+1)*frames_per_clip])
         if not batch_frame_pad == 0:
-            logits_per_video[batch_vid_idx] = logits_per_video[batch_vid_idx][batch_frame_pad:]
+            # logits_per_video[batch_vid_idx] = logits_per_video[batch_vid_idx][batch_frame_pad:]
+            logits_per_video[batch_vid_idx] = logits_per_video[batch_vid_idx][0:-batch_frame_pad]
 
     return pred_labels_per_video, logits_per_video
 

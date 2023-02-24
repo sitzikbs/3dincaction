@@ -9,8 +9,8 @@ import pandas as pd
 from joblib import Parallel, delayed
 
 # from eval_utils import get_blocked_videos
-from eval_utils import interpolated_prec_rec
-from eval_utils import segment_iou
+from .eval_utils import interpolated_prec_rec
+from .eval_utils import segment_iou
 
 class ANETdetection(object):
 

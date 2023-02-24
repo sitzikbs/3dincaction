@@ -8,6 +8,7 @@ import pc_transforms as transforms
 from scipy.spatial import cKDTree
 import torch
 import models.pointnet2_utils as utils
+import torch.nn.functional as F
 
 DATASET_N_POINTS = 6890
 
@@ -16,6 +17,9 @@ class DfaustActionClipsDataset(Dataset):
                  shuffle_points='once', data_augmentation=[], gender='female', nn_sample_ratio=1, noisy_data=None):
         self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender, noisy_data=noisy_data)
         self.num_classes = self.action_dataset.num_classes
+        self.action_labels = self.action_dataset.label_per_frame
+        self.video_list = self.action_dataset.sid_per_seq
+        self.action_list = self.action_dataset.actions
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
@@ -56,7 +60,10 @@ class DfaustActionClipsDataset(Dataset):
             else:
                 self.clip_verts = np.concatenate([self.clip_verts, clip_vertices], axis=0)
 
-            clip_labels = self.action_dataset.labels[i] * np.ones([len(clip_vertices), self.frames_per_clip])
+            # clip_labels = self.action_dataset.labels[i] * np.ones([len(clip_vertices), self.frames_per_clip])
+            clip_labels = np.zeros([len(clip_vertices), self.frames_per_clip, self.num_classes])
+            clip_labels[..., self.action_dataset.labels[i]] = np.ones([clip_labels.shape[0], clip_labels.shape[1]])
+
             seq_idx = i * np.ones([len(clip_vertices)], dtype=np.int16)
             if self.clip_labels is None:
                 self.clip_labels = clip_labels
@@ -109,6 +116,7 @@ class DfaustActionClipsDataset(Dataset):
         n_frames_per_label = np.zeros(len(self.action_dataset.actions))
         for i, clip in enumerate(self.clip_labels):
             for j, frame_label in enumerate(clip):
+                frame_label = np.argmax(frame_label, axis=0)
                 n_frames_per_label[int(frame_label)] = n_frames_per_label[int(frame_label)] + 1
         return n_frames_per_label
 
@@ -124,9 +132,7 @@ class DfaustActionClipsDataset(Dataset):
 
         weight = [0] * n_clips
         for idx, clip in enumerate(self.clip_labels):
-            clip_one_hot = np.zeros((clip.size, nclasses))
-            clip_one_hot[np.arange(clip.size), clip.astype(int)] = 1
-            clip_label_sum = clip_one_hot.sum(axis=0)
+            clip_label_sum = clip.sum(axis=0)
 
             if clip_label_sum.sum() == 0:
                 print("Unlabeled clip!!!")
@@ -149,6 +155,8 @@ class DfaustActionClipsDataset(Dataset):
             out_points = points
         return out_points
 
+    def get_num_seq(self):
+        return len(self.action_dataset)
 
     def __len__(self):
         return len(self.clip_verts)
@@ -157,10 +165,12 @@ class DfaustActionClipsDataset(Dataset):
     def __getitem__(self, idx):
 
         points_seq, shuffled_idxs = self.point_sampler.samlpe_and_shuffle(self.clip_verts[idx])
-        out_points = self.augment_points(points_seq)
+        out_points = self.augment_points(points_seq).transpose((0, 2, 1))
 
-        out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
-                    'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx],
+        labels = self.clip_labels[idx].transpose((1, 0))
+
+        out_dict = {'inputs': out_points, 'labels': labels,
+                    'vid_idx': self.seq_idx[idx], 'frame_pad': self.subseq_pad[idx],
                     'corr_gt': shuffled_idxs, 'idx': idx}
         return out_dict
 

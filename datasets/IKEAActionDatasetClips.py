@@ -31,10 +31,13 @@ class IKEAActionDatasetClips(Dataset):
         path = os.path.abspath(directory)
         return [entry.path for entry in os.scandir(path) if entry.is_file()]
 
+    def get_num_seq(self):
+        return len(self.video_list)
+
     def __len__(self):
         return len(self.file_list)
 
     def __getitem__(self, index):
         with open(self.file_list[index], 'rb') as f:
             data = pickle.load(f)
-        return data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
+        return data
