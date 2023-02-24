@@ -464,7 +464,7 @@ def accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logi
             # pred_labels_per_video[batch_vid_idx] = pred_labels_per_video[batch_vid_idx][batch_frame_pad:]
             pred_labels_per_video[batch_vid_idx] = pred_labels_per_video[batch_vid_idx][0:-batch_frame_pad]
 
-        logits_per_video[batch_vid_idx].extend(logits[i*frames_per_clip:(i+1)*frames_per_clip].detach().cpu().numpy())
+        logits_per_video[batch_vid_idx].extend(logits[i*frames_per_clip:(i+1)*frames_per_clip])
         if not batch_frame_pad == 0:
             # logits_per_video[batch_vid_idx] = logits_per_video[batch_vid_idx][batch_frame_pad:]
             logits_per_video[batch_vid_idx] = logits_per_video[batch_vid_idx][0:-batch_frame_pad]
