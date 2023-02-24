@@ -16,6 +16,7 @@ class DfaustActionClipsDataset(Dataset):
                  shuffle_points='once', data_augmentation=[], gender='female', nn_sample_ratio=1, noisy_data=None):
         self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender, noisy_data=noisy_data)
         self.num_classes = self.action_dataset.num_classes
+        self.action_labels = self.action_dataset.label_per_frame
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
