@@ -64,10 +64,21 @@ def run(cfg, logdir, model_path, output_path):
         raise NotImplementedError
     for test_batchind, data in enumerate(test_dataloader):
         # get the inputs
-        inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
-        inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-        labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
-
+        if data_name == 'DFAUST':
+            inputs, labels_int, seq_idx, frame_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
+            inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
+            labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+        elif data_name == 'IKEA_EGO':
+            inputs, labels, seq_idx, frame_pad = data
+            # wrap them in Variable
+            if not seq_idx[0] == seq_idx[1]:
+                print("I am here")
+            inputs = inputs.cuda().requires_grad_().contiguous()
+            labels = labels.cuda()
+            in_channel = cfg['DATA']['in_channel']
+            inputs = inputs[:, :, 0:in_channel, :].contiguous()
+        else:
+            raise NotImplementedError
         out_dict = model(inputs)
         logits = out_dict['pred']
 
@@ -80,7 +91,7 @@ def run(cfg, logdir, model_path, output_path):
         pred_labels = torch.argmax(logits, 1).detach().cpu().numpy()
 
         pred_labels_per_video, logits_per_video = \
-            utils.accume_per_video_predictions(seq_idx, subseq_pad, pred_labels_per_video, logits_per_video,
+            utils.accume_per_video_predictions(seq_idx, frame_pad, pred_labels_per_video, logits_per_video,
                                                pred_labels, logits, frames_per_clip)
 
     pred_labels_per_video = [np.array(pred_video_labels) for pred_video_labels in pred_labels_per_video]
