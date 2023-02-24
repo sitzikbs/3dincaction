@@ -57,6 +57,9 @@ class IKEAEgoDatasetClips(Dataset):
             label_count = label_count + data[1].sum(-1)
         return label_count
 
+    def get_num_seq(self):
+        return len(self.video_list)
+
     def __len__(self):
         return len(self.file_list)
     def __getitem__(self, index):
@@ -64,4 +67,4 @@ class IKEAEgoDatasetClips(Dataset):
             data = pickle.load(f)
         data = self.normalize_point_cloud(data)
         data['inputs'] = np.concatenate([data['inputs'][:, 0:3], data['inputs'][:, 6:9], data['inputs'][:, 3:6]], axis=1) # reorder to be xyzRGBNxNyNz
-        return data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
+        return data

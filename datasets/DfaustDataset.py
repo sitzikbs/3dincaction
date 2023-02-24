@@ -8,6 +8,7 @@ import pc_transforms as transforms
 from scipy.spatial import cKDTree
 import torch
 import models.pointnet2_utils as utils
+import torch.nn.functional as F
 
 DATASET_N_POINTS = 6890
 
@@ -17,6 +18,8 @@ class DfaustActionClipsDataset(Dataset):
         self.action_dataset = DfaustActionDataset(action_dataset_path, set, gender=gender, noisy_data=noisy_data)
         self.num_classes = self.action_dataset.num_classes
         self.action_labels = self.action_dataset.label_per_frame
+        self.video_list = self.action_dataset.sid_per_seq
+        self.action_list = self.action_dataset.actions
         self.frames_per_clip = frames_per_clip
         self.n_points = n_points
         self.shuffle_points = shuffle_points
@@ -150,6 +153,8 @@ class DfaustActionClipsDataset(Dataset):
             out_points = points
         return out_points
 
+    def get_num_seq(self):
+        return len(self.action_dataset)
 
     def __len__(self):
         return len(self.clip_verts)
@@ -158,10 +163,13 @@ class DfaustActionClipsDataset(Dataset):
     def __getitem__(self, idx):
 
         points_seq, shuffled_idxs = self.point_sampler.samlpe_and_shuffle(self.clip_verts[idx])
-        out_points = self.augment_points(points_seq)
+        out_points = self.augment_points(points_seq).transpose((0, 2, 1))
 
-        out_dict = {'points': out_points, 'labels': self.clip_labels[idx],
-                    'seq_idx': self.seq_idx[idx], 'padding': self.subseq_pad[idx],
+        labels = torch.tensor(self.clip_labels[idx])
+        labels = F.one_hot(labels.to(torch.int64), self.num_classes).permute(1, 0).float()
+
+        out_dict = {'inputs': out_points, 'labels': labels,
+                    'vid_idx': self.seq_idx[idx], 'frame_pad': self.subseq_pad[idx],
                     'corr_gt': shuffled_idxs, 'idx': idx}
         return out_dict
 

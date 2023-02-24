@@ -63,7 +63,8 @@ def convert_frame_logits_to_segment_json(logits, json_filename, video_name_list,
         list_of_result_dicts = []
         vid_name = video_name_list[i]
         for j, segment in enumerate(segments):
-            list_of_result_dicts.append({"label": action_list[segment_labels[j]], "score": float(scores[j]),
+            list_of_result_dicts.append({"label": action_list[segment_labels[j]],
+                                         "score": float(scores[j]),
                                          "segment": segment.tolist()})
         results[vid_name] = list_of_result_dicts
     json_dict_to_write["results"] = results
