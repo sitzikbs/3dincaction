@@ -28,7 +28,6 @@ wandb.define_metric("eval/*", step_metric="eval/step")
 
 results_path = os.path.join(args.logdir, args.identifier, 'results/')
 subset = cfg['TESTING']['set']
-gender = cfg['DATA']['gender']
 data_name = cfg['DATA']['name']
 
 # load the gt and predicted data
@@ -37,6 +36,7 @@ dataset = build_dataset(cfg, training=training_)
 gt_labels = dataset.action_labels
 
 if data_name == 'DFAUST':
+    gender = cfg['DATA']['gender']
     gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments_'+gender+'.json')
 elif data_name == 'IKEA_EGO':
     gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments.json')
