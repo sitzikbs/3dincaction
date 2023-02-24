@@ -119,8 +119,8 @@ with open(os.path.join(results_path, 'scores.txt'), 'w') as file:
 print('Comptuing confusion matrix...')
 
 c_matrix = confusion_matrix(np.concatenate(gt_single_labels).ravel(), np.concatenate(pred_labels).ravel(),
-                            labels=range(dataset.action_dataset.num_classes))
-class_names = utils.squeeze_class_names(dataset.action_dataset.actions)
+                            labels=range(dataset.num_classes))
+class_names = utils.squeeze_class_names(dataset.action_list)
 
 fig, ax = utils.plot_confusion_matrix(
     cm=c_matrix,
