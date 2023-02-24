@@ -309,7 +309,7 @@ class PatchletsExtractorBidirectional(nn.Module):
 
 
 class PatchletTemporalConv(nn.Module):
-    def __init__(self, in_channel, temporal_conv, k, mlp, use_attn=False, attn_num_heads=4):
+    def __init__(self, in_channel, temporal_conv, mlp, use_attn=False, attn_num_heads=4):
         super(PatchletTemporalConv, self).__init__()
         self.use_attn = use_attn
 
@@ -422,7 +422,7 @@ class PointNet2Patchlets(nn.Module):
     def __init__(self, model_cfg, num_class, n_frames=32, in_channel=3):
         super(PointNet2Patchlets, self).__init__()
         cfg = model_cfg['PATCHLET']
-        self.k = cfg['k']
+        self.k_list = cfg.get('k', [16, 16, 16])
         self.sample_mode = cfg['sample_mode']
         self.centroid_jitter = cfg['centroid_jitter']
         self.n_frames = n_frames
@@ -432,6 +432,8 @@ class PointNet2Patchlets(nn.Module):
         attn_num_heads = cfg.get('attn_num_heads')
         self.in_channel = in_channel
         self.bidirectional = cfg['bidirectional']
+        npoints = cfg.get('npoints', [512, 128, None])
+        temp_conv = cfg.get('temp_conv', n_frames)
         if self.bidirectional:
             Extractor = PatchletsExtractorBidirectional
         else:
@@ -441,23 +443,22 @@ class PointNet2Patchlets(nn.Module):
             use_attn = True
 
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
-        self.patchlet_extractor1 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=512,
+        self.patchlet_extractor1 = Extractor(k=self.k_list[0], sample_mode=self.sample_mode, npoints=npoints[0],
                                              add_centroid_jitter=self.centroid_jitter,
                                              downsample_method=self.downsample_method, radius=self.radius[0])
-        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7,
-                                                            k=self.k, mlp=[64, 64, 128],
+        self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7, mlp=[64, 64, 128],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads)
-        self.patchlet_extractor2 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
+        self.patchlet_extractor2 = Extractor(k=self.k_list[1], sample_mode=self.sample_mode, npoints=npoints[1],
                                              add_centroid_jitter=self.centroid_jitter,
                                              downsample_method=self.downsample_method, radius=self.radius[1])
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3,
-                                                            k=self.k, mlp=[128, 128, 256],
+                                                            mlp=[128, 128, 256],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads)
-        self.patchlet_extractor3 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
+        self.patchlet_extractor3 = Extractor(k=self.k_list[2], sample_mode=self.sample_mode, npoints=npoints[2],
                                              add_centroid_jitter=self.centroid_jitter,
                                              downsample_method=None, radius=self.radius[2])
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3,
-                                                            k=self.k, mlp=[256, 512, 1024],
+                                                            mlp=[256, 512, 1024],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads)
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
@@ -473,7 +474,7 @@ class PointNet2Patchlets(nn.Module):
 
         # self.bnt = nn.BatchNorm1d(1024)
         # self.temporalconv1 = torch.nn.Conv1d(1024, 1024, int(n_frames/4), 1, padding='same')
-        self.temporalconv2 = torch.nn.Conv1d(256, 256, 3, 1, padding='same')
+        self.temporalconv2 = torch.nn.Conv1d(256, 256, temp_conv, 1, padding='same')
         self.bn3 = nn.BatchNorm1d(256)
 
         if self.type == 'attn_last_layer' or self.type == 'attn_all_layers':

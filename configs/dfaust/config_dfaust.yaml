@@ -9,15 +9,17 @@ MODEL:
   SET_TRANSFORMER:
     dim_input: 3
     num_outputs: 1
-    num_inds: 16
-    dim_hidden: 128
+    num_inds: 32
+    dim_hidden: 512
     num_heads: 4
     ln: False
-    temporal_smoothing: 64
+    temporal_smoothing: 0
   PATCHLET:
     centroid_jitter: 0.005
     sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
-    k: 16
+    k: [ 16, 16, 16 ]
+    npoints: [ 512, 128, null ]
+    temp_conv: 7
     downsample_method: 'fps'
     radius: [null, null, null]
     type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
