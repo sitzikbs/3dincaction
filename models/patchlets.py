@@ -309,63 +309,41 @@ class PatchletsExtractorBidirectional(nn.Module):
 
 
 class PatchletTemporalConv(nn.Module):
-    def __init__(self, in_channel, temporal_conv, k, mlp, use_attn=False, use_transformer=None, attn_num_heads=4,
-                 cfg=None):
+    def __init__(self, in_channel, temporal_conv, k, mlp, use_attn=False, attn_num_heads=4):
         super(PatchletTemporalConv, self).__init__()
         self.use_attn = use_attn
-        self.use_transformer = use_transformer
 
-        if self.use_transformer:
-            cfg['SPATIAL']['dim_input'] = in_channel
-            # cfg['TEMPORAL']['dim_input'] = cfg['SPATIAL']['out_dim']
-            self.cfg_spatial = cfg['SPATIAL']
-            # self.cfg_temporal = cfg['TEMPORAL']
-            self.spatial_transformer = set_transformer.SetTransformerTemporal(cfg['SPATIAL'],
-                                                                              num_classes=mlp[-1])
-            # self.temporal_transformer = set_transformer.SetTransformerTemporal(cfg['TEMPORAL'],
-            #                                                                    num_classes=cfg['SPATIAL']['out_dim'])
-            self.temporal_conv = nn.Conv2d(mlp[-1], mlp[-1], [1, temporal_conv], 1, padding='same')
-            self.bnt = nn.BatchNorm2d(mlp[-1])
+        self.mlp_convs = nn.ModuleList()
+        self.mlp_bns = nn.ModuleList()
+        last_channel = in_channel
+        for out_channel in mlp:
+            self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, 1))
+            # self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, [1, temporal_conv, k], 1, padding='same'))
+            self.mlp_bns.append(nn.BatchNorm3d(out_channel))
+            last_channel = out_channel
+
+        if self.use_attn:
+            self.multihead_attn = nn.MultiheadAttention(last_channel, attn_num_heads, batch_first=True)
         else:
-            self.mlp_convs = nn.ModuleList()
-            self.mlp_bns = nn.ModuleList()
-            last_channel = in_channel
-            for out_channel in mlp:
-                self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, 1))
-                # self.mlp_convs.append(nn.Conv3d(last_channel, out_channel, [1, temporal_conv, k], 1, padding='same'))
-                self.mlp_bns.append(nn.BatchNorm3d(out_channel))
-                last_channel = out_channel
-
-            if self.use_attn:
-                self.multihead_attn = nn.MultiheadAttention(last_channel, attn_num_heads, batch_first=True)
-            else:
-                self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], 1, padding='same')
-                self.bnt = nn.BatchNorm2d(out_channel)
+            self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], 1, padding='same')
+            self.bnt = nn.BatchNorm2d(out_channel)
     def forward(self, x):
-        if self.use_transformer:
-            b, d, n, t, k = x.shape
-            x = self.spatial_transformer(x.permute(0, 2, 3, 1, 4).reshape(b, t*n, d, k))['pred']
-            x = x.permute(0, 2, 1).reshape(b, t, n, -1)
-            # x = self.temporal_transformer(x.permute(0, 2, 1).reshape(b, t, n*self.cfg['SPATIAL']['output_dim']))
-            x = F.relu(self.bnt(self.temporal_conv(x.permute(0, 3, 2, 1))))  # convolve temporally to improve patch representation
-            x = x.permute(0, 3, 2, 1)
+        for i, conv in enumerate(self.mlp_convs):
+            bn = self.mlp_bns[i]
+            x = F.relu(bn(conv(x)))
+
+        x = torch.max(x, -1)[0] # pool neighbors to get patch representation
+        # x = torch.mean(x, -1)  # pool neighbors to get patch representation
+
+        if self.use_attn:
+            x = x.permute(0, 2, 3, 1)
+            b, n, f, c = x.shape
+            x = x.reshape(b * n, f, c)
+            attn, _ = self.multihead_attn(x, x, x)
+            x = attn.view(b, n, f, c).permute(0, 2, 1, 3)
         else:
-            for i, conv in enumerate(self.mlp_convs):
-                bn = self.mlp_bns[i]
-                x = F.relu(bn(conv(x)))
-
-            x = torch.max(x, -1)[0] # pool neighbors to get patch representation
-            # x = torch.mean(x, -1)  # pool neighbors to get patch representation
-
-            if self.use_attn:
-                x = x.permute(0, 2, 3, 1)
-                b, n, f, c = x.shape
-                x = x.reshape(b * n, f, c)
-                attn, _ = self.multihead_attn(x, x, x)
-                x = attn.view(b, n, f, c).permute(0, 2, 1, 3)
-            else:
-                x = F.relu(self.bnt(self.temporal_conv(x))) # convolve temporally to improve patch representation
-                x = x.permute(0, 3, 2, 1)
+            x = F.relu(self.bnt(self.temporal_conv(x))) # convolve temporally to improve patch representation
+            x = x.permute(0, 3, 2, 1)
         return x
 
 class PointMLP(nn.Module):
@@ -454,7 +432,6 @@ class PointNet2Patchlets(nn.Module):
         attn_num_heads = cfg.get('attn_num_heads')
         self.in_channel = in_channel
         self.bidirectional = cfg['bidirectional']
-        self.use_transformer = cfg['use_transformer']
         if self.bidirectional:
             Extractor = PatchletsExtractorBidirectional
         else:
@@ -465,26 +442,23 @@ class PointNet2Patchlets(nn.Module):
 
         # self.point_mlp = PointMLP(in_channel=in_channel, mlp=[64, 64, 128])
         self.patchlet_extractor1 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=512,
-                                                      add_centroid_jitter=self.centroid_jitter,
-                                                      downsample_method=self.downsample_method, radius=self.radius[0])
+                                             add_centroid_jitter=self.centroid_jitter,
+                                             downsample_method=self.downsample_method, radius=self.radius[0])
         self.patchlet_temporal_conv1 = PatchletTemporalConv(in_channel=in_channel, temporal_conv=7,
                                                             k=self.k, mlp=[64, 64, 128],
-                                                            use_attn=use_attn, attn_num_heads=attn_num_heads,
-                                                            use_transformer=self.use_transformer, cfg=cfg['TRANSFORMER'])
+                                                            use_attn=use_attn, attn_num_heads=attn_num_heads)
         self.patchlet_extractor2 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=128,
-                                                      add_centroid_jitter=self.centroid_jitter,
-                                                      downsample_method=self.downsample_method, radius=self.radius[1])
+                                             add_centroid_jitter=self.centroid_jitter,
+                                             downsample_method=self.downsample_method, radius=self.radius[1])
         self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3,
                                                             k=self.k, mlp=[128, 128, 256],
-                                                            use_attn=use_attn, attn_num_heads=attn_num_heads,
-                                                            use_transformer=self.use_transformer, cfg=cfg['TRANSFORMER'])
+                                                            use_attn=use_attn, attn_num_heads=attn_num_heads)
         self.patchlet_extractor3 = Extractor(k=self.k, sample_mode=self.sample_mode, npoints=None,
-                                                      add_centroid_jitter=self.centroid_jitter,
-                                                      downsample_method=None, radius=self.radius[2])
+                                             add_centroid_jitter=self.centroid_jitter,
+                                             downsample_method=None, radius=self.radius[2])
         self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3,
                                                             k=self.k, mlp=[256, 512, 1024],
-                                                            use_attn=use_attn, attn_num_heads=attn_num_heads,
-                                                            use_transformer=self.use_transformer, cfg=cfg['TRANSFORMER'])
+                                                            use_attn=use_attn, attn_num_heads=attn_num_heads)
 
         # self.temporal_pool = torch.nn.MaxPool3d([n_frames, 1, 1])
         # self.temporal_pool = torch.nn.AvgPool2d(3, stride=1, padding=1)
