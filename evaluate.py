@@ -38,7 +38,7 @@ gt_labels = dataset.action_labels
 if data_name == 'DFAUST':
     gender = cfg['DATA']['gender']
     gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments_'+gender+'.json')
-elif data_name == 'IKEA_EGO':
+elif data_name == 'IKEA_EGO' or data_name == 'IKEA_ASM':
     gt_json_path = os.path.join(cfg['DATA']['dataset_path'], 'gt_segments.json')
 else:
     raise NotImplementedError
@@ -92,13 +92,8 @@ print(scores_str)
 balanced_acc_per_vid = []
 
 for vid_idx in range(len(logits)):
-    if data_name == 'DFAUST':
-        single_label_per_frame = torch.tensor(gt_labels[vid_idx])
-    elif data_name == 'IKEA_EGO':
-        effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
-        single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1)
-    else:
-        raise NotImplementedError
+    effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
+    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1)
     acc = sklearn.metrics.balanced_accuracy_score(single_label_per_frame, np.argmax(logits[vid_idx], 1),
                                                   sample_weight=None, adjusted=False)
     balanced_acc_per_vid.append(acc)
@@ -137,3 +132,4 @@ columns = ["top 1", "top 3", "macro", "mAP"]
 results_table = wandb.Table(columns=columns, data=[[top1, top3, balanced_score, mAP]])
 images = wandb.Image(img, caption="Confusion matrix")
 wandb.log({"eval/confusion matrix": images, "eval/Results summary": results_table})
+
