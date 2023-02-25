@@ -133,9 +133,3 @@ results_table = wandb.Table(columns=columns, data=[[top1, top3, balanced_score, 
 images = wandb.Image(img, caption="Confusion matrix")
 wandb.log({"eval/confusion matrix": images, "eval/Results summary": results_table})
 
-wandb.log({"eval/conf_mat": wandb.plot.confusion_matrix(
-    probs=None, y_true=np.concatenate(gt_single_labels).ravel(), preds=np.concatenate(pred_labels).ravel(),
-    class_names=class_names
-)})
-
-
