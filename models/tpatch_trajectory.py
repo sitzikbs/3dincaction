@@ -307,7 +307,7 @@ class PatchletsExtractorBidirectional(nn.Module):
                 'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
                 'normalized_patchlet_points': normalized_patchlet_points, 'fps_idx': fps_idx,
                 'x_current': out_x.reshape(b, t, n_out, d),
-                'trajectories': trajectetories.squeeze()}
+                'trajectories': trajectetories.squeeze(3)}
 
 
 class PatchletTemporalConv(nn.Module):
