@@ -8,6 +8,7 @@ from .pointnet2_cls_msg import PointNet2MSG, PointNet2MSGBasic
 from .pytorch_3dmfv import FourDmFVNet
 from .patchlets import PointNet2Patchlets
 from .set_transformer import SetTransformerTemporal
+from .tpatch_trajectory import tPatchTraj
 
 __all__ = {
     'pn1': PointNet1,
@@ -19,6 +20,7 @@ __all__ = {
     'pn2_patchlets': PointNet2Patchlets,
     '3dmfv': FourDmFVNet,
     'set_transformer': SetTransformerTemporal,
+    'tpatch_trejectory': tPatchTraj
 }
 
 def build_model(model_cfg, num_class, frames_per_clip):
@@ -37,6 +39,7 @@ file_name_dict = {
     'pn2_patchlets': "patchlets.py",
     '3dmfv': "pythorch_3dmfv.py",
     'set_transformer': 'set_transformer.py',
+    'tpatch_trejectory': 'tpatch_trejectory.py'
 }
 
 def build_model_from_logdir(logdir, model_cfg, num_classes, frames_per_clip):
