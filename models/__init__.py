@@ -20,7 +20,7 @@ __all__ = {
     'pn2_patchlets': PointNet2Patchlets,
     '3dmfv': FourDmFVNet,
     'set_transformer': SetTransformerTemporal,
-    'tpatch_trejectory': tPatchTraj
+    'tpatch_trajectory': tPatchTraj
 }
 
 def build_model(model_cfg, num_class, frames_per_clip):
@@ -39,7 +39,7 @@ file_name_dict = {
     'pn2_patchlets': "patchlets.py",
     '3dmfv': "pythorch_3dmfv.py",
     'set_transformer': 'set_transformer.py',
-    'tpatch_trejectory': 'tpatch_trejectory.py'
+    'tpatch_trajectory': 'tpatch_trajectory.py'
 }
 
 def build_model_from_logdir(logdir, model_cfg, num_classes, frames_per_clip):

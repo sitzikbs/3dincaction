@@ -61,11 +61,12 @@ def run(cfg, logdir, model_path, output_path):
         # get the inputs
         inputs, labels, vid_idx, frame_pad = data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
         in_channel = cfg['DATA'].get('in_channel', 3)
-        inputs = inputs[:, :, 0:in_channel, :]
-        inputs = inputs.cuda().requires_grad_().contiguous()
+        inputs = inputs[:, :, 0:in_channel, :].cuda()
         labels = labels.cuda()
 
-        out_dict = model(inputs)
+        with torch.no_grad():
+            out_dict = model(inputs)
+
         logits = out_dict['pred']
 
         acc = i3d_utils.accuracy_v2(torch.argmax(logits, dim=1), torch.argmax(labels, dim=1))
@@ -75,8 +76,7 @@ def run(cfg, logdir, model_path, output_path):
         logits = logits.permute(0, 2, 1)
         logits = logits.reshape(inputs.shape[0] * frames_per_clip, -1)
         pred_labels = torch.argmax(logits, 1).detach().cpu().numpy()
-        if data_name == 'IKEA_EGO' or data_name == 'IKEA_ASM':
-            logits = torch.nn.functional.softmax(logits, dim=1).detach().cpu().numpy().tolist()
+        logits = torch.nn.functional.softmax(logits, dim=1).detach().cpu().numpy().tolist()
 
         pred_labels_per_video, logits_per_video = \
             utils.accume_per_video_predictions(vid_idx, frame_pad, pred_labels_per_video, logits_per_video,

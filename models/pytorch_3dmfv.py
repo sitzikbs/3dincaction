@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.mixture import GaussianMixture
 
 class FourDmFVNet(torch.nn.Module):
-  def __init__(self, model_cfg, num_classes, n_frames=16, normalize=True):
+  def __init__(self, model_cfg, num_class, n_frames=16, normalize=True):
     """
          FourDMFV-Net architecture - for action recognition in 3D
          n_gaussians: number of gaussians in each axis
@@ -12,7 +12,7 @@ class FourDmFVNet(torch.nn.Module):
          normalize: flag for 3DmFV representation
     """
     super(FourDmFVNet, self).__init__()
-    self.n_gaussians = model_cfg['3DMFV']['n_gaussians'],
+    self.n_gaussians = model_cfg['3DMFV'].get('n_gaussians')
     self.n_frames = n_frames
     gmm = get_3d_grid_gmm(subdivisions=[self.n_gaussians, self.n_gaussians, self.n_gaussians],
                           variance=np.sqrt(1.0 / self.n_gaussians))
@@ -29,7 +29,7 @@ class FourDmFVNet(torch.nn.Module):
     self.fc3 = torch.nn.Linear(256, 128)
     self.bn3 = torch.nn.BatchNorm1d(128)
     self.do3 = torch.nn.Dropout(0.3)
-    self.fc4 = torch.nn.Linear(128, num_classes)
+    self.fc4 = torch.nn.Linear(128, num_class)
 
 
   def forward(self, points):

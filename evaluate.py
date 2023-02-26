@@ -78,8 +78,13 @@ acc3_per_vid = []
 
 gt_single_labels = []
 for vid_idx in range(len(logits)):
-    effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
-    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1)  # avoid padding for ego since last frames are not necessary
+    if data_name == 'DFAUST':
+        single_label_per_frame = torch.tensor(gt_labels[vid_idx])
+    elif data_name == 'IKEA_EGO' or data_name == 'IKEA_ASM':
+        effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
+        single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1)  # avoid padding for ego since last frames are not necessary
+    else:
+        raise NotImplementedError
 
     acc1, acc3 = eval_utils.accuracy(torch.tensor(logits[vid_idx]), single_label_per_frame, topk=(1, 3))
     acc1_per_vid.append(acc1.item())
@@ -92,8 +97,15 @@ print(scores_str)
 balanced_acc_per_vid = []
 
 for vid_idx in range(len(logits)):
-    effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
-    single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]), dim=1)
+    if data_name == 'DFAUST':
+        single_label_per_frame = torch.tensor(gt_labels[vid_idx])
+    elif data_name == 'IKEA_EGO' or data_name == 'IKEA_ASM':
+        effective_frames = len(logits[vid_idx])  # avoid padding for ego since last frames are not necessary
+        single_label_per_frame = torch.argmax(torch.tensor(gt_labels[vid_idx][:effective_frames]),
+                                              dim=1)  # avoid padding for ego since last frames are not necessary
+    else:
+        raise NotImplementedError
+
     acc = sklearn.metrics.balanced_accuracy_score(single_label_per_frame, np.argmax(logits[vid_idx], 1),
                                                   sample_weight=None, adjusted=False)
     balanced_acc_per_vid.append(acc)

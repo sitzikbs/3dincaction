@@ -189,7 +189,8 @@ def run(cfg, logdir):
                     "train/cls_loss": tot_cls_loss / n_steps,
                     "train/loc_loss": tot_loc_loss / n_steps,
                     "train/Accuracy": np.mean(avg_acc),
-                    "train/lr":  optimizer.param_groups[0]['lr']
+                    "train/lr":  optimizer.param_groups[0]['lr'],
+                    "train/epoch": steps,
                 }
                 wandb.log(log_dict)
 
