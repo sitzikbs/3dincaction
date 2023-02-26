@@ -161,6 +161,8 @@ class PCPatchletsAllRoutine:
                 pc[i]['scalars'] = self.color[i] * np.ones(len(patchlet_points))
             # pc[i]['scalars'] = i * np.ones(len(patchlet_points))
             self.output[i].overwrite(pc[i])
+        if self.text is not None:
+            self.pl.add_title(self.text[frame_idx])
         return
 
 class PCPatchletsPatchRoutine:
@@ -232,7 +234,7 @@ def pc_patchlet_vis(verts, patchlets, text=None):
     pl.set_background('white', top='white')
     pl.show()
 
-def pc_patchlet_points_vis(verts, text=None, colors=None):
+def pc_patchlet_points_vis(verts, text=None, colors=None, view='front'):
     n_frames, n_points, k, d = verts.shape
     if colors is None:
         pv.global_theme.cmap = 'cet_glasbey_bw'
@@ -241,6 +243,7 @@ def pc_patchlet_points_vis(verts, text=None, colors=None):
 
     pl = pv.Plotter()
     pc = []
+
     for i, patchlet_points in enumerate(verts[0]):
         pc.append( pv.PolyData(patchlet_points))
         if colors is None:
@@ -248,7 +251,7 @@ def pc_patchlet_points_vis(verts, text=None, colors=None):
             clim = [0, n_points]
         else:
             pc[i]['scalars'] = colors[i]*np.ones(k)
-            clim = [0, np.mean(colors) + 2*np.std(colors)]
+            clim = [0, np.mean(colors) + 4*np.std(colors)]
         pl.add_mesh(pc[i], render_points_as_spheres=True, scalars=pc[i]['scalars'], point_size=25, clim=clim)
     engine = PCPatchletsAllRoutine(verts, pc, text, pl, colors)
 
@@ -265,9 +268,12 @@ def pc_patchlet_points_vis(verts, text=None, colors=None):
     if text is not None:
         pl.add_title(text[0])
 
-    pl.camera.position = (1, 1, 1)
+    pl.camera.position = CAMLOC[view]
     pl.camera.focal_point = (0, 0, 0)
-    pl.camera.up = (0.0, 1.0, 0.0)
+    if 'ikea' in view:
+        pl.camera.up = (0.0, -1.0, 0.0)
+    else:
+        pl.camera.up = (0.0, 1.0, 0.0)
     pl.camera.zoom(0.5)
     pl.show()
 
