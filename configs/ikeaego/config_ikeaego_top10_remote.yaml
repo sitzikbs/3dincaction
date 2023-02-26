@@ -1,6 +1,6 @@
 seed: 0
 save_every: 5
-num_workers: 0
+num_workers: 8
 
 MODEL:
   pc_model: 'pn2' # which model to use for point cloud processing
@@ -9,8 +9,8 @@ MODEL:
   SET_TRANSFORMER:
     dim_input: 3
     num_outputs: 1
-    num_inds: 32
-    dim_hidden: 512
+    num_inds: 16
+    dim_hidden: 128
     num_heads: 4
     ln: False
     temporal_smoothing: 0
