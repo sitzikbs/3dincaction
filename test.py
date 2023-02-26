@@ -61,11 +61,12 @@ def run(cfg, logdir, model_path, output_path):
         # get the inputs
         inputs, labels, vid_idx, frame_pad = data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
         in_channel = cfg['DATA'].get('in_channel', 3)
-        inputs = inputs[:, :, 0:in_channel, :]
-        inputs = inputs.cuda().requires_grad_().contiguous()
+        inputs = inputs[:, :, 0:in_channel, :].cuda()
         labels = labels.cuda()
 
-        out_dict = model(inputs)
+        with torch.no_grad():
+            out_dict = model(inputs)
+
         logits = out_dict['pred']
 
         acc = i3d_utils.accuracy_v2(torch.argmax(logits, dim=1), torch.argmax(labels, dim=1))
