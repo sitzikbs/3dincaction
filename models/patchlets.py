@@ -95,7 +95,7 @@ class PatchletsExtractor(nn.Module):
                 raise ValueError("sample mode not supported")
 
             out_x[:, i] = x_current
-            if self.add_centroid_jitter is not None:
+            if self.add_centroid_jitter is not None and not self.sample_mode == 'gt':
                 x_current = x_current + self.add_centroid_jitter*torch.randn_like(x_current)
 
             distances_i[:, i], idxs_i[:, i] = distances, idxs

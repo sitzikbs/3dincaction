@@ -3,7 +3,7 @@
 
 import sys
 sys.path.append('../dfaust')
-
+sys.path.append('../ikeaaction')
 import os
 import argparse
 import i3d_utils
@@ -14,7 +14,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 import numpy as np
-from DfaustDataset import DfaustActionClipsDataset as Dataset
+from DfaustDataset import DfaustActionClipsDataset
+from IKEAActionDatasetClips import IKEAActionDatasetClips
 import importlib.util
 import visualization
 import pathlib
@@ -28,33 +29,46 @@ from util_scripts.GradCam import GradCam
 np.random.seed(0)
 torch.manual_seed(0)
 # pn2_patchlets_8bs_2steps_skip_connection_2_millbrae, pn2_4d_basic_8bs_2steps_skip_connection_0_millbrae, pn2_patchlets_8bs_2steps_skip_connection_detach_3_millbrae
+#pn2_patchlets_3bs_20steps_skipcon_filt5_k32_biderctional_cuda0_millbrae
 parser = argparse.ArgumentParser()
-parser.add_argument('--logdir', type=str, default='../dfaust/log/', help='path to model save dir')
-parser.add_argument('--identifier', type=str, default='pn2_patchlets_8bs_2steps_skip_connection_detach_3_millbrae', help='unique run identifier')
-parser.add_argument('--model_ckpt', type=str, default='000000.pt', help='checkpoint to load')
+parser.add_argument('--logdir', type=str, default='../ikeaaction/log/', help='path to model save dir')
+parser.add_argument('--identifier', type=str, default='pn2_patchlets_3bs_20steps_skipcon_filt5_k32_biderctional_cuda0_millbrae', help='unique run identifier')
+parser.add_argument('--model_ckpt', type=str, default='000020.pt', help='checkpoint to load')
 parser.add_argument('--output_path', type=str, default='./log/gradcam/', help='checkpoint to load')
+parser.add_argument('--dataset', type=str, default='ikeaasm', help='which dataset to use')
 args = parser.parse_args()
 
-# from pointnet import PointNet4D
+
+__datasets__ = {'dfaust': DfaustActionClipsDataset,
+                'ikeaasm': IKEAActionDatasetClips}
+
 def run(cfg, logdir, model_path, output_path):
 
     dataset_path = cfg['DATA']['dataset_path']
     pc_model = cfg['MODEL']['pc_model']
     batch_size = 1
-    frames_per_clip = cfg['DATA']['frames_per_clip']
+    frames_per_clip = cfg['DATA'].get('frames_per_clip', 32)
     n_points = cfg['DATA']['n_points']
     shuffle_points = 'fps_each' #cfg['DATA']['shuffle_points']
-    gender = cfg['DATA']['gender']
-    subset = cfg['TESTING']['set']
-    aug = cfg['TESTING']['aug']
-    noisy_data = cfg['DATA']['noisy_data']
-
+    gender = cfg['DATA'].get('gender', 'female')
+    subset = cfg['TESTING'].get('set', 'test')
+    aug = cfg['TESTING'].get('aug', [''])
+    noisy_data = cfg['DATA'].get('noisy_data', {'train': False, 'test': False})
+    in_channel = cfg['DATA'].get('in_channel', 3)
     # setup dataset
-    test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=subset, n_points=n_points, last_op='pad',
-                           data_augmentation=aug, shuffle_points=shuffle_points, gender=gender, noisy_data=noisy_data)
+
+    Dataset = __datasets__[args.dataset]
+    if args.dataset == 'dfaust':
+        test_dataset = Dataset(dataset_path, frames_per_clip=frames_per_clip, set=subset, n_points=n_points, last_op='pad',
+                               data_augmentation=aug, shuffle_points=shuffle_points, gender=gender, noisy_data=noisy_data)
+        num_classes = test_dataset.action_dataset.num_classes
+        action_list = test_dataset.action_dataset.actions
+    elif args.dataset == 'ikeaasm':
+        test_dataset = Dataset(dataset_path, set='test')
+        num_classes = test_dataset.num_classes
+        action_list = test_dataset.action_list
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                                                   pin_memory=True)
-    num_classes = test_dataset.action_dataset.num_classes
 
     # setup the model
     checkpoints = torch.load(model_path)
@@ -125,16 +139,29 @@ def run(cfg, logdir, model_path, output_path):
     for test_batchind, data in enumerate(test_dataloader):
 
         # get the inputs
-        inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
-        inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
-        labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
-        action_str = test_dataset.action_dataset.actions[int(labels_int.squeeze()[0])]
-        out_path = os.path.join(output_path, action_str, str(test_batchind).zfill(6))
+        if args.dataset == 'dfaust':
+            inputs, labels_int, seq_idx, subseq_pad = data['points'], data['labels'], data['seq_idx'], data['padding']
+            labels = F.one_hot(labels_int.to(torch.int64), num_classes).permute(0, 2, 1).float().cuda()
+            action_str = action_list[int(labels_int.squeeze()[0])]
+            inputs = inputs.permute(0, 1, 3, 2).cuda().requires_grad_().contiguous()
+        elif  args.dataset == 'ikeaasm':
+            inputs, labels, seq_idx, subseq_pad = data
+            labels = labels.cuda()
+            inputs = inputs[:, :, 0:in_channel, :].cuda().requires_grad_().contiguous()
+            labels_int = torch.argmax(labels, dim=1)
+            action_str = action_list[int(labels_int.squeeze()[0])]
+        action_str_list = ['GT:' + action_list[frame_label] for frame_label in labels_int.squeeze()]
+
+
+        out_path = os.path.join(output_path, args.dataset, args.identifier, action_str, str(test_batchind).zfill(6))
         # if test_batchind in [1]:
         cam_result = cam(input_tensor=inputs, targets=labels)
         per_patch_cam = cam_result.mean(-1)
         out_dict = model(inputs)
         patchlet_points = out_dict['patchlet_points']
+        pred = torch.argmax(out_dict['pred'].squeeze(), 0)
+        pred_str_list = ['pred: ' + action_list[pred_label] for pred_label in pred]
+        title_str = [pred_str_list[i] + ', ' + action_str_list[i] for i in range(len(pred_str_list)) ]
         points = patchlet_points[0].detach().cpu().numpy()
         colors = per_patch_cam[0]
         # sort from low to high gradcam value
@@ -142,7 +169,8 @@ def run(cfg, logdir, model_path, output_path):
         points = points[:, idxs, :, :]
         colors = colors[idxs]
         # visualization.pc_patchlet_points_vis(patchlet_points[0].detach().cpu().numpy(), colors=per_patch_cam[0] )
-        visualization.export_pc_patchlet_points(points, colors,  output_path=out_path, view='front')
+        visualization.pc_patchlet_points_vis(points, colors=colors, view='ikea_front', text=title_str)
+        # visualization.export_pc_patchlet_points(points, colors,  output_path=out_path, view='front')
 
 
 
