@@ -12,7 +12,7 @@ class FourDmFVNet(torch.nn.Module):
          normalize: flag for 3DmFV representation
     """
     super(FourDmFVNet, self).__init__()
-    self.n_gaussians = model_cfg['3DMFV']['n_gaussians'],
+    self.n_gaussians = model_cfg['3DMFV'].get('n_gaussians')
     self.n_frames = n_frames
     gmm = get_3d_grid_gmm(subdivisions=[self.n_gaussians, self.n_gaussians, self.n_gaussians],
                           variance=np.sqrt(1.0 / self.n_gaussians))
