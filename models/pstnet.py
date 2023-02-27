@@ -393,6 +393,13 @@ class NTU(nn.Module):
 class PSTnet(MSRAction):
     def __init__(self, model_cfg, num_class=40, n_frames=32):
         MSRAction.__init__(self, model_cfg, num_classes=num_class)
+        self.fc1 = nn.Linear(2048, 512)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.drop1 = nn.Dropout(0.4)
+        self.fc2 = nn.Linear(512, 256)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.drop2 = nn.Dropout(0.4)
+        self.fc3 = nn.Linear(256, num_class)
 
     def forward(self, X):
         b, t, d, n = X.shape
@@ -418,8 +425,12 @@ class PSTnet(MSRAction):
         new_features = torch.mean(input=new_features, dim=-1, keepdim=False)    # (B, L, C)
 
         # adapting to per frame prediction
-        new_features = new_features.permute(0, 2, 1).reshape(b * int(t/4), -1) # t reduces by X4
-        out = self.fc(new_features)
+        new_t = int(t/4)
+        new_features = new_features.permute(0, 2, 1).reshape(b * new_t, -1) # t reduces by X4
+        # out = self.fc(new_features)
+        out = self.drop1(F.relu(self.bn1(self.fc1(new_features).reshape(b, new_t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512))
+        out = self.drop2(F.relu(self.bn2(self.fc2(out).reshape(b, new_t, 256).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 256))
+        out = self.fc3(out)
         out = F.log_softmax(out, -1).reshape(b, int(t/4), -1).permute(0, 2, 1)
         out = F.interpolate(out, t, mode='linear', align_corners=True)
         return {'pred': out}
