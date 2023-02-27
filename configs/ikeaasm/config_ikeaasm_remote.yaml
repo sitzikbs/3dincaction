@@ -3,7 +3,7 @@ save_every: 5
 num_workers: 8
 
 MODEL:
-  pc_model: 'pn2_4d_basic' # which model to use for point cloud processing
+  pc_model: 'ptsnet' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
@@ -25,6 +25,9 @@ MODEL:
     type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
     attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
     bidirectional: True # True | False to use bidirectional t-patches
+  PSTNET:
+    radius: 0.1
+    nsamples: 9
 
 TRAINING:
   lr: 0.001
