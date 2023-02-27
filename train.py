@@ -123,7 +123,7 @@ def run(cfg, logdir):
     pbar = tqdm(total=n_epochs, desc='Training', dynamic_ncols=True)
     while steps <= n_epochs:
         if steps <= refine_epoch and refine and refine_flag:
-            lr_sched.step()
+            # lr_sched.step()
             steps += 1
             n_examples += len(train_dataset.clip_set)
             continue

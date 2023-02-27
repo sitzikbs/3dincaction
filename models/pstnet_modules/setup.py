@@ -7,7 +7,6 @@ from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 import glob
 
-
 _ext_src_root = "/home/sitzikbs/PycharmProjects/dfaust/models/pstnet_modules/_ext_src/"
 _ext_sources = glob.glob("{}/src/*.cpp".format(_ext_src_root)) + glob.glob(
     "{}/src/*.cu".format(_ext_src_root)
