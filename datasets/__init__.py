@@ -18,7 +18,7 @@ def build_dataset(cfg, training=True):
             data_augmentation=data_augmentation, noisy_data=cfg_data['noisy_data'],
         )
     elif cfg_data.get('name') == 'IKEA_ASM':
-        dataset = IKEAActionDatasetClips(dataset_path=cfg_data['dataset_path'], set='test')
+        dataset = IKEAActionDatasetClips(dataset_path=cfg_data['dataset_path'], set=split)
     elif cfg_data.get('name') == 'IKEA_EGO':
         dataset = IKEAEgoDatasetClips(dataset_path=cfg_data['dataset_path'], set=split)
     else:

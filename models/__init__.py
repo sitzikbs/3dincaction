@@ -10,6 +10,7 @@ from .patchlets import PointNet2Patchlets
 from .set_transformer import SetTransformerTemporal
 from .tpatch_trajectory import tPatchTraj
 from .DGCNN import DGCNN
+from .pstnet import PSTnet
 
 __all__ = {
     'pn1': PointNet1,
@@ -23,6 +24,7 @@ __all__ = {
     'set_transformer': SetTransformerTemporal,
     'tpatch_trajectory': tPatchTraj,
     'dgcnn': DGCNN,
+    'pstnet': PSTnet
 }
 
 def build_model(model_cfg, num_class, frames_per_clip):
@@ -42,7 +44,8 @@ file_name_dict = {
     '3dmfv': "pytorch_3dmfv.py",
     'set_transformer': 'set_transformer.py',
     'tpatch_trajectory': 'tpatch_trajectory.py',
-    'dgcnn': 'DGCNN.py'
+    'dgcnn': 'DGCNN.py',
+    'pstnet': 'pstnet.py'
 }
 
 def build_model_from_logdir(logdir, model_cfg, num_classes, frames_per_clip):
