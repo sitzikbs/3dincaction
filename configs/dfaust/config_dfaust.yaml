@@ -3,7 +3,7 @@ save_every: 10
 num_workers: 0
 
 MODEL:
-  pc_model: 'pstnet' # which model to use for point cloud processing
+  pc_model: 'pst_transformer' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
@@ -28,6 +28,19 @@ MODEL:
   PSTNET:
     radius: 0.1
     nsamples: 9
+  PST_TRANSFORMER:
+    radius: 0.3
+    nsamples: 32
+    spatial_stride: 32
+    temporal_kernel_size: 3
+    temporal_stride: 2
+    dim: 80
+    depth: 5
+    heads: 2
+    dim_head: 40
+    dropout1: 0.0
+    mlp_dim: 160
+    dropout2: 0.0
 
 TRAINING:
   lr: 0.001
