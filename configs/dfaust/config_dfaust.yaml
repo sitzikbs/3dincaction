@@ -29,18 +29,18 @@ MODEL:
     radius: 0.1
     nsamples: 9
   PST_TRANSFORMER:
-    radius: 0.3
+    radius: 0.1
     nsamples: 32
     spatial_stride: 32
     temporal_kernel_size: 3
     temporal_stride: 2
-    dim: 80
+    dim: 1024
     depth: 5
-    heads: 2
-    dim_head: 40
+    heads: 8
+    dim_head: 256
     dropout1: 0.0
-    mlp_dim: 160
-    dropout2: 0.0
+    mlp_dim: 2048
+    dropout2: 0.5
 
 TRAINING:
   lr: 0.001
