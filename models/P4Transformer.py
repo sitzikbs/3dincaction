@@ -50,14 +50,15 @@ class P4Transformer(nn.Module):
         )
 
     def forward(self, input):          # [B, L, N, 3]
-        device = input.get_device()
+        B, T, d, N = input.shape
+        input = input.permute(0, 1, 3, 2)  # [B, L, N, 3]
         xyzs, features = self.tube_embedding(input)         # [B, L, n, 3], [B, L, C, n]
 
         xyzts = []
         xyzs = torch.split(tensor=xyzs, split_size_or_sections=1, dim=1)
         xyzs = [torch.squeeze(input=xyz, dim=1).contiguous() for xyz in xyzs]
         for t, xyz in enumerate(xyzs):
-            t = torch.ones((xyz.size()[0], xyz.size()[1], 1), dtype=torch.float32, device=device) * (t+1)
+            t = torch.ones((xyz.size()[0], xyz.size()[1], 1), dtype=torch.float32, device=input.device) * (t+1)
             xyzt = torch.cat(tensors=(xyz, t), dim=2)
             xyzts.append(xyzt)
         xyzts = torch.stack(tensors=xyzts, dim=1)
@@ -74,7 +75,21 @@ class P4Transformer(nn.Module):
             embedding = self.emb_relu(embedding)
 
         output = self.transformer(embedding)
-        output = torch.max(input=output, dim=1, keepdim=False, out=None)[0]
-        output = self.mlp_head(output)
 
-        return output
+        # output = torch.max(input=output, dim=1, keepdim=False, out=None)[0]
+        # output = self.mlp_head(output)
+        # return output
+
+        # TODO: add support for per frame prediction
+        new_t = len(xyzs)
+        output = output.reshape(B, new_t, -1, output.shape[-1])  # [B, L, n, C]
+        output = torch.max(output, dim=2, keepdim=False, out=None)[0]  # [B, L, C]
+        output = self.mlp_head(output.reshape(B * new_t, -1))
+
+        output = F.interpolate(output.reshape(B, new_t, -1).permute(0, 2, 1), T, mode='linear', align_corners=True)
+        output = F.log_softmax(output, 1)
+
+        return {'pred': output}
+
+
+
