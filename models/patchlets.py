@@ -287,11 +287,11 @@ class PatchletsExtractorBidirectional(nn.Module):
 
         # randomly select a subset
         rand_idxs = torch.randperm(n)[:int(n/2)]
-        patchlets = torch.concat([patchlets1[:, rand_idxs, :], patchlets2[:, rand_idxs, :]], 1)
-        patchlet_feats = torch.concat([patchlet_feats1[:, rand_idxs, :], patchlet_feats2[:, rand_idxs, :]], 1)
-        patchlet_points = torch.concat([patchlet_points1[:, rand_idxs, :], patchlet_points2[:, rand_idxs, :]], 1)
-        distances = torch.concat([distances1[:, rand_idxs, :], distances2[:, rand_idxs, :]], 1)
-        idxs = torch.concat([idxs1[:, rand_idxs, :], idxs2[:, rand_idxs, :]], 1)
+        patchlets = torch.cat([patchlets1[:, rand_idxs, :], patchlets2[:, rand_idxs, :]], 1)
+        patchlet_feats = torch.cat([patchlet_feats1[:, rand_idxs, :], patchlet_feats2[:, rand_idxs, :]], 1)
+        patchlet_points = torch.cat([patchlet_points1[:, rand_idxs, :], patchlet_points2[:, rand_idxs, :]], 1)
+        distances = torch.cat([distances1[:, rand_idxs, :], distances2[:, rand_idxs, :]], 1)
+        idxs = torch.cat([idxs1[:, rand_idxs, :], idxs2[:, rand_idxs, :]], 1)
         out_x = out_x1 # remove after debug, out_x is unused
 
         # reshape all to bxtxnxk
@@ -419,8 +419,9 @@ class PointNet2PatchletsSA(nn.Module):
 
 
 class PointNet2Patchlets(nn.Module):
-    def __init__(self, model_cfg, num_class, n_frames=32, in_channel=3):
+    def __init__(self, model_cfg, num_class, n_frames=32):
         super(PointNet2Patchlets, self).__init__()
+        in_channel = model_cfg.get('in_channel', 3)
         cfg = model_cfg['PATCHLET']
         self.k_list = cfg.get('k', [16, 16, 16])
         self.sample_mode = cfg['sample_mode']
@@ -430,7 +431,6 @@ class PointNet2Patchlets(nn.Module):
         self.radius = cfg['radius']
         self.type = cfg.get('type', 'origin')
         attn_num_heads = cfg.get('attn_num_heads')
-        self.in_channel = in_channel
         self.bidirectional = cfg['bidirectional']
         npoints = cfg.get('npoints', [512, 128, None])
         temp_conv = cfg.get('temp_conv', n_frames)

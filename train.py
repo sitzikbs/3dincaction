@@ -147,7 +147,7 @@ def run(cfg, logdir):
             num_iter += 1
             # get the inputs
             inputs, labels, vid_idx, frame_pad = data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
-            in_channel = cfg['DATA'].get('in_channel', 3)
+            in_channel = cfg['MODEL'].get('in_channel', 3)
             inputs = inputs[:, :, 0:in_channel, :]
             inputs = inputs.cuda().requires_grad_().contiguous()
             labels = labels.cuda()
@@ -201,7 +201,7 @@ def run(cfg, logdir):
                 model.eval()
                 test_batchind, data = next(test_enum)
                 inputs, labels, vid_idx, frame_pad = data['inputs'], data['labels'], data['vid_idx'], data['frame_pad']
-                in_channel = cfg['DATA'].get('in_channel', 3)
+                in_channel = cfg['MODEL'].get('in_channel', 3)
                 inputs = inputs[:, :, 0:in_channel, :]
                 inputs = inputs.cuda().requires_grad_().contiguous()
                 labels = labels.cuda()
