@@ -451,13 +451,13 @@ class PointNet2Patchlets(nn.Module):
         self.patchlet_extractor2 = Extractor(k=self.k_list[1], sample_mode=self.sample_mode, npoints=npoints[1],
                                              add_centroid_jitter=self.centroid_jitter,
                                              downsample_method=self.downsample_method, radius=self.radius[1])
-        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+in_channel, temporal_conv=3,
+        self.patchlet_temporal_conv2 = PatchletTemporalConv(in_channel=128+3, temporal_conv=3,
                                                             mlp=[128, 128, 256],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads)
         self.patchlet_extractor3 = Extractor(k=self.k_list[2], sample_mode=self.sample_mode, npoints=npoints[2],
                                              add_centroid_jitter=self.centroid_jitter,
                                              downsample_method=None, radius=self.radius[2])
-        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+in_channel, temporal_conv=3,
+        self.patchlet_temporal_conv3 = PatchletTemporalConv(in_channel=256+3, temporal_conv=3,
                                                             mlp=[256, 512, 1024],
                                                             use_attn=use_attn, attn_num_heads=attn_num_heads)
 
@@ -483,10 +483,20 @@ class PointNet2Patchlets(nn.Module):
 
     def forward(self, xyz):
         b, t, d, n = xyz.shape
+        xyz = xyz.permute(0, 1, 3, 2)
 
-        patchlet_dict = self.patchlet_extractor1(xyz.permute(0, 1, 3, 2))
+        if d > 3:
+            patchlet_feats = xyz[:, :, :, 3:]
+            xyz = xyz[:, :, :, :3]
+        else:
+            patchlet_feats = None
+
+        patchlet_dict = self.patchlet_extractor1(xyz, patchlet_feats)
         xyz0 = patchlet_dict['patchlet_points']
-        patchlet_feats = patchlet_dict['normalized_patchlet_points'].permute(0, 4, 2, 1, 3)
+        if patchlet_feats is not None:
+            patchlet_feats = patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
+        else:
+            patchlet_feats = patchlet_dict['normalized_patchlet_points'].permute(0, 4, 2, 1, 3)
         patchlet_feats = self.patchlet_temporal_conv1(patchlet_feats)  # [b, d+k, npoint, t, nsample]
 
         patchlet_dict = self.patchlet_extractor2(xyz0[:, :, :, 0, :], patchlet_feats)
