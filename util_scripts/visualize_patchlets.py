@@ -10,7 +10,7 @@ from ikeaaction.IKEAActionDatasetClips import IKEAActionDatasetClips
 from IKEAEgoDatasetClips import IKEAEgoDatasetClips
 from torch.multiprocessing import set_start_method
 
-from models.patchlets import PatchletsExtractor, PatchletsExtractorBidirectional
+from models.patchlets import PatchletsExtractor, PatchletsExtractorBidirectional, PatchletsExtractorStrided
 
 if __name__ == "__main__":
     # set_start_method('spawn')
@@ -21,13 +21,13 @@ if __name__ == "__main__":
     k = 16
     sample_mode = 'nn'
     dfaust_augmentation = ['']
-    add_centroid_jitter = 0.00
-    bidirectional_extractor = True
+    add_centroid_jitter = 0.001
+    extarctor_type = 'strided'
     if dataset_name == 'ikea':
-        dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/64/'
+        dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
         dataset = IKEAActionDatasetClips(dataset_path,  set='train')
     elif dataset_name == 'ikeaego':
-        dataset_path = '/home/sitzikbs/Datasets/ikeaego_small_clips/32/'
+        dataset_path = '/home/sitzikbs/Datasets/ikeaego_small_clips_frameskip4/32/'
         dataset = IKEAEgoDatasetClips(dataset_path,  set='test')
     else:
         dataset_path = '/home/sitzikbs/Datasets/dfaust/'
@@ -36,15 +36,21 @@ if __name__ == "__main__":
                                            data_augmentation=dfaust_augmentation,
                                            noisy_data={'test': False, 'train': False})
 
-    if bidirectional_extractor:
+    if extarctor_type == 'bidirectional':
         extract_pachlets = PatchletsExtractorBidirectional(k=k, npoints=npoints, sample_mode=sample_mode,
-                                                           add_centroid_jitter=add_centroid_jitter,
-                                                           downsample_method=downsample_method,
-                                                           radius=0.2)
+                                                       add_centroid_jitter=add_centroid_jitter,
+                                                       downsample_method=downsample_method,
+                                                       radius=None)
+    elif extarctor_type == 'strided':
+        extract_pachlets = PatchletsExtractorStrided(k=k, npoints=npoints, sample_mode=sample_mode,
+                                                       add_centroid_jitter=add_centroid_jitter,
+                                                       downsample_method=downsample_method,
+                                                       radius=None, temporal_stride=8)
     else:
         extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
                                               add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,
-                                              radius=0.2)
+                                              radius=None)
+
 
 
 

@@ -79,9 +79,9 @@ def write_gt_json(output_dataset_dir, data_df, action_list):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/ikeaego_small_clips/32/',
+parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/ikeaego_small_clips_frameskip4/32/',
                     help='path to ikea asm dataset with point cloud data')
-parser.add_argument('--output_dataset_dir', type=str, default='/home/sitzikbs/Datasets/ikeaego_small_clips_top10/32/',
+parser.add_argument('--output_dataset_dir', type=str, default='/home/sitzikbs/Datasets/ikeaego_small_clips_top10_frameskip4/32/',
                     help='path to the output directory where the new model will be saved')
 args = parser.parse_args()
 

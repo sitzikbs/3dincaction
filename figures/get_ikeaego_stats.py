@@ -16,6 +16,8 @@ out_dir = './log'
 out_dict = {'test':{}, 'train':{}}
 with_names = True
 
+total_frames = 0
+total_video_count = 0
 for subset in out_dict.keys():
     dataset = Dataset(dataset_path, subset=subset, frames_per_clip=frames_per_clip)
     test_loader = DataLoader(dataset, batch_size=1, num_workers=1, shuffle=False, drop_last=False)
@@ -24,12 +26,15 @@ for subset in out_dict.keys():
     print("Number of clips: {}".format(len(dataset)))
     print("Number of frames: {}".format(frames_per_clip *len(dataset)))
     print("Number of sequences: {}".format(len(dataset.video_list)))
+    total_frames = frames_per_clip * len(dataset) + total_frames
+    total_video_count = total_video_count + len(dataset.annotated_videos)
     stats = dataset.get_dataset_statistics()
     actions = dataset.action_list
     out_dict[subset]['stats'] = stats
     out_dict[subset]['n_clips'] = len(dataset)
     out_dict[subset]['n_frames'] = frames_per_clip *len(dataset)
 
+print("Average number of frames per video: {}".format(total_frames / total_video_count))
 data_mean_occ = np.array(6000.)
 
 

@@ -10,9 +10,10 @@ from EgoSmallRawDataset import HololensStreamRecClipDataset
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_path', type=str, default='/home/sitzikbs/Datasets/ikeaego_small/',
                     help='path to ikea asm dataset with point cloud data')
-parser.add_argument('--output_dataset_dir', type=str, default='/home/sitzikbs/Datasets/ikeaego_small_clips/',
+parser.add_argument('--output_dataset_dir', type=str, default='/home/sitzikbs/Datasets/ikeaego_small_clips_frameskip3/',
                     help='path to the output directory where the new model will be saved')
-parser.add_argument('--frames_per_clip', type=int, default=64,  help='number of frames in each clip')
+parser.add_argument('--frames_per_clip', type=int, default=32,  help='number of frames in each clip')
+parser.add_argument('--frame_skip', type=int, default=3,  help='number frames to skip between consecutive frames')
 args = parser.parse_args()
 
 dataset_path = args.dataset_path
@@ -29,7 +30,8 @@ for subset in subsets:
     outdir = os.path.join(output_dataset_dir_w_frames, subset)
     os.makedirs(outdir, exist_ok=True)
 
-    dataset = HololensStreamRecClipDataset(dataset_path, subset=subset, frames_per_clip=frames_per_clip, modalities=['point_clouds'])
+    dataset = HololensStreamRecClipDataset(dataset_path, subset=subset, frames_per_clip=frames_per_clip,
+                                           modalities=['point_clouds'], frame_skip=args.frame_skip)
     gt_json_path = os.path.join(dataset_path, 'indexing_files', 'db_gt_annotations.json')
     os.system('cp %s %s' % (gt_json_path, os.path.join(output_dataset_dir_w_frames, 'gt_segments.json')))  # copy gt file
 

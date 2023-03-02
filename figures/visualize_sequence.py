@@ -67,7 +67,7 @@ elif dataset_name == 'dfaust':
                                        shuffle_points='fps_each', gender=gender,
                                        noisy_data={'test': False, 'train':False})
 elif dataset_name == 'ikeaego':
-    dataset_path = os.path.join('/home/sitzikbs/Datasets/ikeaego_small_clips/',  str(frames_per_clip))
+    dataset_path = os.path.join('/home/sitzikbs/Datasets/ikeaego_small_clips_frameskip4/',  str(frames_per_clip))
     dataset = IKEAEgoDatasetClips(dataset_path, set='test')
 else:
     raise ValueError("unsupported dataset")
@@ -90,7 +90,7 @@ for batch_ind, data in enumerate(dataloader):
         if dataset_name == 'ikea':
             pc_color = data[0][..., 3:, :].permute(0, 1, 3, 2).squeeze().cpu().numpy() / 255
         elif dataset_name == 'ikeaego':
-            pc_color = data[0][..., 6:, :].permute(0, 1, 3, 2).squeeze().cpu().numpy() / 255
+            pc_color = data[0][..., 3:6, :].permute(0, 1, 3, 2).squeeze().cpu().numpy() / 255
     elif dataset_name == 'dfaust':
         point_seq = data['points']
         label_txt = None  # TODO add support for dfaust labels
