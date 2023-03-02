@@ -60,6 +60,6 @@ class PSTTransformer(nn.Module):
         output = self.mlp_head(output)
 
         output = F.interpolate(output.reshape(b, new_t, -1).permute(0, 2, 1), t, mode='linear', align_corners=True)
-        output = F.log_softmax(output, -1)
+        output = F.log_softmax(output, 1)
 
         return {'pred': output}
