@@ -431,6 +431,7 @@ class PSTnet(MSRAction):
         # out = self.drop1(F.relu(self.bn1(self.fc1(new_features).reshape(b, new_t, 512).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 512))
         # out = self.drop2(F.relu(self.bn2(self.fc2(out).reshape(b, new_t, 256).permute(0, 2, 1))).permute(0, 2, 1).reshape(-1, 256))
         out = self.fc3(new_features)
-        out = F.log_softmax(out, -1).reshape(b, new_t, -1).permute(0, 2, 1)
-        out = F.interpolate(out, t, mode='linear', align_corners=True)
+
+        out = F.interpolate(out.reshape(b, new_t, -1).permute(0, 2, 1), t, mode='linear', align_corners=True)
+        out = F.log_softmax(out, 1)
         return {'pred': out}
