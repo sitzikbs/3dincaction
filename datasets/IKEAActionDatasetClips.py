@@ -40,4 +40,8 @@ class IKEAActionDatasetClips(Dataset):
     def __getitem__(self, index):
         with open(self.file_list[index], 'rb') as f:
             data = pickle.load(f)
+            # normalize RGB values to 0-1
+            inputs = data.get('inputs')
+            inputs[:, 3:, :] /= 255.0
+            data['inputs'] = inputs
         return data
