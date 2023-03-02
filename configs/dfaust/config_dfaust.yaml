@@ -3,7 +3,7 @@ save_every: 10
 num_workers: 0
 
 MODEL:
-  pc_model: 'pst_transformer' # which model to use for point cloud processing
+  pc_model: 'p4transformer' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
@@ -41,6 +41,20 @@ MODEL:
     dropout1: 0.0
     mlp_dim: 2048
     dropout2: 0.5
+  P4TRANSFORMER:
+    radius: 0.1
+    nsamples: 32
+    spatial_stride: 32
+    temporal_kernel_size: 3
+    temporal_stride: 2
+    dim: 1024
+    depth: 10
+    heads: 8
+    dim_head: 256
+    dropout1: 0.05
+    mlp_dim: 2048
+    dropout2: 0.5
+    emb_relu: False
 
 TRAINING:
   lr: 0.001

@@ -12,6 +12,7 @@ from .tpatch_trajectory import tPatchTraj
 from .DGCNN import DGCNN
 from .pstnet import PSTnet
 from .PST_Transformer import PSTTransformer
+from .P4Transformer import P4Transformer
 
 __all__ = {
     'pn1': PointNet1,
@@ -27,6 +28,7 @@ __all__ = {
     'dgcnn': DGCNN,
     'pst_transformer': PSTTransformer,
     'pstnet': PSTnet,
+    'p4transformer': P4Transformer,
 }
 
 def build_model(model_cfg, num_class, frames_per_clip):
@@ -49,6 +51,7 @@ file_name_dict = {
     'dgcnn': 'DGCNN.py',
     'pstnet': 'pstnet.py',
     'pst_transformer': 'PST_Transformer.py',
+    'p4transformer': 'P4Transformer.py',
 }
 
 def build_model_from_logdir(logdir, model_cfg, num_classes, frames_per_clip):
