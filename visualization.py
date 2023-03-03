@@ -422,7 +422,7 @@ def pc_seq_vis(verts, text=None, color=None, point_size=25, rgb=True):
 
 
 
-def plot_pc_pv(verts, text=None, color=None, cmap=None, point_size=50, ):
+def plot_pc_pv(verts, text=None, color=None, cmap=None, point_size=50):
     if cmap is not None:
         pv.global_theme.cmap = cmap
     else:

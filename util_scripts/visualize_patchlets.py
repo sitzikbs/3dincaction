@@ -45,7 +45,7 @@ if __name__ == "__main__":
         extract_pachlets = PatchletsExtractorStrided(k=k, npoints=npoints, sample_mode=sample_mode,
                                                        add_centroid_jitter=add_centroid_jitter,
                                                        downsample_method=downsample_method,
-                                                       radius=None, temporal_stride=8)
+                                                       radius=0.1, temporal_stride=8)
     else:
         extract_pachlets = PatchletsExtractor(k=k, npoints=npoints, sample_mode=sample_mode,
                                               add_centroid_jitter=add_centroid_jitter, downsample_method=downsample_method,

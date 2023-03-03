@@ -14,7 +14,8 @@ frames_per_clip = 32
 gender = 'all'
 out_dir = './log'
 out_dict = {'test':{}, 'train':{}}
-with_names = True
+with_names = False
+y_logscale = True
 
 total_frames = 0
 total_video_count = 0
@@ -57,6 +58,7 @@ out_dict['train']['stats'].sort()
 
 frequent_idxs = out_dict['train']['stats'] > data_mean_occ
 regular_idxs = [not elem for elem in frequent_idxs]
+
 #  plot frequent actions
 bar_plot = pd.DataFrame({
   'train' : list(compress(out_dict['train']['stats'], frequent_idxs)),
@@ -66,8 +68,10 @@ bar_plot = pd.DataFrame({
 bar_plot.plot(kind='bar', stacked=True, color=['steelblue', 'orange'], width=0.8)
 plt.xticks(rotation=rot)
 csfont = {'fontname':'Times New Roman', 'size': 18}
-plt.xlabel ('Action name',**csfont)
-plt.ylabel ('# frames',**csfont)
+plt.xlabel('Action name', **csfont)
+plt.ylabel('# frames', **csfont)
+if y_logscale:
+    plt.yscale("log")
 plt.tight_layout()
 # plt.show()
 plt.savefig(os.path.join(out_dir, 'ikeaego_frequent_stats'+fname_add +'.png'))
@@ -88,8 +92,9 @@ plt.xticks(rotation=rot)
 csfont = {'fontname':'Times New Roman', 'size': 18}
 plt.xlabel ('Action name',**csfont)
 plt.ylabel ('# frames',**csfont)
-
-
+if y_logscale:
+    plt.yscale("log")
+# fix x tick spacing
 plt.gca().margins(x=0)
 plt.gcf().canvas.draw()
 tl = plt.gca().get_xticklabels()
@@ -104,3 +109,35 @@ plt.gcf().set_size_inches(s, plt.gcf().get_size_inches()[1])
 plt.tight_layout()
 # plt.show()
 plt.savefig(os.path.join(out_dir, 'ikeaego_normal_stats' +fname_add +'.png'))
+
+
+
+#  plot frequent actions
+# out_dict['train']['stats'][0] = 100
+bar_plot = pd.DataFrame({
+  'train' : list(out_dict['train']['stats']),
+  'test'  : list(out_dict['test']['stats'])},
+  index = list(action_labels))
+
+bar_plot.plot(kind='bar', stacked=True, color=['steelblue', 'orange'], width=0.8, log=y_logscale)
+plt.xticks(rotation=rot)
+csfont = {'fontname':'Times New Roman', 'size': 18}
+plt.xlabel('Action name', **csfont)
+plt.ylabel('# frames', **csfont)
+
+
+
+# fix x tick spacing
+plt.gca().margins(x=0)
+plt.gcf().canvas.draw()
+tl = plt.gca().get_xticklabels()
+maxsize = max([t.get_window_extent().width for t in tl])
+N = len(actions)
+m = 0.9 # inch margin
+s = maxsize/plt.gcf().dpi*N+2*m
+margin = m/plt.gcf().get_size_inches()[0]
+plt.gcf().subplots_adjust(left=margin, right=1.-margin)
+plt.gcf().set_size_inches(s, plt.gcf().get_size_inches()[1])
+plt.tight_layout()
+# plt.show()
+plt.savefig(os.path.join(out_dir, 'ikeaego_all_stats'+fname_add +'.png'))
