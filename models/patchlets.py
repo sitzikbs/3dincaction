@@ -713,9 +713,8 @@ class PointNet2Patchlets(nn.Module):
             x = F.relu(
                 self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1)).permute(0, 2, 1).reshape(-1, 256)))
         elif self.type == 'skip_con':
-            out_temp_conv = F.relu(
-                self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1))))
-            if not self.temporal_stride == 0:
+            out_temp_conv = F.relu(self.bn3(self.temporalconv2(x.reshape(b, t, 256).permute(0, 2, 1))))
+            if not self.temporal_stride == 1:
                 out_temp_conv = F.interpolate(out_temp_conv, t, mode='linear', align_corners=True)
             x = x + out_temp_conv.reshape(-1, 256)
         elif self.type == 'attn_last_layer' or self.type == 'attn_all_layers':
