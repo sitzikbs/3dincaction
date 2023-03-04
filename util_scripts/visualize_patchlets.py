@@ -18,7 +18,7 @@ if __name__ == "__main__":
     dataset_name = 'ikeaego'
     downsample_method = 'fps'
     npoints = 512
-    k = 16
+    k = 32
     sample_mode = 'nn'
     dfaust_augmentation = ['']
     add_centroid_jitter = 0.001

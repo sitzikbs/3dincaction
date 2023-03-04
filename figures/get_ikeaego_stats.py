@@ -119,7 +119,7 @@ bar_plot = pd.DataFrame({
   'test'  : list(out_dict['test']['stats'])},
   index = list(action_labels))
 
-bar_plot.plot(kind='bar', stacked=True, color=['steelblue', 'orange'], width=0.8, log=y_logscale)
+bar_plot.plot(kind='bar', color=['steelblue', 'orange'], width=0.8, log=y_logscale)
 plt.xticks(rotation=rot)
 csfont = {'fontname':'Times New Roman', 'size': 18}
 plt.xlabel('Action name', **csfont)

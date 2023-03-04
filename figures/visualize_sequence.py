@@ -51,13 +51,13 @@ dataset_name = 'ikeaego'
 view = 'iso'
 show_patchlets, show_full_pc, reduce_opacity = True, True, False
 # n_sequences = 1
-sequence_id = [5]
+sequence_id = [0]
 # patchlet_ids = [2, 50, 100]
 patchlet_ids = [400, 151, 180]
 frames_per_clip = 32
 point_size = 15
-k = 64
-n_points = 1024
+k = 32
+n_points = 512
 if dataset_name == 'ikea':
     dataset_path = os.path.join('/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/', str(frames_per_clip))
     dataset = IKEAActionDatasetClips(dataset_path, set='test')

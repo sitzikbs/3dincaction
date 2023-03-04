@@ -12,7 +12,9 @@ import numpy as np
 from datasets import build_dataloader
 import random
 import yaml
-from models import build_model_from_logdir
+import sys
+import importlib
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--logdir', type=str, default='./log/', help='path to model save dir')
@@ -42,7 +44,11 @@ def run(cfg, logdir, model_path, output_path):
     num_classes = test_dataset.num_classes
 
     # setup the model
-    model = build_model_from_logdir(logdir, cfg['MODEL'], num_classes, frames_per_clip)
+    spec = importlib.util.spec_from_file_location('build_model_from_logdir', os.path.join(logdir, 'models', '__init__.py'))
+    build_model_from_logdir = importlib.util.module_from_spec(spec)
+    sys.modules['build_model_from_logdir'] = build_model_from_logdir
+    spec.loader.exec_module(build_model_from_logdir)
+    model = build_model_from_logdir.build_model_from_logdir(logdir, cfg['MODEL'], num_classes, frames_per_clip).get()
 
     checkpoints = torch.load(model_path)
     model.load_state_dict(checkpoints["model_state_dict"])  # load trained model
