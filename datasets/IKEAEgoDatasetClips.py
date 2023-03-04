@@ -9,7 +9,7 @@ class IKEAEgoDatasetClips(Dataset):
     IKEA Action Dataset class with pre-saved clips into pickles
     """
 
-    def __init__(self, dataset_path, set):
+    def __init__(self, dataset_path, set, cfg_data):
         #TODO add support for point cloud downsampling using FPS and random sampling
         self.dataset_path = dataset_path
         self.set = set
@@ -26,6 +26,7 @@ class IKEAEgoDatasetClips(Dataset):
         self.action_list = aux_data['action_list']
         self.frames_per_clip = aux_data['frames_per_clip']
         self.action_labels = aux_data['action_labels']
+        self.shuffle_points = cfg_data.get('shuffle', False)
         print("{}set contains {} clips".format(set, len(self.file_list)))
 
     def absolute_file_paths(self, directory):
@@ -60,11 +61,20 @@ class IKEAEgoDatasetClips(Dataset):
     def get_num_seq(self):
         return len(self.video_list)
 
+    def shuffle_pts(self, point_cloud):
+        choice = np.arange(0, point_cloud.shape[-1], dtype=np.int32)
+        np.random.shuffle(choice)
+        point_cloud = point_cloud[:, :, choice]
+        return point_cloud
+
     def __len__(self):
         return len(self.file_list)
+
     def __getitem__(self, index):
         with open(self.file_list[index], 'rb') as f:
             data = pickle.load(f)
         data = self.normalize_point_cloud(data)
         data['inputs'] = np.concatenate([data['inputs'][:, 0:3], data['inputs'][:, 6:9], data['inputs'][:, 3:6]], axis=1) # reorder to be xyzRGBNxNyNz
+        if self.shuffle_points:
+            data['inputs'] = self.shuffle_pts(data['inputs'])
         return data
