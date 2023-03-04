@@ -312,9 +312,11 @@ class PatchletsExtractorStrided(nn.Module):
         idxs = torch.cat(idxs_accum, 1)
         out_x = torch.cat(out_x_accum, 1)
 
+        strided_origin_indices = torch.arange(start=0, end=t, step=self.temporal_stride, dtype=torch.int64, device=patchlet_points.device)
+        strided_origins = patchlet_points[:, :, :, [0], :].index_select(1, strided_origin_indices)
         trajectetories = patchlet_points[:, :, :, [0], :]
         normalized_patchlet_points = patchlet_points - trajectetories # normalize the patchlet around the center point of the first frame
-        trajectetories = trajectetories - patchlet_points[:, 0, :, [0], :].unsqueeze(1)
+        trajectetories = trajectetories - torch.repeat_interleave(strided_origins, self.temporal_stride, dim=1)
         patchlet_feats = torch.cat([patchlet_feats, normalized_patchlet_points], -1)
 
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
@@ -468,6 +470,7 @@ class PatchletsExtractorBidirectional(nn.Module):
 
         trajectetories = patchlet_points[:, :, :, [0], :]
         normalized_patchlet_points = patchlet_points - trajectetories # normalize the patchlet around the center point of the first frame
+        trajectetories = trajectetories - patchlet_points[:, 0, :, [0], :].unsqueeze(1)
         patchlet_feats = torch.cat([patchlet_feats, normalized_patchlet_points], -1)
 
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
@@ -638,9 +641,10 @@ class tPatchTraj(nn.Module):
         patchlet_feats = patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
         patchlet_feats = self.patchlet_temporal_conv2(patchlet_feats)  # [b, d+k, npoint, t, nsample]
         trajectories = patchlet_dict['trajectories']
+        traj_features = self.traj_mlp2(trajectories.permute(0, 3, 1, 2))
         traj_features = self.strided_maxpool(traj_features.permute(0, 2, 3, 1))
         traj_features = traj_features.repeat_interleave(int(t/traj_features.shape[-1]), dim=-1).permute(0, 3, 1, 2)  # btnc
-        traj_features = self.traj_mlp2(trajectories.permute(0, 3, 1, 2))
+
         # traj_features = torch.max(traj_features, 1)[0].unsqueeze(1).repeat(1, t, 1, 1)
         patchlet_feats = torch.cat([patchlet_feats, traj_features], -1)
 

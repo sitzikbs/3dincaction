@@ -3,7 +3,7 @@ save_every: 10
 num_workers: 0
 
 MODEL:
-  pc_model: 'tpatch_trajectories' # which model to use for point cloud processing
+  pc_model: 'tpatch_trajectory' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
