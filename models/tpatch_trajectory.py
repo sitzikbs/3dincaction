@@ -314,6 +314,7 @@ class PatchletsExtractorStrided(nn.Module):
 
         trajectetories = patchlet_points[:, :, :, [0], :]
         normalized_patchlet_points = patchlet_points - trajectetories # normalize the patchlet around the center point of the first frame
+        trajectetories = trajectetories - patchlet_points[:, 0, :, [0], :].unsqueeze(1)
         patchlet_feats = torch.cat([patchlet_feats, normalized_patchlet_points], -1)
 
         return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,

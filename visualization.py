@@ -8,7 +8,7 @@ COLOR_PALLET = {'darkred': [0.7,0.1,0.1], 'darkgreen': [0.1, 0.7, 0.1], 'dblue':
                 'burntorange': [0.81,.33,0], 'cyan': [0.0,0.7,0.94], 'salmon': [0.99,0.51,0.46],
                 'green':[0.03,0.91,0.43] }
 CAMLOC = {'iso': (1, 1, 1), 'front': (0, 0, 2), 'side': (2, 0, 0), 'top': (0, 2, 0),
-          'ikea_front': (0, 0, -0.8)}
+          'ikea_front': (0, 0, -0.8), 'ikea_ego_iso': (1, 1, 1)}
 
 class MeshCustomRoutine:
     def __init__(self, vert_seq, faces, mesh_obj, text, pl, color):
@@ -563,17 +563,17 @@ def export_pc_seq(verts, patchlet_points, text=None, color=None, cmap=None, poin
                 pl.add_mesh(pc, render_points_as_spheres=True, color=color_list[j], point_size=point_size, pbr=True,
                             roughness=0.9, diffuse=1.0, metallic=0.05)
 
-        # set up lighting
-        light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
-        pl.add_light(light)
-        light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
-        pl.add_light(light)
-        light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
-        pl.add_light(light)
-        light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
-        pl.add_light(light)
-        light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
-        pl.add_light(light)
+        # # set up lighting
+        # light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
+        # pl.add_light(light)
+        # light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
+        # pl.add_light(light)
+        # light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
+        # pl.add_light(light)
+        # light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
+        # pl.add_light(light)
+        # light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
+        # pl.add_light(light)
 
         pl.show(screenshot=os.path.join(output_path, str(i).zfill(6) + '.png'))
 
