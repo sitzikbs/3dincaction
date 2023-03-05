@@ -594,7 +594,7 @@ class PointNet2PatchletsSA(nn.Module):
 
 
 class PointNet2Patchlets(nn.Module):
-    def __init__(self, model_cfg, num_class, n_frames=32, timeit=True): # TODO:
+    def __init__(self, model_cfg, num_class, n_frames=32, timeit=False): # TODO: remove
         super(PointNet2Patchlets, self).__init__()
         self.timeit = timeit
         in_channel = model_cfg.get('in_channel', 3)
