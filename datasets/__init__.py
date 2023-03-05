@@ -20,7 +20,7 @@ def build_dataset(cfg, training=True):
     elif cfg_data.get('name') == 'IKEA_ASM':
         dataset = IKEAActionDatasetClips(dataset_path=cfg_data['dataset_path'], set=split)
     elif cfg_data.get('name') == 'IKEA_EGO':
-        dataset = IKEAEgoDatasetClips(dataset_path=cfg_data['dataset_path'], set=split)
+        dataset = IKEAEgoDatasetClips(dataset_path=cfg_data['dataset_path'], set=split, cfg_data=cfg_data)
     else:
         raise NotImplementedError
     return dataset
