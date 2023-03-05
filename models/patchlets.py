@@ -594,8 +594,9 @@ class PointNet2PatchletsSA(nn.Module):
 
 
 class PointNet2Patchlets(nn.Module):
-    def __init__(self, model_cfg, num_class, n_frames=32):
+    def __init__(self, model_cfg, num_class, n_frames=32, timeit=True): # TODO:
         super(PointNet2Patchlets, self).__init__()
+        self.timeit = timeit
         in_channel = model_cfg.get('in_channel', 3)
         cfg = model_cfg['PATCHLET']
         self.k_list = cfg.get('k', [16, 16, 16])
@@ -681,24 +682,62 @@ class PointNet2Patchlets(nn.Module):
         else:
             patchlet_feats = None
 
+        if self.timeit:
+            t_start_ext_1 = time.time()
         patchlet_dict = self.patchlet_extractor1(xyz, patchlet_feats)
+        if self.timeit:
+            t_end_ext_1 = time.time()
+            t_ext_1 = t_end_ext_1 - t_start_ext_1
+
         xyz0 = patchlet_dict['patchlet_points']
         if patchlet_feats is not None:
             patchlet_feats = patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
         else:
             patchlet_feats = patchlet_dict['normalized_patchlet_points'].permute(0, 4, 2, 1, 3)
+
+        if self.timeit:
+            t_start_tempconv_1 = time.time()
         patchlet_feats = self.patchlet_temporal_conv1(patchlet_feats)  # [b, d+k, npoint, t, nsample]
+        if self.timeit:
+            t_end_tempconv_1 = time.time()
+            t_tempconv_1 = t_end_tempconv_1 - t_start_tempconv_1
 
+        if self.timeit:
+            t_start_ext_2 = time.time()
         patchlet_dict = self.patchlet_extractor2(xyz0[:, :, :, 0, :], patchlet_feats)
+        if self.timeit:
+            t_end_ext_2 = time.time()
+            t_ext_2 = t_end_ext_2 - t_start_ext_2
+
         xyz = patchlet_dict['patchlet_points']
         patchlet_feats = patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
+
+        if self.timeit:
+            t_start_tempconv_2 = time.time()
         patchlet_feats = self.patchlet_temporal_conv2(patchlet_feats)  # [b, d+k, npoint, t, nsample]
+        if self.timeit:
+            t_end_tempconv_2 = time.time()
+            t_tempconv_2 = t_end_tempconv_2 - t_start_tempconv_2
 
+        if self.timeit:
+            t_start_ext_3 = time.time()
         patchlet_dict = self.patchlet_extractor3(xyz[:, :, :, 0, :], patchlet_feats)
+        if self.timeit:
+            t_end_ext_3 = time.time()
+            t_ext_3 = t_end_ext_3 - t_start_ext_3
+
         xyz = patchlet_dict['patchlet_points']
         patchlet_feats = patchlet_dict['patchlet_feats'].permute(0, 4, 2, 1, 3)
-        patchlet_feats = self.patchlet_temporal_conv3(patchlet_feats)  # [b, d+k, npoint, t, nsample]
 
+        if self.timeit:
+            t_start_tempconv_3 = time.time()
+        patchlet_feats = self.patchlet_temporal_conv3(patchlet_feats)  # [b, d+k, npoint, t, nsample]
+        if self.timeit:
+            t_end_tempconv_3 = time.time()
+            t_tempconv_3 = t_end_tempconv_3 - t_start_tempconv_3
+
+        if self.timeit:
+            t_start_cls = time.time()
 
         xyz, patchlet_feats = xyz.squeeze(-1), patchlet_feats.squeeze(-1)
         x = torch.max(patchlet_feats, -2)[0]
@@ -729,5 +768,15 @@ class PointNet2Patchlets(nn.Module):
         # x = self.temporal_pool(x.reshape(b, t, -1))
         x = F.log_softmax(x, -1)
 
+        if self.timeit:
+            t_end_cls = time.time()
+            t_classifier = t_end_cls - t_start_cls
+
+        time_dict = {
+            'patchlet_extractor': [t_ext_1, t_ext_2, t_ext_3],
+            'patchlet_temporal_conv': [t_tempconv_1, t_tempconv_2, t_tempconv_3],
+            'patchlet_classifier': [t_classifier],
+        }
+
         return {'pred': x.reshape(b, t, -1).permute([0, 2, 1]), 'features': patchlet_feats,
-                'patchlet_points': xyz0}
+                'patchlet_points': xyz0, 'time_dict': time_dict}

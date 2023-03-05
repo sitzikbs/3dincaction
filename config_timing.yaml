@@ -1,0 +1,77 @@
+seed: 0
+save_every: 10
+num_workers: 0
+
+MODEL:
+  pc_model: 'pn1' # which model to use for point cloud processing
+  3DMFV:
+    n_gaussians: 8
+  SET_TRANSFORMER:
+    dim_input: 3
+    num_outputs: 1
+    num_inds: 16
+    dim_hidden: 128
+    num_heads: 4
+    ln: False
+    temporal_smoothing: 0
+  PATCHLET:
+    centroid_jitter: 0.005
+    sample_mode: 'nn'  # nn | randn | gt type of patchlet sampling
+    k: [ 16, 16, 16 ]
+    npoints: [ 512, 128, null ]
+    downsample_method: 'fps'
+    radius: [0.2, 0.4, null]
+    type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
+    attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
+    extractor_type: 'vanilla' # 'strided', 'bidirectional', 'vanilla'
+    temp_conv: 7  # final temporal convolution layer
+    temporal_stride: 8
+    local_temp_convs: [8, 8, 8] #intermidiate temporal convolution layers in local patchlets
+  PSTNET:
+    radius: 0.1
+    nsamples: 9
+  PST_TRANSFORMER:
+    radius: 0.1
+    nsamples: 32
+    spatial_stride: 32
+    temporal_kernel_size: 3
+    temporal_stride: 2
+    dim: 1024
+    depth: 5
+    heads: 8
+    dim_head: 256
+    dropout1: 0.0
+    mlp_dim: 2048
+    dropout2: 0.5
+  P4TRANSFORMER:
+    radius: 0.1
+    nsamples: 32
+    spatial_stride: 32
+    temporal_kernel_size: 3
+    temporal_stride: 2
+    dim: 1024
+    depth: 10
+    heads: 8
+    dim_head: 256
+    dropout1: 0.05
+    mlp_dim: 2048
+    dropout2: 0.5
+    emb_relu: False
+
+TESTING:
+  batch_size: 8
+  aug: ['']
+  set: 'test'
+
+DATA:
+  name: 'DFAUST'
+  dataset_path: '/home/sitzikbs/Datasets/dfaust/'
+  frames_per_clip: 64
+  frame_skip: 1
+  n_points: 1024
+  shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each'
+  gender: 'all'
+  data_sampler: 'weighted'
+  noisy_data:
+    train: False
+    test: False
