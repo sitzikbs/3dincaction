@@ -3,7 +3,7 @@ save_every: 10
 num_workers: 0
 
 MODEL:
-  pc_model: 'tpatch_trajectory' # which model to use for point cloud processing
+  pc_model: 'pn2_patchlets' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
@@ -24,10 +24,10 @@ MODEL:
     radius: [0.2, 0.4, null]
     type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
     attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
-    extractor_type: 'strided' # 'strided', 'bidirectional','origin'
-    temp_conv: 7  # final temporal convolution layer
-    temporal_stride: 8
-    local_temp_convs: [8, 8, 8] #intermidiate temporal convolution layers in local patchlets
+    extractor_type: 'bidirectional' # 'strided', 'bidirectional','origin'
+    temp_conv: 64  # final temporal convolution layer
+    temporal_stride: 1
+    local_temp_convs: [7, 3, 3] #intermidiate temporal convolution layers in local patchlets
 
   PSTNET:
     radius: 0.1
@@ -78,7 +78,7 @@ TESTING:
 DATA:
   name: 'DFAUST'
   dataset_path: '/home/sitzikbs/Datasets/dfaust/'
-  frames_per_clip: 32
+  frames_per_clip: 64
   frame_skip: 1
   n_points: 128
   shuffle_points: 'fps_each_frame' # 'each | none | fps_each_frame| fps_each'

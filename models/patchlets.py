@@ -496,7 +496,10 @@ class PatchletTemporalConv(nn.Module):
         if self.use_attn:
             self.multihead_attn = nn.MultiheadAttention(last_channel, attn_num_heads, batch_first=True)
         else:
-            self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], [1, temporal_stride])
+            if self.temporal_stride == 1:
+                self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], padding='same')
+            else:
+                self.temporal_conv = nn.Conv2d(out_channel, out_channel, [1, temporal_conv], [1, temporal_stride])
             self.bnt = nn.BatchNorm2d(out_channel)
     def forward(self, x):
         b, d, n, t, k = x.shape
@@ -772,11 +775,13 @@ class PointNet2Patchlets(nn.Module):
             t_end_cls = time.time()
             t_classifier = t_end_cls - t_start_cls
 
-        time_dict = {
-            'patchlet_extractor': [t_ext_1, t_ext_2, t_ext_3],
-            'patchlet_temporal_conv': [t_tempconv_1, t_tempconv_2, t_tempconv_3],
-            'patchlet_classifier': [t_classifier],
-        }
+            time_dict = {
+                'patchlet_extractor': [t_ext_1, t_ext_2, t_ext_3],
+                'patchlet_temporal_conv': [t_tempconv_1, t_tempconv_2, t_tempconv_3],
+                'patchlet_classifier': [t_classifier],
+            }
+        else:
+            time_dict = {}
 
         return {'pred': x.reshape(b, t, -1).permute([0, 2, 1]), 'features': patchlet_feats,
                 'patchlet_points': xyz0, 'time_dict': time_dict}

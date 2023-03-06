@@ -54,25 +54,25 @@ def get_point_density(points, k=30):
 #     return out_points_seq
 
 gender = 'female'
-dataset_name = 'ikeaego'
+dataset_name = 'ikeaasm'
 outdir = os.path.join('./log/sequence_images/', dataset_name, gender)
 os.makedirs(outdir, exist_ok=True)
-view = 'ikea_ego_iso'
+view = 'ikea_front'
 show_patchlets, show_full_pc, reduce_opacity = True, True, False
 
 # n_sequences = 1
-sequence_id = [5]
+sequence_id = [1000]
 # patchlet_ids = [0, 1, 2]
 patchlet_ids = [0, 300,  500, 800, 1000] #1850
 frames_per_clip = 64
 
-k = 32
-n_points = 2048
-point_size = 10 #[0.025 for _ in range(n_points)]
-patchlet_point_size = 10
+k = 64
+n_points = 4096
+point_size = 15 #[0.025 for _ in range(n_points)]
+patchlet_point_size = 15
 use_density_based_point_size = False  #if True patchlets coloring is not supported
 
-if dataset_name == 'ikea':
+if dataset_name == 'ikeaasm':
     dataset_path = '/home/sitzikbs/Datasets/ANU_ikea_dataset_smaller_clips/32/'
     dataset = IKEAActionDatasetClips(dataset_path, set='test')
 elif dataset_name == 'ikeaego':
@@ -94,7 +94,7 @@ point_color = None
 for batch_ind, data in enumerate(dataloader):
     with torch.no_grad():
         print("processing batch {}".format(batch_ind))
-        if dataset_name == 'ikea' or dataset_name == 'ikeaego':
+        if dataset_name == 'ikeaasm' or dataset_name == 'ikeaego':
             point_seq = data[0][..., :3, :].permute(0, 1, 3, 2)
             point_color = data[0][..., 3:6, :].permute(0, 1, 3, 2).squeeze().cpu().numpy()/255
         else:
