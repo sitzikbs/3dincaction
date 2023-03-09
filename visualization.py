@@ -497,7 +497,7 @@ def plot_attention_maps(attention_maps, points, point_idx=0, title_text='', poin
 
 
 def export_pc_seq(verts, patchlet_points, text=None, color=None, cmap=None, point_size=50, output_path='./',
-                  show_patchlets=True, show_full_pc=True, reduce_opacity=False, view='iso'):
+                  show_patchlets=True, show_full_pc=True, reduce_opacity=False, view='iso', light=True):
 
     if show_patchlets and show_full_pc:
         id_str = 'both'
@@ -562,18 +562,18 @@ def export_pc_seq(verts, patchlet_points, text=None, color=None, cmap=None, poin
                 pc = pv.PolyData(patchlet_pc[i])
                 pl.add_mesh(pc, render_points_as_spheres=True, color=color_list[j], point_size=point_size, pbr=True,
                             roughness=0.9, diffuse=1.0, metallic=0.05)
-
-        # # set up lighting
-        # light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
-        # pl.add_light(light)
-        # light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
-        # pl.add_light(light)
+        if light:
+            # set up lighting
+            light = pv.Light((5, 5, 5), (0, 0, 0), 'white')
+            pl.add_light(light)
+            light = pv.Light((0, 2, 0), (0, 0, 0), 'white')
+            pl.add_light(light)
+            light = pv.Light((2, 0, 0), (0, 0, 0), 'white')
+            pl.add_light(light)
+            light = pv.Light((0, 0, 2), (0, 0, 0), 'white')
+            pl.add_light(light)
+            light = pv.Light((0, 0, -2), (0, 0, 0), 'white')
+            pl.add_light(light)
 
         pl.show(screenshot=os.path.join(output_path, str(i).zfill(6) + '.png'))
 

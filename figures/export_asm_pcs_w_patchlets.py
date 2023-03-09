@@ -14,16 +14,18 @@ point_cloud_dataset_path = '/mnt/IronWolf/Datasets/ANU_ikea_dataset_processed'
 img_dataset_path = '/mnt/IronWolf/Datasets/ANU_ikea_dataset'
 scan_rel_path = 'Lack_TV_Bench/0005_white_table_10_04_2019_08_28_14_43/dev3'
 
-outdir = './log/ikea_asm_selected_examples/'
+outdir = './log/ikea_asm_selected_examples/flip_table/'
 outdir_img = os.path.join(outdir, 'img')
 outdir_pc = os.path.join(outdir, 'pc')
 for dirname in [outdir, outdir_img,outdir_pc ]:
     os.makedirs(dirname, exist_ok=True)
 point_size = 3
 # frames_to_export = [87, 135, 1934, 2133]  # Chrisitan: align leg, spin leg, flip table, attach shelf
+# frames_to_export = [90, 135, 720, 730, 740, 750, 760, 770, 780, 785, 790, 795, 800, 810, 820, 830, 840, 850, 1530, 1540, 1550,
+#                     1560, 1570, 1580, 1590, 1600, 1610, 1620, 1890, 1900, 1910, 1920, 1930, 1950, 1960]
 frames_to_export = [90, 135, 720, 730, 740, 750, 760, 770, 780, 785, 790, 795, 800, 810, 820, 830, 840, 850, 1530, 1540, 1550,
-                    1560, 1570, 1580, 1590, 1600, 1610, 1620, 1890, 1900, 1910, 1920, 1930, 1950, 1960]
-# frames_to_export = list(range(0, 2200, 45))
+                    1560, 1570, 1580, 1590, 1600, 1610, 1620, 1860, 1865, 1870, 1875, 1880, 1885, 1890, 1895, 1900,1905, 1910,
+                    1915, 1920, 1925, 1930, 1935, 1940, 1945, 1950, 1955, 1960]
 
 img_path = os.path.join(img_dataset_path, scan_rel_path, 'images')
 pc_path = os.path.join(point_cloud_dataset_path, scan_rel_path, 'point_clouds')
@@ -45,7 +47,9 @@ for i in range(n_frames):
         pc_seq.append(pc)
 
         pc.points = pc.points - pc.points.mean(0)
-        pc.points = pc.points / (np.linalg.norm(pc.points.max(0)))
+        if i == frames_to_export[0]: # get the scale from the frist frame to avoid flickering
+            s = (np.linalg.norm(pc.points.max(0)))
+        pc.points = pc.points / s
 
         pl = pv.Plotter(off_screen=True)
         mesh = pl.add_mesh(pc, render_points_as_spheres=True, point_size=point_size, rgb=True)
@@ -111,4 +115,4 @@ visualization.export_pc_seq(point_seq, patchlet_points, text=None,
                             color=point_color, cmap=None,
                             point_size=point_size, output_path=os.path.join(outdir, 'patchlets'),
                             show_patchlets=True, show_full_pc=True,
-                            reduce_opacity=False, view='ikea_front')
+                            reduce_opacity=False, view='ikea_front', light=False)

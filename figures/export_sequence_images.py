@@ -53,22 +53,22 @@ def get_point_density(points, k=30):
 #         out_points_seq.append(np.delete(pc, idx, 0))
 #     return out_points_seq
 
-gender = 'female'
-dataset_name = 'ikeaasm'
+gender = 'male'
+dataset_name = 'dfaust'
 outdir = os.path.join('./log/sequence_images/', dataset_name, gender)
 os.makedirs(outdir, exist_ok=True)
-view = 'ikea_front'
+view = 'front'
 show_patchlets, show_full_pc, reduce_opacity = True, True, False
 
 # n_sequences = 1
-sequence_id = [1000]
+sequence_id = [99]
 # patchlet_ids = [0, 1, 2]
-patchlet_ids = [0, 300,  500, 800, 1000] #1850
+patchlet_ids = [152, 600, 2500, 2300] #1850
 frames_per_clip = 64
 
 k = 64
 n_points = 4096
-point_size = 15 #[0.025 for _ in range(n_points)]
+point_size = 8 #[0.025 for _ in range(n_points)]
 patchlet_point_size = 15
 use_density_based_point_size = False  #if True patchlets coloring is not supported
 
@@ -87,7 +87,7 @@ else:
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
 
 extract_pachlets = PatchletsExtractor(k=k, npoints=n_points, sample_mode='nn',
-                                      add_centroid_jitter=0.0, downsample_method='fps')
+                                      add_centroid_jitter=0.0, downsample_method='mean_var_t')
 
 point_color = None
 
