@@ -3,7 +3,7 @@ save_every: 10
 num_workers: 0
 
 MODEL:
-  pc_model: 'pn2_patchlets' # which model to use for point cloud processing
+  pc_model: 'tpatches' # which model to use for point cloud processing
   3DMFV:
     n_gaussians: 8
   SET_TRANSFORMER:
@@ -24,7 +24,7 @@ MODEL:
     radius: [0.2, 0.4, null]
     type: 'skip_con' # 'origin' / 'skip_con' / 'attn_last_layer' / 'attn_all_layers'
     attn_num_heads: 4 # only applicable with 'attn_last_layer' or 'attn_all_layers'
-    extractor_type: 'bidirectional' # 'strided', 'bidirectional','origin'
+    extractor_type: 'strided' # 'strided', 'bidirectional','vanilla'
     temp_conv: 64  # final temporal convolution layer
     temporal_stride: 1
     local_temp_convs: [7, 3, 3] #intermidiate temporal convolution layers in local patchlets
