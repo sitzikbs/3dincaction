@@ -6,7 +6,7 @@ from .pointnet import PointNet1, PointNet1Basic
 from .pointnet2_cls_ssg import PointNet2, PointNet2Basic
 from .pointnet2_cls_msg import PointNet2MSG, PointNet2MSGBasic
 from .pytorch_3dmfv import FourDmFVNet
-from .tpatches import TPatches
+from .tpatches import TPatchesInAction
 from .set_transformer import SetTransformerTemporal
 from .tpatch_trajectory import tPatchTraj
 from .DGCNN import DGCNN
@@ -21,7 +21,7 @@ __all__ = {
     'pn2_4d_basic': PointNet2Basic,
     'pn2_msg': PointNet2MSG,
     'pn2_msg_4d_basic': PointNet2MSGBasic,
-    'tpatches': TPatches,
+    'tpatches': TPatchesInAction,
     '3dmfv': FourDmFVNet,
     'set_transformer': SetTransformerTemporal,
     'tpatch_trajectory': tPatchTraj,

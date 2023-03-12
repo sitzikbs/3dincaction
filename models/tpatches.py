@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 torch.autograd.set_detect_anomaly(True)
 import time
-from models.extractors import PatchletsExtractor, PatchletsExtractorBidirectional, PatchletsExtractorStrided
+from models.extractors import TPatchExtractor, TPatchExtractorBidirectional, TPatchExtractorStrided
 
 
 
@@ -72,12 +72,12 @@ class PointMLP(nn.Module):
         return x.permute(0, 2, 3, 1)
 
 
-class TPatches(nn.Module):
+class TPatchesInAction(nn.Module):
     def __init__(self, model_cfg, num_class, n_frames=32, timeit=False): # TODO: remove
-        super(TPatches, self).__init__()
+        super(TPatchesInAction, self).__init__()
         self.timeit = timeit
         in_channel = model_cfg.get('in_channel', 3)
-        cfg = model_cfg['PATCHLET']
+        cfg = model_cfg['TPATCHES']
         self.k_list = cfg.get('k', [16, 16, 16])
         self.sample_mode = cfg['sample_mode']
         self.centroid_jitter = cfg['centroid_jitter']
@@ -93,11 +93,11 @@ class TPatches(nn.Module):
         temp_conv = cfg.get('temp_conv', n_frames)
 
         if self.extractor_type == 'bidirectional':
-            Extractor = PatchletsExtractorBidirectional
+            Extractor = TPatchExtractorBidirectional
         elif self.extractor_type == 'strided':
-            Extractor = PatchletsExtractorStrided
+            Extractor = TPatchExtractorStrided
         elif self.extractor_type == 'vanilla':
-            Extractor = PatchletsExtractor
+            Extractor = TPatchExtractor
         else:
             raise ValueError("Unsupported extractor type")
 

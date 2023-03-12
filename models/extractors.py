@@ -131,10 +131,10 @@ def get_knn(x1, x2, k=16, res=None, method='faiss_gpu', radius=None):
     return distances, idxs
 
 
-class PatchletsExtractor(nn.Module):
+class TPatchExtractor(nn.Module):
     def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None,
                  radius=None, temporal_stride=8):
-        super(PatchletsExtractor, self).__init__()
+        super(TPatchExtractor, self).__init__()
         self.k = k
         self.radius = radius
         self.sample_mode = sample_mode
@@ -245,10 +245,10 @@ class PatchletsExtractor(nn.Module):
 
 
 
-class PatchletsExtractorBidirectional(nn.Module):
+class TPatchExtractorBidirectional(nn.Module):
     def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None,
                  radius=None, temporal_stride=8):
-        super(PatchletsExtractorBidirectional, self).__init__()
+        super(TPatchExtractorBidirectional, self).__init__()
         self.k = k
         self.radius = radius
         self.sample_mode = sample_mode
@@ -402,10 +402,10 @@ class PatchletsExtractorBidirectional(nn.Module):
 
 
 
-class PatchletsExtractorStrided(nn.Module):
+class TPatchExtractorStrided(nn.Module):
     def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None,
                  radius=None, temporal_stride=8):
-        super(PatchletsExtractorStrided, self).__init__()
+        super(TPatchExtractorStrided, self).__init__()
         self.k = k
         self.radius = radius
         self.sample_mode = sample_mode
