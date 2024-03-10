@@ -70,7 +70,7 @@ We also thank the NVIDIA Academic Hardware Grant Program for providing high-spee
 
 ## License and Citation
 
-This paper was accepted to CVPR 2024 (the citation will be updated once CVF makes the paper public). 
+This paper was accepted to CVPR 2024 (the citation will be updated once CVF makes the paper public).
 
 If you find our work useful in your research, please cite our paper:
 
@@ -85,4 +85,4 @@ If you find our work useful in your research, please cite our paper:
 }
 ```
 
-See [LICENSE](LICENSE) file.
+See [LICENSE](https://github.com/sitzikbs/3dincaction/blob/main/LICENCE) file.
