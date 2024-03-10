@@ -574,3 +574,84 @@ class TPatchExtractorStrided(nn.Module):
                 'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
                 'normalized_patchlet_points': normalized_patchlet_points, 'fps_idx': fps_idx,
                 'x_current': out_x.reshape(b, t, n_out, d)}
+
+
+
+class TPatchExtractorModStrided(nn.Module):
+    def __init__(self, k=16, sample_mode='nn', npoints=None, add_centroid_jitter=None, downsample_method=None,
+                 radius=None, temporal_stride=8):
+        super(TPatchExtractorModStrided, self).__init__()
+        self.k = k
+        self.radius = radius
+        self.sample_mode = sample_mode
+        self.downsample_method = downsample_method
+        self.npoints = npoints
+        self.add_centroid_jitter = add_centroid_jitter
+        self.res = faiss.StandardGpuResources()
+        self.res.setDefaultNullStreamAllDevices()
+        self.temporal_stride = temporal_stride
+    def forward(self, point_seq, feat_seq=None):
+        b, t, n, d = point_seq.shape
+        n_original = n
+        n_out = n
+
+        distances, idxs = get_knn(point_seq[..., n, 0:3], point_seq[..., n, 0:3], k=self.k, res=self.res, method='keops',
+                                  radius=self.radius)
+        point_patches = utils.index_points(point_seq, idxs)[:, :, 0, :]
+
+        # assert t % self.temporal_stride == 0
+        # n_temporal_segments = int(t / self.temporal_stride)
+        # patchlets_accum, patchlet_points_accum, patchlet_feats_accum, distances_accum,\
+        #     idxs_accum, out_x_accum = [], [], [], [], [], []
+        # for i in range(n_temporal_segments):
+        #     x1 = point_seq[:, i*self.temporal_stride:(i+1)*self.temporal_stride]
+        #     x2 = torch.cat([x1[:, [0]], x1], dim=1)[:, :-1]
+        #     feats = feat_seq[:, i*self.temporal_stride:(i+1)*self.temporal_stride] if feat_seq is not None else None
+        #     patchlet_points, patchlet_feats, distances, idxs, patchlets, n, d_feat, fps_idx, out_x = \
+        #         get_tpatches(x1, x2, feats, flip=False,
+        #                       k=self.k, radius=self.radius, res=self.res, sample_mode=self.sample_mode,
+        #                       add_centroid_jitter=self.add_centroid_jitter,
+        #                       downsample_method=self.downsample_method, npoints=self.npoints )
+        #
+        #     #bidirectional
+        #     x1 = torch.flip(x1, [1])
+        #     x2 = torch.cat([x1[:, [0]], x1], dim=1)[:, :-1]
+        #     patchlet_points2, patchlet_feats2, distances2, idxs2, patchlets2, _, _, fps_idx2, out_x2 = \
+        #         get_tpatches(x1, x2, feat_seq, flip=True,
+        #                       k=self.k, radius=self.radius, res=self.res, sample_mode=self.sample_mode,
+        #                       add_centroid_jitter=self.add_centroid_jitter,
+        #                       downsample_method=self.downsample_method, npoints=self.npoints )
+        #
+        #     # randomly select a subset
+        #     rand_idxs = torch.randperm(n)[:int(n / 2)]
+        #     patchlets = torch.cat([patchlets[:, rand_idxs, :], patchlets2[:, rand_idxs, :]], 1)
+        #     patchlet_feats = torch.cat([patchlet_feats[:, rand_idxs, :], patchlet_feats2[:, rand_idxs, :]], 1)
+        #     patchlet_points = torch.cat([patchlet_points[:, rand_idxs, :], patchlet_points2[:, rand_idxs, :]], 1)
+        #     distances = torch.cat([distances[:, rand_idxs, :], distances2[:, rand_idxs, :]], 1)
+        #     idxs = torch.cat([idxs[:, rand_idxs, :], idxs2[:, rand_idxs, :]], 1)
+        #     out_x = out_x  # remove after debug, out_x is unused
+        #
+        #     patchlets_accum.append(patchlets.reshape(b, self.temporal_stride, n, self.k))
+        #     patchlet_points_accum.append(patchlet_points.reshape(b, self.temporal_stride, n, self.k, d))
+        #     patchlet_feats_accum.append(patchlet_feats.reshape(b, self.temporal_stride, n, self.k, d_feat))
+        #     distances_accum.append(distances.reshape(b, self.temporal_stride, n, self.k))
+        #     idxs_accum.append(idxs.reshape(b, self.temporal_stride, n, self.k))
+        #     out_x_accum.append(out_x.reshape(b, self.temporal_stride, n_original, d))
+        #
+        # patchlets = torch.cat(patchlets_accum, 1)
+        # patchlet_points = torch.cat(patchlet_points_accum, 1)
+        # patchlet_feats = torch.cat(patchlet_feats_accum, 1)
+        # distances = torch.cat(distances_accum, 1)
+        # idxs = torch.cat(idxs_accum, 1)
+        # out_x = torch.cat(out_x_accum, 1)
+        #
+        # normalized_patchlet_points = patchlet_points.detach().clone()
+        # for i in range(n_temporal_segments):
+        #     normalized_patchlet_points[:, i*self.temporal_stride:(i+1)*self.temporal_stride] -= \
+        #         normalized_patchlet_points[:, i * self.temporal_stride, :, [0], :].unsqueeze(1).detach()
+        # patchlet_feats = torch.cat([patchlet_feats, normalized_patchlet_points], -1)
+
+        return {'idx': idxs, 'distances': distances, 'patchlets': patchlets,
+                'patchlet_points': patchlet_points, 'patchlet_feats': patchlet_feats,
+                'normalized_patchlet_points': normalized_patchlet_points, 'fps_idx': fps_idx,
+                'x_current': out_x.reshape(b, t, n_out, d)}
