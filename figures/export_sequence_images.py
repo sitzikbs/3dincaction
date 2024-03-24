@@ -11,7 +11,8 @@ sys.path.append('../dfaust')
 from DfaustDataset import DfaustActionClipsDataset
 from ikeaaction.IKEAActionDatasetClips import IKEAActionDatasetClips
 from ikeaego.IKEAEgoDatasetClips import IKEAEgoDatasetClips
-from models.patchlets import PatchletsExtractor
+# from models.patchlets import PatchletsExtractor
+from models.extractors import TPatchExtractor
 from scipy.spatial import cKDTree
 
 
@@ -86,7 +87,7 @@ else:
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
 
-extract_pachlets = PatchletsExtractor(k=k, npoints=n_points, sample_mode='nn',
+extract_pachlets = TPatchExtractor(k=k, npoints=n_points, sample_mode='nn',
                                       add_centroid_jitter=0.0, downsample_method='mean_var_t')
 
 point_color = None

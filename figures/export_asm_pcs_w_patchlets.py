@@ -5,7 +5,7 @@ import pyvista as pv
 import torch
 import shutil
 from PIL import Image, ImageOps
-from models.patchlets import PatchletsExtractor
+from models.extractors import TPatchExtractor
 import visualization
 import models.pointnet2_utils as utils
 
@@ -92,7 +92,7 @@ n_points = 20000
 ndownsampled_points = 20000
 
 point_size = 8
-extract_pachlets = PatchletsExtractor(k=k, npoints=n_points, sample_mode='nn',
+extract_pachlets = TPatchExtractor(k=k, npoints=n_points, sample_mode='nn',
                                       add_centroid_jitter=0.0, downsample_method='mean_var_t')
 downsampled_pc = []
 downsampled_colors = []
